@@ -1,39 +1,46 @@
 # dsh-explain — DSH 学习模式插件（WIP）
 
-> 🚧 **状态：PRD P0 草案 + 技术架构 v4（呈现位置已闭合：行内讲解 + 回合尾部，不改主仓库），待 review，暂无代码。**
-> 产品需求见 [docs/PRD.md](docs/PRD.md);技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+> 🚧 **状态：PRD P0 定稿候选 + 技术架构 v5（含依赖 fork 副本），待 review，暂无功能代码。**
+> 产品需求见 [docs/PRD.md](docs/PRD.md)；技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
-**一句话定位**：给 DeepSeek Harness 加一个「学习模式」开关——打开后，explain 独立循环自主判断时机，在主对话行内讲解涉及的知识点；回合尾部提供反馈按钮（✓ 懂了 / ✗ 没懂），主对话循环互不干扰。
+**一句话定位**：把多个 DSH 工作会话中值得学习的内容汇入用户唯一的全局学习线程，一次只讲一个知识点，并在 better-sidebar 中通过「✓ 懂了 / ✗ 没懂」形成连续反馈。
 
----
+## 核心形态
+
+- 一个 `$DSH_HOME` 只有一条本地学习线程；工作会话、恢复和 fork 不复制学习状态。
+- 多个顶层工作会话可以提交候选知识点，但全局调度器只运行一个模型请求，并且只允许一个知识点等待用户反馈。
+- 主模型不知道 explain 存在；explain 不写主 Session 日志、不注入主模型上下文、不阻塞主 turn。
+- 学习历史持久化到 `$DSH_HOME/dsh-explain/v1/thread.sqlite`；开关与模型设置走 `$DSH_HOME/settings.yaml`。
+- P0 的唯一交互界面是 better-sidebar 的「学习模式」Tab；不使用 `conversation.chat.turnTail`，行内讲解移出 P0。
+- better-sidebar 以 **fork 副本**（v0.7.0，pinned SHA）随仓库携带（`vendor/dsh-better-sidebar/`，见 [MANIFEST.md](vendor/dsh-better-sidebar/MANIFEST.md)），不依赖上游仓库存活，也不要求用户单独安装原版。
 
 ## 动机
 
-- DSH 是强大的 agent，但用户往往只看到"活干完了"，看不到"发生了什么、为什么这么做、用到了什么概念"。
-- 学习模式把「干活」和「学习」耦合：不需要用户主动提问，工作过程中的知识点自动被讲解。
-- 目标用户不按身份限定：只要任务涉及的知识超出用户熟悉范围，讲解就有价值。
+- DSH 能完成复杂工作，但用户通常只看到结果，不一定理解过程中用到的概念、取舍和常见误区。
+- 学习模式把工作会话变成学习素材来源，不要求用户先知道应该问什么。
+- 用户的工作会话可以并发，注意力与学习进度仍是线性的，因此学习内容必须汇入同一线程并串行推进。
 
 ## 当前进展
 
-- [x] 需求查重（产品目标无直接重复，基础设施已有近似实现，见下）
-- [x] PRD P0 草案（[docs/PRD.md](docs/PRD.md)：开关 / 行内讲解 / 回合尾部反馈按钮 / 可自动验证的验收标准）
-- [x] 技术架构 v4（[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)：独立 explain 循环 / profile bundle / explain 事件 + ConversationNode / 回合尾部 turnTail / typed Remote）— **待 review**
-- [ ] 架构 review 通过
-- [ ] M1 内部技术原型 → M2 P0 可发布
-- [ ] 在 hub `catalog.source.json` 登记分类（届时）
+- [x] 需求查重：产品目标无直接重复，相关插件可提供局部实现参考。
+- [x] PRD P0 定稿候选：全局开关、单一学习线程、单个活跃知识点、全局反馈语义和可自动验证的验收标准。
+- [x] 技术架构 v5：本地 SQLite、全局单飞调度、typed Remote、better-sidebar 主界面和明确的生命周期规则。
+- [x] 依赖 fork 副本：`vendor/dsh-better-sidebar/`（v0.7.0，SHA `96b83ae3…`）+ MANIFEST + API 验证矩阵；monorepo workspace 就位（`package.json`/`pnpm-workspace.yaml`）。
+- [ ] 架构 review 通过。
+- [ ] M1 技术原型 → M2 P0 实现 → M3 发布门禁。
+- [ ] 在 hub `catalog.source.json` 登记分类。
 
-## 查重结论（2026-08-12 review 后修订，对照 dsh-external 全组织 257 仓库 + hub 索引）
+## 查重结论（2026-08-12）
 
-**产品目标无直接重复;基础设施已有近似实现**。相关先例：
+**产品目标无直接重复；以下项目只作为局部先例，不作为本项目的数据模型。**
 
-| 仓库 | 形态 | 与本项目的关系 |
+| 仓库 | 可复用部分 | 明确不复用的部分 |
 |---|---|---|
-| [dsh-auto-blame](https://github.com/dsh-external/dsh-auto-blame) | 回合结束辅助 LLM 生成建议 → 非 surface Session 事件 → projection 推送 → client 渲染（composer.dock） | **技术上最接近的先例**：架构路径（辅助 LLM + 非 surface 事件 + projection + 客户端渲染）与本项目 v3 一致;产品用途不同（毒舌跟进 vs 学习讲解）,不构成直接重复 |
-| [official-plugins-port](https://github.com/dsh-external/official-plugins-port) 的 `claude/learning-output-style` 与 `claude/explanatory-output-style` | **systemPrompt 段**（纯提示词风格,order 160/161） | 产品语义接近（学习/解释输出）但形态最浅:无开关、无独立循环、无反馈闭环 |
-| [dsh-edu](https://github.com/dsh-external/dsh-edu)（教育版 7 bundle） | 课程/作业/测验/错题/卡片/番茄钟（内容管理） | 产品互补:它管"学什么、怎么复习",本项目管"工作中实时讲解";后期知识沉淀走它的格式 |
-| [dsh-advisor](https://github.com/dsh-external/dsh-advisor) | 副模型观察每轮 + 注入分级建议（审查,给主模型看） | 组件级参考:transcript 收集、emission guard、gateway(typed Remote)可借鉴;注入语义不同(advisor 给主模型看,explain 不进主模型) |
-
-**结论**：`dsh-explain` 的差异点在「产品目标:工作中学习 + 主模型不可见的独立讲解循环」;技术基础设施（辅助 LLM 管线、非 surface 事件、projection、客户端渲染）已有近似实现可参照,不复刻轮子。
+| [dsh-auto-blame](https://github.com/dsh-external/dsh-auto-blame) | 回合结束后的后台模型调用、客户端反馈形态 | 外部自定义 Session 事件与 projection 不能作为本项目持久化方案 |
+| [dsh-advisor](https://github.com/dsh-external/dsh-advisor) | 转录增量、模型调用隔离、发射保护和配置 gateway | advisor 向主 agent 注入建议；explain 永不注入主模型 |
+| [DSH-better-sidebar](https://github.com/dsh-external/DSH-better-sidebar) | `ctx.betterSidebar.registerTab()` 提供的工作台页面 | sidebar 的 localStorage 只保存布局，不能保存学习事实 |
+| [official-plugins-port](https://github.com/dsh-external/official-plugins-port) 的 `claude/learning-output-style` 与 `claude/explanatory-output-style` | 学习与解释类提示词参考 | 纯 system prompt 无法提供独立调度、持久历史和反馈闭环 |
+| [dsh-edu](https://github.com/dsh-external/dsh-edu) | 后续知识沉淀格式 | P0 不做课程、测验、卡片或复习系统 |
 
 ## 内测纪律
 
