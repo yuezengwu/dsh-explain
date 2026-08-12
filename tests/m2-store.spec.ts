@@ -93,6 +93,55 @@ describe('runtime lease and autonomous budget', () => {
 })
 
 describe('autonomous, rephrase, and checkpoint persistence', () => {
+  it('restores budget, mastered state, history, coverage, and ExplainContext from disk', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'dsh-explain-restart-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'thread.sqlite')
+    const first = new ExplainStore(path)
+    stores.push(first)
+    const now = Date.now()
+    const lease = first.acquireLease('owner', now, DAY_MS)
+    const source = capsule('restart-source')
+    expect(first.reserveAutoRequest(lease, source, 'p', 'm', 1, 50, now)).toMatchObject({ ok: true })
+    const committed = first.commitAutoDecision(lease, source, decision(), generation(now + 1))
+    const entry = committed.entry
+    if (entry?.explanationId === undefined || entry.revision === undefined) throw new Error('missing restart fixture')
+    expect(first.feedback({
+      requestId: RequestId('restart-understood'),
+      sourceSessionId: source.sourceSessionId,
+      explanationId: entry.explanationId,
+      revision: entry.revision,
+      action: 'understood',
+    }).ok).toBe(true)
+    const batch = first.compactionBatch()
+    const observationId = batch?.observations[0]?.observationId
+    if (batch === undefined || observationId === undefined) throw new Error('missing restart compaction batch')
+    const snapshot: ExplainContextSnapshot = {
+      dialogueProfile: [{
+        kind: 'examples', preference: 'Prefer one example.', confidence: 'high',
+        evidenceObservationIds: [observationId], evidenceEntryOrdinals: [],
+      }],
+      knowledgeOverview: 'Understands one narrowing pattern.',
+      learningTrend: 'Moving from examples to independent use.',
+    }
+    expect(first.commitCheckpoint(lease, batch, 'idle', 'restart-checkpoint', snapshot, generation(now + 2)))
+      .toBeDefined()
+    first.close()
+    stores.splice(stores.indexOf(first), 1)
+
+    const reopened = new ExplainStore(path)
+    stores.push(reopened)
+    expect(reopened.autoBudget(50, now + 3).used).toBe(1)
+    expect(reopened.context()).toMatchObject({
+      inferred: true,
+      knowledgeOverview: snapshot.knowledgeOverview,
+      stats: { masteredTopics: 1, activeExplanations: 0, understoodFeedback: 1 },
+    })
+    expect(reopened.compactionBatch()).toBeUndefined()
+    expect(reopened.threadPage({ limit: 20 }).entries.map(item => item.kind))
+      .toEqual(['feedback', 'explanation'])
+  })
+
   it('persists the private revision-one summary, updates Topic title on rephrase, and compacts closed data', () => {
     const store = memoryStore()
     const lease = store.acquireLease('owner', Date.now(), DAY_MS)
@@ -179,6 +228,8 @@ describe('autonomous, rephrase, and checkpoint persistence', () => {
       knowledgeOverview: 'Understands discriminated unions.',
       stats: { masteredTopics: 1, activeExplanations: 0 },
     })
+    expect(store.threadPage({ limit: 20 }).entries.some(entry => entry.explanationId === first.explanationId))
+      .toBe(true)
 
     store.commitAutoDecision(lease, capsule('source-b'), {
       kind: 'skip',

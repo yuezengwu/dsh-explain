@@ -73,6 +73,7 @@ describe('completed-turn source observation', () => {
     }, { surfaceOp: 'append' })
     session.append('step/end', { turn: 1, step: 1 })
     const end = session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    const messagesBeforeObservation = session.deriveMessages()
 
     const captured = captureSourceCapsule(session, end, 10_000)
     expect(captured).toMatchObject({
@@ -86,6 +87,7 @@ describe('completed-turn source observation', () => {
     expect(JSON.stringify(captured)).not.toContain('private synthetic context')
     expect(JSON.stringify(captured)).not.toContain('hidden chain')
     expect(JSON.stringify(captured)).not.toContain('secret')
+    expect(session.deriveMessages()).toEqual(messagesBeforeObservation)
   })
 
   it('rejects cancelled and step-free turns', () => {

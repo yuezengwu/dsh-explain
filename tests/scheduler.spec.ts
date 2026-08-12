@@ -29,6 +29,7 @@ class LearningAdapter extends LlmAdapter {
   active = 0
   maxActive = 0
   contextWindow = 1_000_000
+  delayMs = 5
   failCompaction = false
   failAutonomous = false
   readonly calls: string[] = []
@@ -54,7 +55,7 @@ class LearningAdapter extends LlmAdapter {
     this.active += 1
     this.maxActive = Math.max(this.maxActive, this.active)
     try {
-      await abortableDelay(5, options.signal)
+      await abortableDelay(this.delayMs, options.signal)
       const compaction = options.purpose === 'compaction'
       const rephrase = options.system?.includes('Rephrase one still-active explanation') === true
       const source = requestObject(options)
@@ -63,7 +64,13 @@ class LearningAdapter extends LlmAdapter {
       this.efforts.push(options.reasoningEffort)
       if (compaction && this.failCompaction) throw new Error('test compaction provider failure')
       if (!compaction && !rephrase && this.failAutonomous) throw new Error('test autonomous provider failure')
-      const response = rephrase
+      const response = compaction
+        ? {
+            dialogueProfile: [],
+            knowledgeOverview: 'Compressed learning context.',
+            learningTrend: 'Closed material is retained as a summary.',
+          }
+        : rephrase
         ? { title: 'Narrowing with labels', what: 'Each member has a label.', why: 'The label identifies the member.', pitfall: 'Keep labels literal.' }
         : {
             kind: 'explain',
@@ -143,6 +150,17 @@ async function setup(
 }
 
 describe('real LLM-service scheduler integration', () => {
+  it('does no auxiliary or learning work while disabled', async () => {
+    const { store, adapter, scheduler } = await setup({ ...SETTINGS, enabled: false })
+    const before = store.cursor()
+    scheduler.enqueue(source('disabled-source'))
+    await new Promise(resolve => { setTimeout(resolve, 20) })
+    expect(adapter.calls).toEqual([])
+    expect(scheduler.status()).toMatchObject({ state: 'disabled', pendingCandidates: 0 })
+    expect(store.cursor()).toEqual(before)
+    expect(store.autoBudget(50).used).toBe(0)
+  })
+
   it('recovers a configured route when its adapter registers after startup', async () => {
     const { ctx, store, adapter, scheduler } = await setup(SETTINGS, undefined, false)
     expect(scheduler.status()).toMatchObject({ state: 'failed', lastError: { code: 'RUNTIME_FAILED' } })
@@ -213,6 +231,65 @@ describe('real LLM-service scheduler integration', () => {
     schedulers.splice(schedulers.indexOf(scheduler), 1)
     stores.splice(stores.indexOf(store), 1)
     store.close()
+  })
+
+  it('runs one idle compaction for dirty closed material and then becomes clean', async () => {
+    const { store, adapter, scheduler } = await setup({ ...SETTINGS, idleCompactMs: 1 })
+    store.addFixtureExplanation({
+      topicKey: 'closed/topic',
+      title: 'Closed concept',
+      sourceSessionId: SessionId('closed-source'),
+      sourceTurn: 1,
+      state: 'closed',
+      topicState: 'mastered',
+    })
+    scheduler.learningStateChanged()
+    await until(() => store.context().inferred)
+    await new Promise(resolve => { setTimeout(resolve, 20) })
+    expect(adapter.calls).toEqual(['compaction'])
+    expect(store.compactionBatch()).toBeUndefined()
+    expect(store.autoBudget(50).used).toBe(0)
+  })
+
+  it('compacts pressure-causing closed context before sending the autonomous request', async () => {
+    const { store, adapter, scheduler } = await setup(
+      { ...SETTINGS, maxOutputTokens: 100, maxCompactionOutputTokens: 100 },
+      target => { target.contextWindow = 3_500 },
+    )
+    store.addFixtureExplanation({
+      topicKey: 'large/closed-topic',
+      title: 'Large closed concept',
+      sourceSessionId: SessionId('old-source'),
+      sourceTurn: 1,
+      state: 'closed',
+      topicState: 'mastered',
+      revisions: [{
+        title: 'Large closed concept',
+        what: 'w'.repeat(600),
+        why: 'y'.repeat(600),
+        pitfall: 'p'.repeat(600),
+      }],
+    })
+    scheduler.enqueue({
+      ...source('new-source'),
+      userText: 'u'.repeat(2_000),
+      assistantText: 'a'.repeat(2_000),
+    })
+    await until(() => store.activeExplanationCount() === 1 || scheduler.status().lastError !== undefined)
+    expect(scheduler.status().lastError).toBeUndefined()
+    expect(adapter.calls).toEqual(['compaction', 'auto:new-source'])
+    expect(store.context().inferred).toBe(true)
+    expect(store.autoBudget(50).used).toBe(1)
+  })
+
+  it('fences an autonomous result when learning mode is disabled in flight', async () => {
+    const { store, adapter, scheduler } = await setup(SETTINGS, target => { target.delayMs = 100 })
+    scheduler.enqueue(source('late-result'))
+    await until(() => adapter.active === 1)
+    await scheduler.configure({ ...SETTINGS, enabled: false })
+    await new Promise(resolve => { setTimeout(resolve, 20) })
+    expect(store.activeExplanationCount()).toBe(0)
+    expect(scheduler.status()).toMatchObject({ state: 'disabled', pendingCandidates: 0 })
   })
 
   it('surfaces a terminal autonomous failure after exhausting its retry attempts', async () => {
