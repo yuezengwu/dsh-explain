@@ -1,7 +1,7 @@
 # dsh-explain — DSH 学习模式插件（WIP）
 
-> 🚧 **状态：PRD P0 已定稿，技术架构讨论中，暂无代码。**
-> 产品需求唯一事实源见 [docs/PRD.md](docs/PRD.md)。
+> 🚧 **状态：PRD P0 定稿 + 技术架构 v2 已提交，待 review，暂无代码。**
+> 产品需求唯一事实源见 [docs/PRD.md](docs/PRD.md);技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 **一句话定位**：给 DeepSeek Harness 加一个「学习模式」开关——打开后，agent 工作时**自主判断时机**，在主对话行内讲解涉及的知识点；右侧悬浮窗提供反馈按钮（✓ 懂了 / ✗ 没懂），让用户边干活边学习，主对话流不被教学干扰。
 
@@ -17,8 +17,9 @@
 
 - [x] 需求查重（无直接重复，3 个相关先例见下）
 - [x] PRD P0 定稿（[docs/PRD.md](docs/PRD.md)：开关 / 行内讲解 / 右侧悬浮窗两按钮 / 防吵三件）
-- [ ] 技术架构与实现节奏（讨论中）
-- [ ] 代码实现
+- [x] 技术架构 v2 提交（[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)：独立 explain 循环 / 观察管线起步 / 注入式行内讲解）— **待 review**
+- [ ] 架构 review 通过
+- [ ] M1 实现（observer + explainer + 注入通道 + 悬浮窗）
 - [ ] 在 hub `catalog.source.json` 登记分类（届时）
 
 ## 查重结论（2026-08-12，对照 dsh-external 全组织 253 仓库 + hub 索引）
