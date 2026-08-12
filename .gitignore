@@ -1,0 +1,7 @@
+node_modules/
+lib/
+coverage/
+*.tsbuildinfo
+*.tgz
+.DS_Store
+.playwright-mcp/
