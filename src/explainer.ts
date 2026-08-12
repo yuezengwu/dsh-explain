@@ -151,6 +151,8 @@ export function renderCompactionRequest(
   stats: unknown,
   maxTokens: number,
 ): AuxiliaryRequest<ExplainContextSnapshot> {
+  const languageSample = contextLanguageSample(batch)
+  const requiredWritingSystem = writingSystem(languageSample)
   const observationIds = new Set<string>([
     ...(batch.previous?.context.dialogueProfile.flatMap(item => item.evidenceObservationIds) ?? []),
     ...batch.observations.map(item => item.observationId),
@@ -177,11 +179,15 @@ export function renderCompactionRequest(
         rules: [
           'dialogueProfile is always an array of zero to sixteen complete dialogueProfileItem objects; use [] when no supported preference is justified.',
           'Both evidence fields are always arrays and may cite only exact ids or ordinals present in the supplied evidence.',
-          'Write every user-visible string in exactly the same human language as languageSample.',
+          'The languageSample, not the English instructions or JSON keys, is authoritative for the output language.',
+          'Write every user-visible string in exactly the same human language as languageSample; retain English only for technical identifiers when needed.',
+          requiredWritingSystem === undefined
+            ? 'Preserve the language of languageSample in every non-empty user-visible string.'
+            : `Every non-empty preference, knowledgeOverview, and learningTrend must contain ${requiredWritingSystem.label}; output in another writing system is invalid.`,
           'Return no fields other than dialogueProfile, knowledgeOverview, and learningTrend.',
         ],
       },
-      languageSample: contextLanguageSample(batch),
+      languageSample,
       previous: batch.previous?.context ?? null,
       newObservations: batch.observations,
       closedExplanations: batch.explanations,
@@ -189,8 +195,28 @@ export function renderCompactionRequest(
     })],
     maxTokens,
     purpose: 'compaction',
-    parse: text => parseContextSnapshot(text, observationIds, entryOrdinals),
+    parse: text => parseContextSnapshot(text, observationIds, entryOrdinals, requiredWritingSystem),
   }
+}
+
+interface WritingSystem {
+  readonly label: string
+  readonly pattern: RegExp
+}
+
+function writingSystem(sample: string): WritingSystem | undefined {
+  const systems: readonly WritingSystem[] = [
+    { label: 'Japanese kana', pattern: /[\p{Script=Hiragana}\p{Script=Katakana}]/u },
+    { label: 'Korean Hangul', pattern: /\p{Script=Hangul}/u },
+    { label: 'Han characters', pattern: /\p{Script=Han}/u },
+    { label: 'Cyrillic letters', pattern: /\p{Script=Cyrillic}/u },
+    { label: 'Arabic letters', pattern: /\p{Script=Arabic}/u },
+    { label: 'Hebrew letters', pattern: /\p{Script=Hebrew}/u },
+    { label: 'Devanagari letters', pattern: /\p{Script=Devanagari}/u },
+    { label: 'Thai letters', pattern: /\p{Script=Thai}/u },
+    { label: 'Greek letters', pattern: /\p{Script=Greek}/u },
+  ]
+  return systems.find(system => system.pattern.test(sample))
 }
 
 function contextLanguageSample(batch: CompactionBatch): string {
@@ -356,6 +382,7 @@ function parseContextSnapshot(
   text: string,
   allowedObservationIds: ReadonlySet<string>,
   allowedEntryOrdinals: ReadonlySet<number>,
+  requiredWritingSystem: WritingSystem | undefined,
 ): ExplainContextSnapshot {
   const value = jsonObject(text, 'context checkpoint')
   exactKeys(value, ['dialogueProfile', 'knowledgeOverview', 'learningTrend'], 'context checkpoint')
@@ -389,10 +416,27 @@ function parseContextSnapshot(
       evidenceEntryOrdinals: ordinals,
     }
   })
-  return {
+  const snapshot = {
     dialogueProfile,
     knowledgeOverview: optionalText(value.knowledgeOverview, 'knowledgeOverview', 2_000),
     learningTrend: optionalText(value.learningTrend, 'learningTrend', 2_000),
+  }
+  assertCheckpointLanguage(snapshot, requiredWritingSystem)
+  return snapshot
+}
+
+function assertCheckpointLanguage(
+  snapshot: ExplainContextSnapshot,
+  requiredWritingSystem: WritingSystem | undefined,
+): void {
+  if (requiredWritingSystem === undefined) return
+  const fields = [
+    ...snapshot.dialogueProfile.map(item => item.preference),
+    snapshot.knowledgeOverview,
+    snapshot.learningTrend,
+  ]
+  if (fields.some(field => field !== '' && !requiredWritingSystem.pattern.test(field))) {
+    throw new Error(`dsh-explain: context checkpoint must preserve ${requiredWritingSystem.label}`)
   }
 }
 

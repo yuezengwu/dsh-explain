@@ -218,4 +218,34 @@ describe('strict auxiliary JSON parsing', () => {
       knowledgeOverview: '', learningTrend: '',
     }))).toThrow(/unavailable evidence/)
   })
+
+  it('rejects a context checkpoint that drops the source writing system', () => {
+    const observationId = ObservationId('observation-zh')
+    const request = renderCompactionRequest({
+      contextGeneration: 1,
+      activityGeneration: 1,
+      observations: [{
+        observationId,
+        sourceSessionId: SessionId('a'),
+        sourceTurn: 1,
+        observation: {
+          kind: 'dialogue-preference', dimension: 'examples', value: '请使用具体示例', confidence: 'high',
+        },
+        createdAt: 1,
+      }],
+      explanations: [],
+      throughOrdinal: 0,
+    }, {}, 500)
+    expect(JSON.stringify(request.messages)).toContain('Han characters')
+    expect(() => request.parse(JSON.stringify({
+      dialogueProfile: [],
+      knowledgeOverview: 'Understands discriminated unions.',
+      learningTrend: 'Needs more practical examples.',
+    }))).toThrow(/preserve Han characters/)
+    expect(request.parse(JSON.stringify({
+      dialogueProfile: [],
+      knowledgeOverview: '已理解可辨识联合。',
+      learningTrend: '需要更多实际示例。',
+    })).learningTrend).toBe('需要更多实际示例。')
+  })
 })
