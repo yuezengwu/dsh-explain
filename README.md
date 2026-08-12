@@ -1,6 +1,6 @@
 # dsh-explain — DSH 学习模式插件（WIP）
 
-> 🚧 **状态：PRD P0 定稿候选 + 技术架构 v6；M1 已合并，M2 实现与验收中。**
+> ✅ **状态：PRD P0 定稿 + 技术架构 v6；M1/M2 已合并，M3 发布门禁通过。**
 > 产品需求见 [docs/PRD.md](docs/PRD.md)；技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 **一句话定位**：把多个 DSH 工作会话中值得学习的内容汇入用户唯一的全局学习线程，为每个来源会话保留至多一个活跃讲解，并用全局学习上下文持续适配用户的知识水平和讲解偏好。
@@ -35,10 +35,11 @@
 - [x] UI 路径核验：沿用第一方 `ui-trajectory` 的 `ctx.slots.inject('conversation.view', ...)` 注册方式，无外部 UI 依赖。
 - [x] M1 基础设施：独立插件构建、本地 SQLite schema、实体级 CAS、分页/长轮询和自动生成的 typed Remote。
 - [x] M2 主实现：来源观察、辅助模型单飞调度、持久预算、重讲、双触发压缩、ExplainContext 与 `conversation.view` 学习界面。
-- [ ] M2 真实 DSH Web/模型流程验收与 GIF → M3 发布门禁。
+- [x] M2 真实 DSH Web/模型流程验收与 GIF。
+- [x] M3 发布门禁：P0 验收矩阵、无密钥 assembled Web snapshot、安装与组合 smoke。
 - [ ] 在 hub `catalog.source.json` 登记分类。
 
-M1 只建立持久层和 Host/Client RPC 基础；M2 已把观察、模型、反馈、压缩与学习界面接到同一条真实运行链。首个 UI PR 仍须通过本地 DSH Web 的真实模型流程并附 GIF 后才能合并。
+M1 建立持久层和 Host/Client RPC 基础；M2 把观察、模型、反馈、压缩与学习界面接到同一条真实运行链，并已通过本地 DSH Web 真实模型流程。P0 发布证据见 [验收矩阵](docs/ACCEPTANCE.md)。
 
 ## 本地开发
 
@@ -48,9 +49,12 @@ M1 只建立持久层和 Host/Client RPC 基础；M2 已把观察、模型、反
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm install
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
 pnpm run test
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web
 pnpm run typecheck
 pnpm run build
 ```
+
+`test:web` 使用全新临时 `$DSH_HOME`、持久 Session fixture 和预置 Explain SQLite 运行无密钥的真实 DSH Web 组合，并比对学习视图 ARIA golden；更新有意的界面输出时运行 `DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web:refresh` 并审查 snapshot diff。
 
 开发验收使用本地目录安装，不经过 npm：
 

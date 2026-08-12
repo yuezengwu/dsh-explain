@@ -1,0 +1,35 @@
+- main:
+  - heading "全局学习线程" [level=1]
+  - text: 学习模式当前已关闭；历史仍可阅读。
+  - strong: "1"
+  - text: 学习中
+  - strong: "0"
+  - text: 已掌握
+  - strong: "1"
+  - text: 待反馈
+  - strong: 0/50
+  - text: 自主额度
+  - heading "学习概况 模型推断" [level=2]
+  - heading "知识概况" [level=3]
+  - paragraph: 正在学习 TypeScript 的可辨识联合。
+  - heading "学习进展" [level=3]
+  - paragraph: 能从实际重构中理解类型收窄。
+  - heading "讲解偏好" [level=3]
+  - text: 优先使用一个具体代码示例。
+  - heading "当前会话" [level=2]
+  - text: 当前会话暂无讲解
+  - heading "其他会话的活跃讲解 1" [level=2]
+  - article:
+    - heading "用判别字段安全缩小联合类型" [level=3]
+    - text: 来源 fixture-… 回合 1
+    - time: {{clock}}
+    - heading "是什么" [level=4]
+    - paragraph: 共享的字面量字段会标记当前是哪一个联合成员。
+    - heading "为什么" [level=4]
+    - paragraph: 检查标记后，TypeScript 能证明该分支中哪些字段必然存在。
+    - heading "常见坑" [level=4]
+    - paragraph: 把标记写成宽泛的 string 会失去自动收窄。
+    - button "✓ 懂了" [disabled]
+    - button "✗ 没懂" [disabled]
+  - heading "学习历史" [level=2]
+  - text: 还没有讲解。完成工作回合后，explain 会在值得讲解时记录到这里。

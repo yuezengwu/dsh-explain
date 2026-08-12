@@ -65,6 +65,8 @@
     "build": "pnpm clean && pnpm build:host && pnpm build:client",
     "typecheck": "pnpm build:host && tsc -p tsconfig.host.json --noEmit && tsc -p tsconfig.client.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
     "test": "vitest run",
+    "test:web": "pnpm build && vitest run --config vitest.web.config.ts",
+    "test:web:refresh": "pnpm build && DSH_SNAPSHOT=refresh vitest run --config vitest.web.config.ts",
     "prepare": "node scripts/setup-dsh-links.mjs && pnpm build",
     "prepack": "pnpm build"
   },
@@ -101,6 +103,7 @@
     "esbuild": "^0.28.2",
     "jsdom": "29.1.1",
     "lightningcss": "^1.33.0",
+    "playwright": "1.61.1",
     "react": "^18.2.0",
     "react-dom": "^18.3.1",
     "tsdown": "^0.20.1",

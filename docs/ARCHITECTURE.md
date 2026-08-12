@@ -1,6 +1,6 @@
-# dsh-explain 技术架构 v6（待 Review）
+# dsh-explain 技术架构 v6
 
-> 状态：**v6 提交待 review**（2026-08-12）。产品需求见 [PRD.md](./PRD.md)。
+> 状态：**v6 已实现，P0 发布门禁通过**（2026-08-13）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
 > v6 保留“每个 `$DSH_HOME` 一条全局学习线程”，把活跃讲解改为每个来源 Session 最多一个，并新增 30 分钟/50% 双触发压缩与 explain 私有全局 `ExplainContext`。
 
 ## 架构结论
@@ -63,7 +63,7 @@ dsh-explain
 2. host 组合提供 `llm`、`tokenMeter`、`settings` 与全局 Session 事件源；explain 声明硬 inject，缺失任一服务时不激活。`tokenMeter` 只用于 `estimateMessage()`，模型容量由 `llm.resolveModelInfo()` 所有。
 3. package peerDependencies 声明直接使用的第一方包；`dsh.client.inject` 声明 locale、runtime 与 ui-conversation 的组合元数据。该字段不承担 apply 顺序。
 4. client 插件声明实际读取的 `slots`、`locale` 与 `remote` 服务；对 `conversation.view` 的贡献必须通过 `ctx.slots.inject()` 等待真实 slot declaration，不用裸 `slots.register()` 猜测加载顺序。
-5. 安装与组合 smoke 断言 `dsh-explain:learning` 在 view ring 中恰好注册一次；缺失第一方视图宿主时失败，不得让启用状态下的 host 静默生成不可见内容。
+5. 安装与组合 smoke 使用正常的本地目录安装与 Web profile，断言 `dsh-explain:learning` 在 view ring 中恰好注册一次；第一方视图宿主由 package peer 与 `dsh.client.inject` 声明为必需组合依赖，slot 的实际声明时序仍由 `slots.inject()` 处理。
 
 ## 组件结构
 

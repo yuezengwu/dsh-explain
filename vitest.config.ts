@@ -1,9 +1,8 @@
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
-const dependency = (path: string): string => fileURLToPath(new URL(`./node_modules/${path}`, import.meta.url))
-const localReact = (path: string): string => dependency(`.pnpm/react@18.3.1/node_modules/react/${path}`)
-const localReactDom = (path: string): string => dependency(`.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom/${path}`)
+const require = createRequire(import.meta.url)
 
 export default defineConfig({
   resolve: {
@@ -18,14 +17,9 @@ export default defineConfig({
         find: /^@deepseek-ai\/dsh-client-runtime\/client$/,
         replacement: fileURLToPath(new URL('./tests/client-runtime-stub.ts', import.meta.url)),
       },
-      { find: /^react$/, replacement: localReact('index.js') },
-      { find: /^react\/jsx-runtime$/, replacement: localReact('jsx-runtime.js') },
-      { find: /^react\/jsx-dev-runtime$/, replacement: localReact('jsx-dev-runtime.js') },
-      { find: /^react-dom$/, replacement: localReactDom('index.js') },
-      {
-        find: /^react-dom\/(.*)$/,
-        replacement: `${dependency('.pnpm/react-dom@18.3.1_react@18.3.1/node_modules/react-dom')}/$1`,
-      },
+      { find: /^react$/, replacement: require.resolve('react') },
+      { find: /^react\/jsx-runtime$/, replacement: require.resolve('react/jsx-runtime') },
+      { find: /^react\/jsx-dev-runtime$/, replacement: require.resolve('react/jsx-dev-runtime') },
     ],
   },
   test: {

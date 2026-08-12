@@ -1,6 +1,6 @@
-# dsh-explain PRD（P0 定稿候选）
+# dsh-explain PRD（P0 定稿）
 
-> 状态：**P0 定稿候选，待 review**（2026-08-12）。
+> 状态：**P0 定稿**（2026-08-13）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
 > 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v6 同步。
 
 ## 定位
