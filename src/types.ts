@@ -20,9 +20,32 @@ export interface ExplainStatusView {
   readonly pendingCandidateCount: number
   readonly autoRequestsUsed: number
   readonly autoRequestsLimit: number
+  readonly autoRequestsResumeAt?: number
+  readonly provider?: string
+  readonly model?: string
+  readonly routeReady: boolean
+  readonly contextWindow?: number
+  readonly lastUserActionAt?: number
+  readonly lastCompactedAt?: number
+  readonly estimatedContextRatio?: number
+  readonly lastError?: { readonly code: string; readonly message: string }
   readonly storeRevision: number
   readonly cursor: ViewCursor
 }
+
+/** Persist the global enabled switch through the registered settings namespace. */
+export interface SetEnabledRequest { readonly enabled: boolean }
+
+/** Stable enable/disable result; route failures never become transport errors. */
+export type SetEnabledResult =
+  | { readonly ok: true; readonly status: ExplainStatusView }
+  | {
+      readonly ok: false
+      readonly error: {
+        readonly code: 'MODEL_ROUTE_REQUIRED' | 'MODEL_CONTEXT_REQUIRED' | 'RUNTIME_FAILED'
+        readonly message: string
+      }
+    }
 
 /** Sanitized explanation payload visible to the browser. */
 export interface ExplanationPayloadView {

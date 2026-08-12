@@ -28,6 +28,21 @@ export interface ResolvedExplainConfig extends Required<Omit<ExplainConfig, 'pro
   readonly databasePath: string
 }
 
+/** Settings-backed fields that may change while the host is running. */
+export type ExplainRuntimeSettings = Pick<ResolvedExplainConfig,
+  | 'enabled'
+  | 'maxPendingCandidates'
+  | 'maxSourceChars'
+  | 'maxAutoRequestsPerDay'
+  | 'maxTopicHints'
+  | 'idleCompactMs'
+  | 'contextThresholdRatio'
+  | 'timeoutMs'
+  | 'maxOutputTokens'
+  | 'maxCompactionOutputTokens'
+  | 'maxAttempts'
+> & { readonly provider?: string; readonly model?: string }
+
 /** Loader schema with every deployment tunable defined in architecture v6. */
 export const Config = z.object({
   enabled: z.boolean().default(false),
@@ -46,6 +61,42 @@ export const Config = z.object({
   maxCompactionOutputTokens: z.number().step(1).min(1).default(1_600),
   maxAttempts: z.number().step(1).min(1).default(2),
 })
+
+/** User-settings section; storage paths remain immutable composition fields. */
+export const RuntimeSettings = z.object({
+  enabled: z.boolean().default(false),
+  provider: z.string(),
+  model: z.string(),
+  maxPendingCandidates: z.number().step(1).min(1).default(8),
+  maxSourceChars: z.number().step(1).min(1).default(24_000),
+  maxAutoRequestsPerDay: z.number().step(1).min(1).default(50),
+  maxTopicHints: z.number().step(1).min(1).default(100),
+  idleCompactMs: z.number().step(1).min(1).default(1_800_000),
+  contextThresholdRatio: z.number().min(0.01).max(0.99).default(0.5),
+  timeoutMs: z.number().step(1).min(1).default(30_000),
+  maxOutputTokens: z.number().step(1).min(1).default(1_200),
+  maxCompactionOutputTokens: z.number().step(1).min(1).default(1_600),
+  maxAttempts: z.number().step(1).min(1).default(2),
+})
+
+/** Project one resolved loader config into the settings-owned live subset. */
+export function runtimeSettings(config: ResolvedExplainConfig): ExplainRuntimeSettings {
+  return {
+    enabled: config.enabled,
+    ...(config.provider === undefined ? {} : { provider: config.provider }),
+    ...(config.model === undefined ? {} : { model: config.model }),
+    maxPendingCandidates: config.maxPendingCandidates,
+    maxSourceChars: config.maxSourceChars,
+    maxAutoRequestsPerDay: config.maxAutoRequestsPerDay,
+    maxTopicHints: config.maxTopicHints,
+    idleCompactMs: config.idleCompactMs,
+    contextThresholdRatio: config.contextThresholdRatio,
+    timeoutMs: config.timeoutMs,
+    maxOutputTokens: config.maxOutputTokens,
+    maxCompactionOutputTokens: config.maxCompactionOutputTokens,
+    maxAttempts: config.maxAttempts,
+  }
+}
 
 const CONFIG_KEYS = new Set([
   'enabled', 'provider', 'model', 'dshHome', 'storageDir', 'maxPendingCandidates', 'maxSourceChars',
