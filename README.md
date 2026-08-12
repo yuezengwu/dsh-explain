@@ -1,9 +1,9 @@
 # dsh-explain — DSH 学习模式插件（WIP）
 
-> 🚧 **状态：PRD P0 草案 + 技术架构 v3（v2 未通过 review，已重写），待 review，暂无代码。**
+> 🚧 **状态：PRD P0 草案 + 技术架构 v4（呈现位置已闭合：行内讲解 + 回合尾部，不改主仓库），待 review，暂无代码。**
 > 产品需求见 [docs/PRD.md](docs/PRD.md);技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
-**一句话定位**：给 DeepSeek Harness 加一个「学习模式」开关——打开后，explain 独立循环自主判断时机，在主对话行内讲解涉及的知识点；反馈按钮（✓ 懂了 / ✗ 没懂）作用于当前知识点，主对话循环互不干扰。
+**一句话定位**：给 DeepSeek Harness 加一个「学习模式」开关——打开后，explain 独立循环自主判断时机，在主对话行内讲解涉及的知识点；回合尾部提供反馈按钮（✓ 懂了 / ✗ 没懂），主对话循环互不干扰。
 
 ---
 
@@ -16,9 +16,9 @@
 ## 当前进展
 
 - [x] 需求查重（产品目标无直接重复，基础设施已有近似实现，见下）
-- [x] PRD P0 草案（[docs/PRD.md](docs/PRD.md)：开关 / 行内讲解 / 反馈两按钮 / 可自动验证的验收标准）
-- [x] 技术架构 v3（[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)：独立 explain 循环 / profile bundle / explain 事件 + ConversationNode / typed Remote）— **待 review**
-- [ ] 开放决策 A（悬浮窗扩展位：主仓库加 slot vs P0 收缩）与 B（M1 定位）闭合
+- [x] PRD P0 草案（[docs/PRD.md](docs/PRD.md)：开关 / 行内讲解 / 回合尾部反馈按钮 / 可自动验证的验收标准）
+- [x] 技术架构 v4（[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)：独立 explain 循环 / profile bundle / explain 事件 + ConversationNode / 回合尾部 turnTail / typed Remote）— **待 review**
+- [ ] 架构 review 通过
 - [ ] M1 内部技术原型 → M2 P0 可发布
 - [ ] 在 hub `catalog.source.json` 登记分类（届时）
 
