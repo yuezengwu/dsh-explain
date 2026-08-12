@@ -1,0 +1,4 @@
+# dsh-explain is one global host row with a paired Web client bundle.
+- insert:
+    - id: explain
+      name: dsh-explain

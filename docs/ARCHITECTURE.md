@@ -114,9 +114,10 @@ $DSH_HOME/dsh-explain/v1/thread.sqlite
 | `meta` | `schema_version`, `store_revision`, `next_ordinal` | 全局格式、CAS revision 与严格递增顺序 |
 | `runtime_state` | `first_explain_output_at`, `last_user_action_at`, `activity_generation`, `last_compacted_at`, `context_generation` | 30 分钟计时基线、用户操作代数和压缩脏代数 |
 | `topics` | `topic_id`, `topic_key UNIQUE`, `title`, `state`, `topic_revision`, `updated_at` | Topic 身份、`learning / mastered` 状态与实体级 CAS |
-| `explanations` | `explanation_id`, `topic_id`, `source_session_id`, `state`, `active_revision`, `covered_by_checkpoint_id`, `created_at`, `updated_at` | 每来源活跃槽、重讲 revision 与压缩覆盖状态 |
-| `entries` | `entry_id`, `ordinal UNIQUE`, `kind`, `explanation_id`, `topic_id`, `revision`, `source_*`, `payload_json`, `created_at`, `request_id UNIQUE` | append-only 的讲解、反馈与 Topic reopen 记录 |
-| `context_observations` | `observation_id`, `source_session_id`, `source_turn`, `kind`, `payload_json`, `confidence`, `covered_by_checkpoint_id`, `created_at` | 从有界来源 capsule 提取的对话偏好或 Topic 熟悉度，不保存原文 |
+| `explanations` | `explanation_id`, `topic_id`, `source_session_id`, `state`, `active_revision`, `rephrase_pending`, `created_at`, `updated_at` | 每来源活跃槽、重讲 revision 与持久化重讲待办 |
+| `entries` | `entry_id`, `ordinal UNIQUE`, `kind`, `explanation_id`, `topic_id`, `revision`, `source_*`, `payload_json`, `created_at` | append-only 的讲解、反馈与 Topic reopen 记录 |
+| `mutation_requests` | `request_id UNIQUE`, `fingerprint`, `entry_id`, `created_at` | feedback/reopen 的持久幂等账本；多个等价重讲请求可指向同一 entry |
+| `context_observations` | `observation_id`, `source_session_id`, `source_turn`, `kind`, `payload_json`, `confidence`, `created_at` | 从有界来源 capsule 提取的对话偏好或 Topic 熟悉度，不保存原文；覆盖关系只以 `observation_coverage` 为准 |
 | `context_checkpoints` | `checkpoint_id`, `generation`, `trigger`, `through_ordinal`, `context_json`, `created_at`, `request_id UNIQUE` | 可重建的 `ExplainContext` 快照与压缩调用元数据 |
 | `context_coverage` | `checkpoint_id`, `explanation_id UNIQUE` | 明确标记哪些已关闭 Explanation 被哪个检查点吸收 |
 | `observation_coverage` | `checkpoint_id`, `observation_id UNIQUE` | 明确标记哪些结构化观察被哪个检查点吸收 |
@@ -129,7 +130,7 @@ $DSH_HOME/dsh-explain/v1/thread.sqlite
 
 `auto_request_usage` 的占额是运行记账，不改变学习线程的 `store_revision`；插入占额或滚动清理后提高 view cursor，使 `explain.status()` 的剩余额度收敛。`started_at` 建立索引，计数范围严格为 `(now - 24h, now]`。旧行可以在预算检查事务中删除，不影响业务历史。
 
-一个 Explanation 只有在 `state = 'closed'` 时才能进入 `context_coverage`；context observation 生成后即可进入 `observation_coverage`。压缩事务先校验模型请求捕获的 `context_generation`、owner fencing token 和所有 Explanation 覆盖目标仍为 closed，再同时插入 checkpoint、写两类 coverage、更新 `covered_by_checkpoint_id` 与 `runtime_state`。失败或取消不会留下部分覆盖。
+一个 Explanation 只有在 `state = 'closed'` 时才能进入 `context_coverage`；context observation 生成后即可进入 `observation_coverage`。两张 coverage 表是唯一的覆盖关系来源。压缩事务先校验模型请求捕获的 `context_generation`、owner fencing token 和所有 Explanation 覆盖目标仍为 closed，再同时插入 checkpoint、写两类 coverage 并更新 `runtime_state`。失败或取消不会留下部分覆盖。
 
 ### 身份与 revision
 
@@ -303,7 +304,7 @@ Scheduler 全局最多持有一个 `AbortController` 和一个模型 promise。�
 
 ### 可压缩集合
 
-只有 `state = 'closed' AND covered_by_checkpoint_id IS NULL` 的 Explanation 和尚未覆盖的 context observations 可压缩。活跃 Explanation 的所有 revisions 与反馈始终逐字进入实时覆盖层，不受其创建时间影响。原始 entries 从不删除或改写；`threadPage` 也不读取 checkpoint 代替历史。
+只有 `state = 'closed'` 且在 `context_coverage` 中不存在记录的 Explanation，以及在 `observation_coverage` 中不存在记录的 context observation 可压缩。活跃 Explanation 的所有 revisions 与反馈始终逐字进入实时覆盖层，不受其创建时间影响。原始 entries 从不删除或改写；`threadPage` 也不读取 checkpoint 代替历史。
 
 Compactor 的输入是上一检查点、按时间排序的一批未覆盖 observations/Explanation，以及数据库生成的最新权威统计。批次按“完整压缩请求 + `maxCompactionOutputTokens` 不超过 `contextThresholdRatio`”动态选取；一次无法容纳时分批生成中间检查点，直到目标 explain 请求降到阈值以内或没有可压缩项。新检查点是完整快照而非增量补丁，成功后替代旧检查点进入模型请求。
 
@@ -393,7 +394,7 @@ interface RephraseDecision {
 
 ### ✗ not-understood
 
-事务先幂等追加 feedback entry，Topic 保持 `learning`，目标 Explanation 保持活跃，提高 `activityGeneration` 并更新 `last_user_action_at`；Scheduler 随即把该目标加入 rephrase 队列。成功后追加同一来源、同一 Explanation 的 `revision + 1`，更新 `topics.title` 与 `topicRevision`，新 revision 成为该来源唯一可反馈项。若该 revision 已有 not-understood entry 但重讲尚未成功，再次点击 ✗ 只重新调度，不追加重复反馈。
+事务先幂等追加 feedback entry，将目标 Explanation 的 `rephrase_pending` 设为 1，Topic 保持 `learning`，目标 Explanation 保持活跃，提高 `activityGeneration` 并更新 `last_user_action_at`；Scheduler 随即把该持久待办加入 rephrase 队列。成功后追加同一来源、同一 Explanation 的 `revision + 1`，清除 `rephrase_pending`，更新 `topics.title` 与 `topicRevision`，新 revision 成为该来源唯一可反馈项。若该 revision 已有 not-understood entry 但重讲尚未成功，再次点击 ✗ 只在 `mutation_requests` 中把新 RequestId 指向原 entry 并重新调度，不追加重复反馈；重启按 `rephrase_pending` 恢复，而不是从展示文本猜测待办。
 
 ### 撤销掌握
 
@@ -414,7 +415,7 @@ interface FeedbackRequest {
 ```
 
 - 同一 `requestId` 重放返回第一次结果。
-- 目标不是所声明来源的当前活跃 revision 时返回 `STALE_EXPLANATION_REVISION`，并带该来源当前状态供客户端刷新。
+- 目标不是所声明来源的当前活跃 revision 时返回 `STALE_EXPLANATION_REVISION`；客户端随后刷新 status 与最新页，不在失败对象中复制一份可能再次过期的来源状态。
 - 不同来源的反馈没有共享 expected-store gate，可以在各自事务中依次成功；同一 Explanation 的竞争由 active revision 和幂等约束裁决。
 - `reopenTopic` 携带 `expectedTopicRevision`；不匹配时返回 `STALE_TOPIC_REVISION`。
 - 事务成功后 Remote 返回新的 `storeRevision` 和受影响条目；客户端不得猜测最终状态。

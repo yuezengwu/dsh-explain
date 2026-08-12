@@ -1,0 +1,10 @@
+packages:
+  - .
+
+# DSH packages are private source links created by scripts/setup-dsh-links.mjs.
+# They must never be resolved from or published to a package registry.
+autoInstallPeers: false
+verifyDepsBeforeRun: false
+
+allowBuilds:
+  esbuild: true

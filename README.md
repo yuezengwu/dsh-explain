@@ -1,6 +1,6 @@
 # dsh-explain — DSH 学习模式插件（WIP）
 
-> 🚧 **状态：PRD P0 定稿候选 + 技术架构 v6，待 review，暂无功能代码。**
+> 🚧 **状态：PRD P0 定稿候选 + 技术架构 v6；M1 基础设施开发中。**
 > 产品需求见 [docs/PRD.md](docs/PRD.md)；技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 **一句话定位**：把多个 DSH 工作会话中值得学习的内容汇入用户唯一的全局学习线程，为每个来源会话保留至多一个活跃讲解，并用全局学习上下文持续适配用户的知识水平和讲解偏好。
@@ -33,9 +33,31 @@
 - [x] PRD P0 定稿候选：单一学习线程、按来源活跃讲解、自主调用预算、双触发压缩、全局 ExplainContext 和可自动验证的验收标准。
 - [x] 技术架构 v6：本地 SQLite、实体级并发、持久来源摘要、全局单飞与调用预算、压缩检查点、typed Remote 和 `conversation.view` 学习界面。
 - [x] UI 路径核验：沿用第一方 `ui-trajectory` 的 `ctx.slots.inject('conversation.view', ...)` 注册方式，无外部 UI 依赖。
-- [ ] 架构 review 通过。
-- [ ] M1 技术原型 → M2 P0 实现 → M3 发布门禁。
+- [x] M1 基础设施：独立插件构建、本地 SQLite schema、实体级 CAS、分页/长轮询和自动生成的 typed Remote。
+- [ ] M2 P0 运行时与学习视图 → M3 发布门禁。
 - [ ] 在 hub `catalog.source.json` 登记分类。
+
+M1 只建立持久层和 Host/Client RPC 基础，不观察工作回合、不调用模型，也不注册用户可见的学习 Tab；这些行为在 M2 一起接入，以便界面验收使用真实模型流程。
+
+## 本地开发
+
+仓库不从 npm 解析或发布私有 DSH 包。先准备已构建的 DSH 源码目录，再安装公开的构建依赖并建立本地链接：
+
+```sh
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm install
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
+pnpm run test
+pnpm run typecheck
+pnpm run build
+```
+
+开发验收使用本地目录安装，不经过 npm：
+
+```sh
+dsh plugin --profile web add /absolute/path/to/dsh-explain
+dsh --profile web --dump-config
+dsh --profile web
+```
 
 ## 查重结论（2026-08-12）
 
