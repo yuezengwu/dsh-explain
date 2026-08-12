@@ -17,33 +17,43 @@ export const inject = ['remote', 'locale', 'slots']
 /** Mount the generated codecs and one Session-scoped view over the global store. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const unmountRemote = await ctx.remote.$mount(explainRemote)
-  const learning = new GlobalLearningStore(ctx)
-  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-explain: dictionaries')
-  ctx.effect(() => {
-    const style = document.createElement('style')
-    style.dataset.plugin = 'dsh-explain'
-    style.textContent = LEARNING_VIEW_CSS
-    document.head.append(style)
-    return () => { style.remove() }
-  }, 'dsh-explain: learning view styles')
-  const t = ctx.locale.bind(NS)
-  ctx.slots.inject('conversation.view', () => ctx.slots.register({
-    name: 'conversation.view',
-    id: 'dsh-explain:learning',
-    order: 20,
-    locale: NS,
-    label: () => t('view.learning'),
-    inject: (_sessionId: SessionId): LearningViewInjected => ({
-      hooks: { learning: learning.store },
-      activate: () => learning.mount(),
-      loadOlder: () => learning.loadOlder(),
-      refresh: () => learning.refresh(),
-      feedback: (entry, action) => learning.feedback(entry, action),
-      reopen: entry => learning.reopen(entry),
-    }),
-  }, LearningView))
+  const feature = ctx.inject(['remote.explain', 'locale', 'slots'], (scope) => {
+    const learning = new GlobalLearningStore(scope)
+    scope.effect(() => () => { learning.dispose() }, 'dsh-explain: learning store')
+    scope.effect(() => scope.locale.register(NS, { zh, en }), 'dsh-explain: dictionaries')
+    scope.effect(() => {
+      const style = document.createElement('style')
+      style.dataset.plugin = 'dsh-explain'
+      style.textContent = LEARNING_VIEW_CSS
+      document.head.append(style)
+      return () => { style.remove() }
+    }, 'dsh-explain: learning view styles')
+    const t = scope.locale.bind(NS)
+    scope.slots.inject('conversation.view', () => scope.slots.register({
+      name: 'conversation.view',
+      id: 'dsh-explain:learning',
+      order: 20,
+      locale: NS,
+      label: () => t('view.learning'),
+      inject: (_sessionId: SessionId): LearningViewInjected => ({
+        hooks: { learning: learning.store },
+        activate: () => learning.mount(),
+        loadOlder: () => learning.loadOlder(),
+        refresh: () => learning.refresh(),
+        feedback: (entry, action) => learning.feedback(entry, action),
+        reopen: entry => learning.reopen(entry),
+      }),
+    }, LearningView))
+  })
+  try {
+    await feature.await()
+  } catch (error) {
+    await feature.dispose()
+    await unmountRemote()
+    throw error
+  }
   return async () => {
-    learning.dispose()
+    await feature.dispose()
     await unmountRemote()
   }
 }

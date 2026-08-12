@@ -2,6 +2,7 @@ import {
   BlockAssembler,
   createMessage,
   createUserMessage,
+  type ReasoningEffortId,
   type Message,
   type TokenUsage,
 } from '@deepseek-ai/dsh-llm'
@@ -41,6 +42,7 @@ export interface ExplainRoute {
   readonly provider: string
   readonly model: string
   readonly contextWindow: number
+  readonly reasoningEffort?: ReasoningEffortId
 }
 
 /** Validate the configured exact provider/model route and capacity. */
@@ -59,7 +61,13 @@ export async function resolveExplainRoute(
       'The selected model does not publish a context window; configure its exact capacity first.',
     )
   }
-  return { provider: settings.provider, model: settings.model, contextWindow: info.context.contextWindow }
+  const reasoningEffort = info.reasoning?.efforts.find(effort => effort.id === 'off')?.id
+  return {
+    provider: settings.provider,
+    model: settings.model,
+    contextWindow: info.context.contextWindow,
+    ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+  }
 }
 
 /** Build the strict autonomous decision request. */
@@ -71,7 +79,41 @@ export function renderExplainRequest(
   return {
     system: SYSTEM,
     messages: [jsonMessage({
-      task: 'Return kind=skip with reason and contextObservations, or kind=explain with topicKey/title/what/why/pitfall and contextObservations.',
+      task: 'Return exactly one of the two decision objects described by outputContract.',
+      outputContract: {
+        skip: {
+          kind: 'skip',
+          reason: 'already-known | not-useful | insufficient-context',
+          contextObservations: [],
+        },
+        explain: {
+          kind: 'explain',
+          topicKey: 'stable/lowercase-topic-key',
+          title: 'string',
+          what: 'string',
+          why: 'string',
+          pitfall: 'string',
+          contextObservations: [],
+        },
+        contextObservationItems: [
+          {
+            kind: 'dialogue-preference',
+            dimension: 'verbosity | structure | examples | terminology',
+            value: 'string',
+            confidence: 'low | medium | high',
+          },
+          {
+            kind: 'topic-familiarity',
+            topicKey: 'stable/lowercase-topic-key',
+            level: 'unknown | beginner | working | advanced',
+            confidence: 'low | medium | high',
+          },
+        ],
+        rules: [
+          'contextObservations is always an array of zero to four complete objects; use [] when no supported observation is justified.',
+          'Do not return null, strings, markdown, comments, placeholders, or fields not shown above.',
+        ],
+      },
       limits: { contextObservations: 4, titleChars: 120, fieldChars: 2_000, topicKeyChars: 80 },
       learningContext: context,
       sourceCapsule: capsule,
@@ -157,6 +199,7 @@ export async function runAuxiliaryRequest<T>(
     provider: route.provider,
     model: route.model,
     maxTokens: request.maxTokens,
+    ...(route.reasoningEffort === undefined ? {} : { reasoningEffort: route.reasoningEffort }),
   }, signal)
   const assembler = new BlockAssembler()
   for await (const chunk of prepared.stream({

@@ -284,7 +284,7 @@ Scheduler 全局最多持有一个 `AbortController` 和一个模型 promise。�
 
 ### 路由
 
-`provider` 与 `model` 是用户全局设置。默认关闭允许二者为空；执行 `/explain on` 或设置页启用时，任一缺失都返回 `MODEL_ROUTE_REQUIRED`。host 通过 `ctx.llm.resolveModelInfo(provider, model)` 读取精确路由容量；adapter 未提供 `context.contextWindow` 时返回 `MODEL_CONTEXT_REQUIRED`。容量必须配置在拥有该 route 的 adapter，不在 explain 中维护第二份漂移值。不得从来源 Agent、最近 Session 或默认 adapter 隐式选择模型。
+`provider` 与 `model` 是用户全局设置。默认关闭允许二者为空；执行 `/explain on` 或设置页启用时，任一缺失都返回 `MODEL_ROUTE_REQUIRED`。host 通过 `ctx.llm.resolveModelInfo(provider, model)` 读取精确路由容量；adapter 未提供 `context.contextWindow` 时返回 `MODEL_CONTEXT_REQUIRED`。容量必须配置在拥有该 route 的 adapter，不在 explain 中维护第二份漂移值。不得从来源 Agent、最近 Session 或默认 adapter 隐式选择模型。辅助任务只需短结构化输出；若精确模型公开 `off` 推理强度，explain 为每次辅助调用显式选择 `off`，否则保留 adapter 的默认推理策略。
 
 ### 请求上下文
 

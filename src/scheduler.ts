@@ -44,8 +44,10 @@ export class ExplainScheduler {
   private budgetTimer: ReturnType<typeof setTimeout> | undefined
   private idleTimer: ReturnType<typeof setTimeout> | undefined
   private heartbeat: ReturnType<typeof setInterval> | undefined
+  private routeRefresh: Promise<void> | undefined
   private idleAttempted: string | undefined
   private readonly failedRephrases = new Set<string>()
+  private started = false
   private stopped = false
 
   constructor(
@@ -60,8 +62,9 @@ export class ExplainScheduler {
 
   /** Validate initial configuration, start lease renewal, and restore persistent work. */
   async start(): Promise<void> {
+    this.started = true
     this.heartbeat = setInterval(() => { this.renewLease() }, LEASE_RENEW_MS)
-    if (this.settings.enabled) await this.enableRuntime()
+    if (this.settings.enabled) await this.refreshRoute()
     else this.scheduleIdle()
   }
 
@@ -83,6 +86,12 @@ export class ExplainScheduler {
   /** Admit a deferred candidate only while its captured runtime generation is still current. */
   acceptsGeneration(generation: number): boolean {
     return generation === this.epoch && this.settings.enabled && this.failed === undefined && !this.stopped
+  }
+
+  /** Re-resolve the configured route after an adapter registration or disposal. */
+  adaptersUpdated(): void {
+    if (!this.started || this.stopped || !this.settings.enabled) return
+    void this.refreshRoute().catch((error: unknown) => { this.fail(error) })
   }
 
   /** Accept one already-bounded turn without blocking its session event dispatch. */
@@ -119,7 +128,7 @@ export class ExplainScheduler {
       return
     }
     const routeChanged = !previous.enabled || previous.provider !== next.provider || previous.model !== next.model
-    if (routeChanged || this.route === undefined) await this.enableRuntime()
+    if (routeChanged || this.route === undefined) await this.refreshRoute()
     else {
       this.store.notifyRuntimeChange()
       this.scheduleIdle()
@@ -148,17 +157,34 @@ export class ExplainScheduler {
     this.store.releaseLease(this.lease)
   }
 
-  private async enableRuntime(): Promise<void> {
-    this.route = undefined
-    try {
-      this.route = await resolveExplainRoute(this.ctx, this.settings)
-      this.failed = undefined
-      this.store.notifyRuntimeChange()
-      this.scheduleIdle()
-      this.kick()
-    } catch (error) {
-      this.route = undefined
-      this.fail(error)
+  private refreshRoute(): Promise<void> {
+    this.cancelCurrent()
+    if (this.routeRefresh !== undefined) return this.routeRefresh
+    const task = this.refreshRouteUntilCurrent().finally(() => {
+      if (this.routeRefresh === task) this.routeRefresh = undefined
+    })
+    this.routeRefresh = task
+    return task
+  }
+
+  private async refreshRouteUntilCurrent(): Promise<void> {
+    while (this.settings.enabled && !this.stopped) {
+      const epoch = this.epoch
+      try {
+        const route = await resolveExplainRoute(this.ctx, this.settings)
+        if (epoch !== this.epoch) continue
+        this.route = route
+        this.failed = undefined
+        this.store.notifyRuntimeChange()
+        this.scheduleIdle()
+        this.kick()
+        return
+      } catch (error) {
+        if (epoch !== this.epoch) continue
+        this.route = undefined
+        this.fail(error)
+        return
+      }
     }
   }
 
@@ -245,6 +271,11 @@ export class ExplainScheduler {
           this.operationError = { code: error.code, message: error.message }
         } else if (candidate.attempts + 1 < this.settings.maxAttempts) {
           this.queue.retry(candidate)
+        } else {
+          this.operationError = {
+            code: 'EXPLAIN_AUTO_FAILED',
+            message: safeError(error).message,
+          }
         }
         this.logger.warn('autonomous explanation failed: %s', safeError(error).message)
       }

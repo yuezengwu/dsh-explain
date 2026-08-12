@@ -28,6 +28,7 @@ export class ExplainRuntime {
     this.scope = ctx.settings.register(settingsNamespace('dsh-explain'), RuntimeSettings, { base })
     this.current = normalizeSettings(this.scope.get())
     this.scheduler = new ExplainScheduler(ctx, store, this.current)
+    ctx.on('llm/adapters-updated', () => { this.scheduler.adaptersUpdated() })
     this.scope.watch(async (next) => {
       const normalized = normalizeSettings(next)
       if (settingsEqual(normalized, this.current)) return

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context, type Fiber } from '@deepseek-ai/cordis'
 import LlmService, {
+  ReasoningEffortId,
   type GenerateOptions,
   LlmAdapter,
   type LlmResolvedModelInfo,
@@ -29,7 +30,9 @@ class LearningAdapter extends LlmAdapter {
   maxActive = 0
   contextWindow = 1_000_000
   failCompaction = false
+  failAutonomous = false
   readonly calls: string[] = []
+  readonly efforts: (string | undefined)[] = []
 
   override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
     return Promise.resolve({
@@ -37,6 +40,13 @@ class LearningAdapter extends LlmAdapter {
       id: model,
       name: model,
       context: { contextWindow: this.contextWindow },
+      reasoning: {
+        efforts: [
+          { id: ReasoningEffortId('off'), name: 'Off' },
+          { id: ReasoningEffortId('high'), name: 'High' },
+        ],
+        defaultEffort: ReasoningEffortId('high'),
+      },
     })
   }
 
@@ -50,7 +60,9 @@ class LearningAdapter extends LlmAdapter {
       const source = requestObject(options)
       const sourceId = String((source.sourceCapsule as { sourceSessionId?: unknown } | undefined)?.sourceSessionId ?? 'rephrase')
       this.calls.push(compaction ? 'compaction' : rephrase ? 'rephrase' : `auto:${sourceId}`)
+      this.efforts.push(options.reasoningEffort)
       if (compaction && this.failCompaction) throw new Error('test compaction provider failure')
+      if (!compaction && !rephrase && this.failAutonomous) throw new Error('test autonomous provider failure')
       const response = rephrase
         ? { title: 'Narrowing with labels', what: 'Each member has a label.', why: 'The label identifies the member.', pitfall: 'Keep labels literal.' }
         : {
@@ -105,6 +117,7 @@ function source(sourceId: string): SourceCapsule {
 async function setup(
   settings: ExplainRuntimeSettings = SETTINGS,
   configureAdapter?: (adapter: LearningAdapter) => void,
+  registerAdapter = true,
 ): Promise<{
   readonly ctx: Context
   readonly store: ExplainStore
@@ -120,7 +133,7 @@ async function setup(
   await meter
   const adapter = new LearningAdapter()
   configureAdapter?.(adapter)
-  ctx.llm.registerAdapter(['learning'], adapter)
+  if (registerAdapter) ctx.llm.registerAdapter(['learning'], adapter)
   const store = new ExplainStore(':memory:')
   stores.push(store)
   const scheduler = new ExplainScheduler(ctx, store, settings)
@@ -130,6 +143,18 @@ async function setup(
 }
 
 describe('real LLM-service scheduler integration', () => {
+  it('recovers a configured route when its adapter registers after startup', async () => {
+    const { ctx, store, adapter, scheduler } = await setup(SETTINGS, undefined, false)
+    expect(scheduler.status()).toMatchObject({ state: 'failed', lastError: { code: 'RUNTIME_FAILED' } })
+
+    ctx.llm.registerAdapter(['learning'], adapter)
+    scheduler.adaptersUpdated()
+    await until(() => scheduler.status().state === 'ready')
+    scheduler.enqueue(source('late-adapter'))
+    await until(() => store.activeExplanationCount() === 1)
+    expect(adapter.calls).toEqual(['auto:late-adapter'])
+  })
+
   it('serializes autonomous calls globally and persists both independent source explanations', async () => {
     const { store, adapter, scheduler } = await setup()
     scheduler.enqueue(source('a'))
@@ -137,6 +162,7 @@ describe('real LLM-service scheduler integration', () => {
     await until(() => store.activeExplanationCount() === 2)
     expect(adapter.maxActive).toBe(1)
     expect(adapter.calls).toEqual(['auto:a', 'auto:b'])
+    expect(adapter.efforts).toEqual(['off', 'off'])
     expect(store.autoBudget(50).used).toBe(2)
     expect(store.threadPage({ limit: 10 }).entries.map(entry => entry.sourceSessionId))
       .toEqual([SessionId('b'), SessionId('a')])
@@ -187,6 +213,19 @@ describe('real LLM-service scheduler integration', () => {
     schedulers.splice(schedulers.indexOf(scheduler), 1)
     stores.splice(stores.indexOf(store), 1)
     store.close()
+  })
+
+  it('surfaces a terminal autonomous failure after exhausting its retry attempts', async () => {
+    const { store, adapter, scheduler } = await setup(SETTINGS, target => { target.failAutonomous = true })
+    scheduler.enqueue(source('provider-failure'))
+    await until(() => scheduler.status().lastError?.code === 'EXPLAIN_AUTO_FAILED')
+    expect(scheduler.status().lastError).toEqual({
+      code: 'EXPLAIN_AUTO_FAILED',
+      message: 'dsh-explain: auxiliary model failed (UNKNOWN): test autonomous provider failure',
+    })
+    expect(store.autoBudget(50).used).toBe(2)
+    expect(store.activeExplanationCount()).toBe(0)
+    expect(adapter.calls).toEqual(['auto:provider-failure', 'auto:provider-failure'])
   })
 
   it('surfaces pressure-compaction failure and never sends the autonomous request', async () => {

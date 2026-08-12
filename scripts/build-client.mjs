@@ -32,6 +32,7 @@ await build({
   format: 'cjs',
   platform: 'browser',
   target: ['es2022'],
+  jsx: 'automatic',
   sourcemap: true,
   external: platformModules,
   banner: {
@@ -52,6 +53,9 @@ if (
 }
 if (bundle.includes('import.meta') || /(^|\n)\s*(import|export)\s/.test(bundle)) {
   throw new Error('dsh-explain: client bundle contains ESM syntax')
+}
+if (bundle.includes('React.createElement')) {
+  throw new Error('dsh-explain: client bundle contains classic JSX without an in-scope React binding')
 }
 for (const match of bundle.matchAll(/require\(\s*["'](@deepseek-ai\/[^"']+)["']\s*\)/g)) {
   if (!platformModules.includes(match[1])) {
