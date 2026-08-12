@@ -12,6 +12,9 @@ export type EntryId = Branded<'dsh-explain/entry'>
 /** Stable identity of one structured ExplainContext observation. */
 export type ObservationId = Branded<'dsh-explain/observation'>
 
+/** Stable identity of one full ExplainContext checkpoint. */
+export type CheckpointId = Branded<'dsh-explain/checkpoint'>
+
 /** Client-generated idempotency identity for one feedback mutation. */
 export type RequestId = Branded<'dsh-explain/request'>
 
@@ -29,6 +32,9 @@ export const EntryId = (value: string): EntryId => value as EntryId
 
 /** Construct an ObservationId after persistence-boundary validation. */
 export const ObservationId = (value: string): ObservationId => value as ObservationId
+
+/** Construct a CheckpointId after persistence-boundary validation. */
+export const CheckpointId = (value: string): CheckpointId => value as CheckpointId
 
 /** Construct a RequestId after wire-boundary validation. */
 export const RequestId = (value: string): RequestId => value as RequestId

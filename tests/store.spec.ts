@@ -235,7 +235,8 @@ describe('ExplainStore feedback and entity CAS', () => {
       ...aliasRequest,
       requestId: RequestId('cannot-master-pending'),
       action: 'understood',
-    })).toMatchObject({ ok: false, error: { code: 'STALE_EXPLANATION_REVISION' } })
+    })).toMatchObject({ ok: true, value: { rephrasePending: false } })
+    expect(reopened.activeExplanationCount()).toBe(0)
   })
 
   it('masters only the addressed explanation, then reopens its Topic with Topic CAS', () => {

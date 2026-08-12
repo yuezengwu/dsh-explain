@@ -107,7 +107,7 @@ $DSH_HOME/dsh-explain/v1/thread.sqlite
 
 ### Schema
 
-`SCHEMA_VERSION = 1`。预发布期间不提供隐式迁移：版本不同、结构损坏或约束不满足时加载失败并保留原数据库，禁止删除、覆盖或空库回退。
+`SCHEMA_VERSION = 2`。预发布期间不提供隐式迁移：版本不同、结构损坏或约束不满足时加载失败并保留原数据库，禁止删除、覆盖或空库回退。
 
 | 表 | 关键字段 | 角色 |
 |---|---|---|
@@ -118,10 +118,10 @@ $DSH_HOME/dsh-explain/v1/thread.sqlite
 | `entries` | `entry_id`, `ordinal UNIQUE`, `kind`, `explanation_id`, `topic_id`, `revision`, `source_*`, `payload_json`, `created_at` | append-only 的讲解、反馈与 Topic reopen 记录 |
 | `mutation_requests` | `request_id UNIQUE`, `fingerprint`, `entry_id`, `created_at` | feedback/reopen 的持久幂等账本；多个等价重讲请求可指向同一 entry |
 | `context_observations` | `observation_id`, `source_session_id`, `source_turn`, `kind`, `payload_json`, `confidence`, `created_at` | 从有界来源 capsule 提取的对话偏好或 Topic 熟悉度，不保存原文；覆盖关系只以 `observation_coverage` 为准 |
-| `context_checkpoints` | `checkpoint_id`, `generation`, `trigger`, `through_ordinal`, `context_json`, `created_at`, `request_id UNIQUE` | 可重建的 `ExplainContext` 快照与压缩调用元数据 |
+| `context_checkpoints` | `checkpoint_id`, `generation`, `trigger`, `through_ordinal`, `context_json`, `model_json`, `created_at`, `request_id UNIQUE` | 可重建的 `ExplainContext` 快照与成功生成的模型元数据 |
 | `context_coverage` | `checkpoint_id`, `explanation_id UNIQUE` | 明确标记哪些已关闭 Explanation 被哪个检查点吸收 |
 | `observation_coverage` | `checkpoint_id`, `observation_id UNIQUE` | 明确标记哪些结构化观察被哪个检查点吸收 |
-| `auto_request_usage` | `auto_request_id`, `source_session_id`, `started_at` | 自主模型请求的滚动 24 小时持久占额；重启不能清零 |
+| `auto_request_usage` | `auto_request_id`, `source_session_id`, `provider`, `model`, `attempt`, `started_at` | 自主模型请求的滚动 24 小时持久占额与发送目标；重启不能清零 |
 | `runtime_lease` | `name`, `owner_id`, `generation`, `expires_at` | 同一 `$DSH_HOME` 的单 host runtime 租约与 fencing token |
 
 `explanations` 建立两个 partial unique index：`source_session_id WHERE state = 'active'` 和 `topic_id WHERE state = 'active'`。数据库因此直接保证每来源最多一个活跃讲解、同一 Topic 全局最多一个活跃讲解，而不是依赖 Scheduler 的预检查。
@@ -151,7 +151,7 @@ $DSH_HOME/dsh-explain/v1/thread.sqlite
 
 - 讲解展示字段、反馈、Topic 状态、全局顺序和来源坐标。
 - 每个 Explanation 的 revision 1 entry 中供后续重讲使用的有界 `sourceSummary`，以及自主请求的滚动 24 小时占额。
-- 模型 provider/model、usage、生成时间与受控失败码。
+- 成功生成记录的模型 provider/model、usage 与生成时间。
 - 每个来源是否存在等待反馈的 Explanation；该状态由 explanations 显式保存，并在加载时与 entries/topics 交叉校验。
 - 最近 explain 用户操作、压缩检查点、覆盖关系、`ExplainContext` 及其推断置信度和来源 ordinal 范围。
 - 从来源 capsule 提取的封闭类别 observation、置信度与来源 Session/turn；observation 不保留支撑它的原始用户文字。
@@ -173,7 +173,7 @@ host 在根作用域注册一个 `{ global: true }` 的 `session/event` listener
 4. 该 turn 至少有一个 step，并包含非空、非 explain 注入的 assistant 文本。
 5. `(sessionId, turn, endSeq)` 尚未被当前 runtime 接收。
 
-事件 listener 只做常数级 gate、捕获不可变的 `session.events` 快照与当前 epoch，并把 capsule 构造排入微任务后立即返回；不得在同步 `session/event` dispatch 中渲染全文、访问磁盘或等待模型。异步 capture 在入队前再次校验 enabled 与 epoch，避免 off 之后补入候选。
+事件 listener 只做常数级 gate，捕获 Session 引用、不可变的 `turn/end` 事件与当前 runtime generation，并把 capsule 构造排入微任务后立即返回；不得在同步 `session/event` dispatch 中渲染全文、访问磁盘或等待模型。异步 capture 只读取截至该 `endSeq` 的 append-only 事件切片，并在入队前再次校验 enabled 与 generation，避免 off 或模型语义设置变化后补入旧候选。
 
 `SourceCapsule` 包含：
 
@@ -284,7 +284,7 @@ Scheduler 全局最多持有一个 `AbortController` 和一个模型 promise。�
 
 ### 路由
 
-`provider` 与 `model` 是用户全局设置。默认关闭允许二者为空；执行 `/explain on` 或设置页启用时，任一缺失都返回 `MODEL_ROUTE_REQUIRED`。host 通过 `ctx.llm.resolveModelInfo(provider, model)` 读取精确路由容量；adapter 未提供 `context.contextWindow` 时返回 `MODEL_CONTEXT_REQUIRED`。容量必须配置在拥有该 route 的 adapter，不在 explain 中维护第二份漂移值。不得从来源 Agent、最近 Session 或默认 adapter 隐式选择模型。
+`provider` 与 `model` 是用户全局设置。默认关闭允许二者为空；执行 `/explain on` 或设置页启用时，任一缺失都返回 `MODEL_ROUTE_REQUIRED`。host 通过 `ctx.llm.resolveModelInfo(provider, model)` 读取精确路由容量；adapter 未提供 `context.contextWindow` 时返回 `MODEL_CONTEXT_REQUIRED`。容量必须配置在拥有该 route 的 adapter，不在 explain 中维护第二份漂移值。不得从来源 Agent、最近 Session 或默认 adapter 隐式选择模型。辅助任务只需短结构化输出；若精确模型公开 `off` 推理强度，explain 为每次辅助调用显式选择 `off`，否则保留 adapter 的默认推理策略。
 
 ### 请求上下文
 
@@ -373,7 +373,7 @@ interface RephraseDecision {
 }
 ```
 
-模型 JSON 是不可信边界：拒绝额外字段、非法 TopicKey、空白展示字段、超长字段和非字符串值。`contextObservations` 最多四项，`value` 最大 240 字符；host 为接受的观察生成 ObservationId，并绑定当前来源 Session/turn，观察本身不能关闭或掌握 Topic。`title` 最大 120 字符，`what / why / pitfall` 各最大 2,000 字符。rephrase 只能返回 `RephraseDecision`，不能改变 `TopicKey` 或产生 context observation。解析失败按模型失败处理，不能把原文回退成展示内容。
+模型 JSON 是不可信边界：拒绝额外字段、非法 TopicKey、空白展示字段、超长字段和非字符串值。`contextObservations` 最多四项，`value` 最大 240 字符；host 为接受的观察生成 ObservationId，并绑定当前来源 Session/turn，观察本身不能关闭或掌握 Topic。`title` 最大 120 字符，`what / why / pitfall` 各最大 2,000 字符。自主讲解的展示字段沿用当前来源用户文本的语言，rephrase 沿用已有讲解语言；Compactor 请求显式携带由上一检查点、最新讲解标题或最新对话偏好依次选出的 `languageSample`，所有展示字段沿用该样本文本的语言。样本含有可区分的非拉丁书写系统时，host 还要求每个非空展示字段保留该书写系统；不符合时整项解析失败且不写检查点。rephrase 只能返回 `RephraseDecision`，不能改变 `TopicKey` 或产生 context observation。解析失败按模型失败处理，不能把原文回退成展示内容。
 
 接受一个自主结果时，host 在同一事务中重新校验来源候选、来源活跃槽和 Topic 状态，写入 observations，并按 decision 写入或跳过 Explanation。创建 Explanation 时，revision 1 entry 同时写入该候选的 `sourceSummary`；新建或既有 Topic 的 `topics.title` 都更新为本次成功提交的标题，并提高 `topicRevision`。结果产生 observation 或 Explanation 时才首次设置 `first_explain_output_at` 并提高 `storeRevision`；新 observation 另提高 `contextGeneration`。没有 observation 的 skip 不写业务数据。任一约束失败时整项结果丢弃，不能只提交画像推断而丢弃其过期来源判断；自主调用占额已经发生且不回退。
 
@@ -441,8 +441,8 @@ browser 的插件级 `learning-store`：
 - client plugin apply 时创建一次，在 Session 视图实例之间保留缓存；不得在每个 `LearningView` 内创建独立业务 store。
 - `LearningView` 挂载时激活引用计数式 `watch`；view cursor 变化后刷新 status 与最新页。当前 view 不是「学习」时，该 entry 不挂载。
 - 最后一个 `LearningView` 卸载、连接断开或 fiber dispose 时取消 long-poll；Session 切换后的新实例复用同一 store 并追平 cursor。
-- feedback 成功响应直接合并返回条目；不同来源的乐观 pending 状态按 ExplanationId 隔离，随后 watch 负责与 host 收敛。
-- `ExplainContext` 与历史页分开缓存；checkpoint 变化只刷新学习概况和最新页，不清除已经分页读取的原始历史。
+- feedback 成功后刷新当前已物化页数；不同条目的 pending 状态按 EntryId 隔离，随后 watch 负责与 host 收敛。
+- 刷新同时读取 status、`ExplainContext` 与当前已物化的历史深度；checkpoint 变化不缩短用户已加载的历史范围。
 - reconnect 先读取 status 和最新页，不信任 localStorage 中的旧业务数据；host incarnation 变化必定使旧 watch cursor 失效。
 
 ## `conversation.view` 集成
@@ -580,7 +580,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 
 | 阶段 | 内容 | 完成条件 |
 |---|---|---|
-| M1 技术原型 | SQLite store、按来源活跃 schema、typed Remote、插件级 client store、conversation.view Tab、固定 fixture 条目 | 刷新与跨 Session 视图一致，多个活跃项、实体 CAS 和分页可测 |
+| M1 技术原型 | SQLite store、按来源活跃 schema、typed Remote 与本地目录安装骨架；不注册用户可见视图 | 私有数据库权限、实体 CAS、分页/长轮询、Host/Client 构建和 DSH Web 加载可测 |
 | M2 P0 功能 | Observer、SourceCapsule、Scheduler、真实辅助模型、ExplainContext、双触发压缩、Topic 状态机 | PRD 行为与失败路径全部实现 |
 | M3 发布门禁 | 单元/集成、keyless snapshot、真实流程 GIF、安装与组合 smoke | 所有 P0 验收标准通过后才标记可发布 |
 

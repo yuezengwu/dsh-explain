@@ -1,5 +1,5 @@
-/** Initial dsh-explain SQLite format. Pre-release builds reject every other version. */
-export const SCHEMA_VERSION = 1
+/** Current dsh-explain SQLite format. Pre-release builds reject every other version. */
+export const SCHEMA_VERSION = 2
 
 /** Complete schema installed atomically for a new database. */
 export const CREATE_SCHEMA_SQL = `
@@ -92,6 +92,7 @@ CREATE TABLE context_checkpoints (
   trigger TEXT NOT NULL CHECK (trigger IN ('idle', 'pressure')),
   through_ordinal INTEGER NOT NULL CHECK (through_ordinal >= 0),
   context_json TEXT NOT NULL,
+  model_json TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   request_id TEXT NOT NULL UNIQUE
 ) STRICT;
@@ -111,6 +112,9 @@ CREATE TABLE observation_coverage (
 CREATE TABLE auto_request_usage (
   auto_request_id TEXT PRIMARY KEY,
   source_session_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  attempt INTEGER NOT NULL CHECK (attempt >= 1),
   started_at INTEGER NOT NULL
 ) STRICT;
 
