@@ -373,7 +373,7 @@ interface RephraseDecision {
 }
 ```
 
-模型 JSON 是不可信边界：拒绝额外字段、非法 TopicKey、空白展示字段、超长字段和非字符串值。`contextObservations` 最多四项，`value` 最大 240 字符；host 为接受的观察生成 ObservationId，并绑定当前来源 Session/turn，观察本身不能关闭或掌握 Topic。`title` 最大 120 字符，`what / why / pitfall` 各最大 2,000 字符。自主讲解的展示字段沿用当前来源用户文本的语言，rephrase 沿用已有讲解语言，Compactor 沿用上一检查点或最新学习证据建立的语言。rephrase 只能返回 `RephraseDecision`，不能改变 `TopicKey` 或产生 context observation。解析失败按模型失败处理，不能把原文回退成展示内容。
+模型 JSON 是不可信边界：拒绝额外字段、非法 TopicKey、空白展示字段、超长字段和非字符串值。`contextObservations` 最多四项，`value` 最大 240 字符；host 为接受的观察生成 ObservationId，并绑定当前来源 Session/turn，观察本身不能关闭或掌握 Topic。`title` 最大 120 字符，`what / why / pitfall` 各最大 2,000 字符。自主讲解的展示字段沿用当前来源用户文本的语言，rephrase 沿用已有讲解语言；Compactor 请求显式携带由上一检查点、最新讲解标题或最新对话偏好依次选出的 `languageSample`，所有展示字段沿用该样本文本的语言。rephrase 只能返回 `RephraseDecision`，不能改变 `TopicKey` 或产生 context observation。解析失败按模型失败处理，不能把原文回退成展示内容。
 
 接受一个自主结果时，host 在同一事务中重新校验来源候选、来源活跃槽和 Topic 状态，写入 observations，并按 decision 写入或跳过 Explanation。创建 Explanation 时，revision 1 entry 同时写入该候选的 `sourceSummary`；新建或既有 Topic 的 `topics.title` 都更新为本次成功提交的标题，并提高 `topicRevision`。结果产生 observation 或 Explanation 时才首次设置 `first_explain_output_at` 并提高 `storeRevision`；新 observation 另提高 `contextGeneration`。没有 observation 的 skip 不写业务数据。任一约束失败时整项结果丢弃，不能只提交画像推断而丢弃其过期来源判断；自主调用占额已经发生且不回退。
 

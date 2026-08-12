@@ -162,6 +162,26 @@ export function renderCompactionRequest(
   return {
     system: COMPACTION_SYSTEM,
     messages: [jsonMessage({
+      task: 'Return exactly one full replacement context checkpoint described by outputContract.',
+      outputContract: {
+        dialogueProfile: [],
+        knowledgeOverview: 'string (may be empty)',
+        learningTrend: 'string (may be empty)',
+        dialogueProfileItem: {
+          kind: 'verbosity | structure | examples | terminology',
+          preference: 'string',
+          confidence: 'low | medium | high',
+          evidenceObservationIds: [],
+          evidenceEntryOrdinals: [],
+        },
+        rules: [
+          'dialogueProfile is always an array of zero to sixteen complete dialogueProfileItem objects; use [] when no supported preference is justified.',
+          'Both evidence fields are always arrays and may cite only exact ids or ordinals present in the supplied evidence.',
+          'Write every user-visible string in exactly the same human language as languageSample.',
+          'Return no fields other than dialogueProfile, knowledgeOverview, and learningTrend.',
+        ],
+      },
+      languageSample: contextLanguageSample(batch),
       previous: batch.previous?.context ?? null,
       newObservations: batch.observations,
       closedExplanations: batch.explanations,
@@ -171,6 +191,15 @@ export function renderCompactionRequest(
     purpose: 'compaction',
     parse: text => parseContextSnapshot(text, observationIds, entryOrdinals),
   }
+}
+
+function contextLanguageSample(batch: CompactionBatch): string {
+  const previous = batch.previous?.context.knowledgeOverview.trim()
+  if (previous !== undefined && previous !== '') return previous
+  const explanation = batch.explanations.at(-1)?.revisions.at(-1)?.title.trim()
+  if (explanation !== undefined && explanation !== '') return explanation
+  const observation = batch.observations.at(-1)?.observation
+  return observation?.kind === 'dialogue-preference' ? observation.value : ''
 }
 
 /** Heuristically price the complete request plus output reservation. */

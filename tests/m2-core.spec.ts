@@ -199,6 +199,10 @@ describe('strict auxiliary JSON parsing', () => {
       explanations: [],
       throughOrdinal: 0,
     }, {}, 500)
+    expect(JSON.stringify(request.messages)).toContain('dialogueProfile is always an array')
+    const requestBlock = request.messages[0]?.content[0]
+    if (requestBlock?.type !== 'text') throw new Error('compaction request text is missing')
+    expect(JSON.parse(requestBlock.text)).toMatchObject({ languageSample: 'Use examples' })
     expect(request.parse(JSON.stringify({
       dialogueProfile: [{
         kind: 'examples', preference: 'Use examples', confidence: 'high',

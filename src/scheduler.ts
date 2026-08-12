@@ -277,7 +277,8 @@ export class ExplainScheduler {
             message: safeError(error).message,
           }
         }
-        this.logger.warn('autonomous explanation failed: %s', safeError(error).message)
+        this.logger.warn('autonomous explanation failed: %s',
+          error instanceof CompactionError ? safeCause(error).message : safeError(error).message)
       }
     } finally {
       if (!finished && controller.signal.aborted && this.settings.enabled && !this.stopped) {
@@ -366,7 +367,7 @@ export class ExplainScheduler {
             ? error.message
             : 'The learning context could not be compacted. No learning data was marked as covered.',
         }
-        this.logger.warn('idle compaction failed: %s', safeError(error).message)
+        this.logger.warn('idle compaction failed: %s', safeCause(safeError(error)).message)
       }
     } finally {
       this.endRequest(controller)
