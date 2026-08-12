@@ -12,7 +12,7 @@
 - 全局学习线程一次只允许一个 Topic 等待反馈。
 - 学习事实存入插件自有 SQLite，不进入主 Session 日志。
 - 主模型不可见：不 append 自定义 Session 事件、不 inject、不 steer、不改变 `deriveMessages()`。
-- P0 的唯一交互界面是 better-sidebar 的全局数据 Tab；同一数据可以在不同 Session 的 sidebar 视图中打开。
+- P0 的唯一交互界面是 DSH 第一方 `conversation.view` 中的「学习」Tab；每个 Session 有独立入口和选中状态，所有入口读取同一份全局数据。
 
 ```mermaid
 flowchart LR
@@ -24,7 +24,7 @@ flowchart LR
   R --> L["辅助 LLM"]
   L --> D["GlobalLearningThread / SQLite"]
   D --> G["typed Remote"]
-  G --> U["better-sidebar 学习模式 Tab"]
+  G --> U["conversation.view 学习 Tab"]
   U -->|"✓ / ✗ / 撤销"| G
 ```
 
@@ -40,38 +40,23 @@ flowchart LR
 
 ## 分发与组合
 
-`dsh-explain` 保持 installable profile bundle，其 UI 依赖 `dsh-better-sidebar` 以 **fork 副本**形式随仓库携带：
+`dsh-explain` 保持单包 installable profile bundle。P0 不携带外部 UI 插件或 vendored 源码；browser half 复用 DSH web profile 已有的第一方 conversation view ring：
 
 ```text
 dsh-explain
-├── package.json          — dsh.bundle.patch + dsh.client(web) + workspace 依赖
-├── pnpm-workspace.yaml   — monorepo：本包 + vendor/dsh-better-sidebar
+├── package.json          — dsh.bundle.patch + dsh.client(web) + 第一方 peer dependencies
 ├── cordis.patch.yml      — 插入唯一 host row（M1 起）
 ├── src/                  — Node/host half
 ├── src/client/           — browser half
-└── vendor/dsh-better-sidebar/ — fork 副本（见 MANIFEST.md，pinned SHA 96b83ae）
+└── docs/                 — PRD 与技术架构
 ```
-
-### 依赖 fork 副本策略（2026-08-12 决策）
-
-- better-sidebar 以 pinned 源码副本（v0.7.0，SHA `96b83ae3…`）vendor 在 `vendor/dsh-better-sidebar/`，隔离上游删除、停更与 API 漂移；上游引用以 [MANIFEST.md](../vendor/dsh-better-sidebar/MANIFEST.md) 记录（upstream SHA、同步流程、本地修改日志）。
-- 副本的 `pnpm-workspace.yaml` 配置已并入仓库根；本包 `dependencies` 用 `workspace:*` 引用副本。
-- 安装 `dsh-explain` 即随包安装副本；**禁止再单独安装上游 DSH-better-sidebar**（同包名互斥）。
-- 组合 smoke 断言：profile 中 `betterSidebar` 服务恰好一个实例；缺失或重复都失败。
-- 上游发版 → 按 MANIFEST 同步流程评估 → 采纳后**重新验证 API**并更新验证矩阵（下节）。
-
-### API 验证矩阵（每次采纳上游版本时更新）
-
-| 版本 | 验证日期 | 验证过的 API 面 |
-|---|---|---|
-| v0.7.0（96b83ae） | 2026-08-12 | `ctx.betterSidebar` 服务存在；`registerTab(TabDescriptor)` 签名（id/title/order/single/component）；`TabComponentProps.visible`；`openTab(seed)` 存在且不展开折叠面板 |
 
 ### P0 组合前置条件
 
-1. DSH web profile 已安装，`betterSidebar` 服务来自本仓库 vendored 副本且只挂载一次。
-2. client half 对 `dsh-better-sidebar` 只做 type import，运行时通过 `ctx.betterSidebar` 服务交互。
-3. package peerDependency 与 `dsh.client.inject` 都声明 `dsh-better-sidebar`，client 插件自身声明 `inject = ['betterSidebar', ...]`；缺包时 profile 安装或 client assembly 必须失败。
-4. better-sidebar 缺失时 P0 组合无可用学习界面，安装/组合 smoke test 必须失败；不得让启用状态下的 host 静默生成不可见内容。
+1. DSH web profile 组合 `@deepseek-ai/dsh-client-runtime`、`@deepseek-ai/dsh-client-locale`、`@deepseek-ai/dsh-client-ui-slots` 与 `@deepseek-ai/dsh-client-ui-conversation`。
+2. package peerDependencies 声明直接使用的第一方包；`dsh.client.inject` 声明 locale、runtime 与 ui-conversation 的组合元数据。该字段不承担 apply 顺序。
+3. client 插件声明实际读取的 `slots`、`locale` 与 `remote` 服务；对 `conversation.view` 的贡献必须通过 `ctx.slots.inject()` 等待真实 slot declaration，不用裸 `slots.register()` 猜测加载顺序。
+4. 安装与组合 smoke 断言 `dsh-explain:learning` 在 view ring 中恰好注册一次；缺失第一方视图宿主时失败，不得让启用状态下的 host 静默生成不可见内容。
 
 ## 组件结构
 
@@ -89,10 +74,10 @@ src/
 ├── gateway.ts            — typed Remote：读取、watch、反馈、设置
 ├── brands.ts             — TopicId / ExplanationId / EntryId / RequestId
 └── client/
-    ├── index.ts          — betterSidebar 注册、locale 与 Remote client store
-    ├── learning-tab.tsx  — 全局线程、当前讲解、反馈与分页
+    ├── index.ts          — conversation.view 注册、locale 与插件级 client store
+    ├── learning-view.tsx — 全局线程、当前讲解、反馈与分页
     ├── learning-store.ts — revision watch、页面缓存和乐观响应收敛
-    └── invariant.ts      — client 组合与 sidebar 前置条件
+    └── invariant.ts      — client 组合与 view registration 前置条件
 ```
 
 v5 不包含 `events.ts`、Session projection、ConversationNodeDefinition 或 turnTail 组件。
@@ -147,7 +132,7 @@ $DSH_HOME/dsh-explain/v1/thread.sqlite
 
 - 完整主 Session 转录、system prompt、原始工具输出。
 - 尚未处理的自主候选和普通自主模型失败。
-- sidebar 布局、展开状态与当前 Tab；这些仍由 better-sidebar localStorage 所有。
+- 当前 Session 的视图选择、composer draft 与其他 conversation UI 状态；这些由第一方 conversation client store 所有，不进入学习数据库。
 
 ## 来源观察
 
@@ -323,34 +308,41 @@ interface FeedbackRequest {
 
 Remote 走 DSH typed gateway 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。
 
-browser 的 `learning-store`：
+browser 的插件级 `learning-store`：
 
-- Tab 可见时调用 `watch`；view cursor 变化后刷新 status 与最新页。
-- Tab 隐藏、sidebar 折叠、连接断开或 fiber dispose 时取消 long-poll。
+- client plugin apply 时创建一次，在 Session 视图实例之间保留缓存；不得在每个 `LearningView` 内创建独立业务 store。
+- `LearningView` 挂载时激活引用计数式 `watch`；view cursor 变化后刷新 status 与最新页。当前 view 不是「学习」时，该 entry 不挂载。
+- 最后一个 `LearningView` 卸载、连接断开或 fiber dispose 时取消 long-poll；Session 切换后的新实例复用同一 store 并追平 cursor。
 - feedback 成功响应直接合并返回条目；随后 watch 负责与 host 收敛。
 - reconnect 先读取 status 和最新页，不信任 localStorage 中的旧业务数据；host incarnation 变化必定使旧 watch cursor 失效。
 
-## better-sidebar 集成
+## `conversation.view` 集成
 
-client half 通过 `ctx.betterSidebar.registerTab()` 注册：
+client half 沿用第一方 `ui-trajectory` 的 view-ring 模式。类型程序引入 `@deepseek-ai/dsh-client-ui-conversation/client` 的 `SlotMap` 声明；运行时使用 slot service：
 
 ```ts
-ctx.effect(() => ctx.betterSidebar.registerTab({
+const learning = createLearningStore(ctx.remote.explain)
+
+ctx.slots.inject('conversation.view', () => ctx.slots.register({
+  name: 'conversation.view',
   id: 'dsh-explain:learning',
-  title: '学习模式',
-  order: 50,
-  single: true,
-  component: ({ visible }) => <LearningTab visible={visible} />,
-}))
+  order: 20,
+  locale: NS,
+  label: () => t('view.learning'),
+  inject: (): LearningViewInjected => ({ learning }),
+}, LearningView))
 ```
 
 约束：
 
-- `betterSidebar` 只存在于 client half；host 不访问该服务或 `/sidebar/api/*`。
-- Tab 的业务身份不使用 `scope.sessionId`。不同 Session 中的 Tab 实例读取同一全局 Remote 数据。
-- better-sidebar 的 tab/layout localStorage 不是学习事实源。
-- 当前 `openTab({ type: 'dsh-explain:learning' })` 不会展开折叠面板，因此 P0 不自动抢焦点；文档与验收不得声称会自动显现。
-- 若后续要求自动展开，先给 better-sidebar 增加公开、可测试的 `revealTab` API，不使用伪造 path/url 或直接改其 store 的方式绕过服务。
+- `conversation.view` 是 Session-scoped。组件可以接收当前 `sessionId`，但它不参与学习线程的业务 identity；所有实例读取同一个插件级 store 和全局 Remote。
+- 当前 view id 属于每个 Session 的 conversation store。Session A 选中「学习」不会令 Session B 自动选中，但两者打开后看到同一 thread revision。
+- 注册必须使用 `ctx.slots.inject('conversation.view', ...)`，使贡献项等待真实 declaration、随 declaration collapse 卸载，并在 redeclaration 后重建。
+- Tab 列表已是唯一入口。P0 不向 `conversation.session.header.actions` 添加重复的“打开学习”按钮，也不访问 conversation 私有 store 或 DOM 来切换 view。
+- P0 不自动切换、不抢焦点。当前公开 conversation service 不提供跨插件 `setView`；未来主动显现需求先由第一方宿主提供公开、可测试的操作。
+- 空白 Session 的 Hero 阶段隐藏会话头部并不渲染活动 view，因此没有「学习」入口；P0 接受用户先进入一个已建立的 Session。
+- 学习 view 只替换聊天记录区域。ConversationRoot 继续拥有当前工作 Session 的 composer；插件不通过跨包 CSS 或 DOM 操作隐藏、禁用或改道它。
+- 学习业务数据不进入 conversation store 或 localStorage；后者只持有 view 选择、draft 等 UI 状态。
 - P0 来源只显示文本元数据；跨 Session 导航需要另行确认公共 client API 后再设计。
 
 ## 生命周期
@@ -432,17 +424,18 @@ ctx.effect(() => ctx.betterSidebar.registerTab({
 
 ### Client 与产品测试
 
-- 两个 Session 的 LearningTab 展示同一 thread revision。
+- 两个 Session 的 `LearningView` 展示同一 thread revision；各自的 active view 选择互不改写。
 - 分页、long-poll 取消、重连、stale CAS 和重讲失败重试。
-- sidebar 折叠时不轮询、不自动展开；展开后追平最新 revision。
-- better-sidebar 缺失或重复挂载的组合 smoke 失败。
+- 「学习」view 挂载时启动 watch、卸载后取消；Session 切换后复用插件级缓存并追平最新 revision。
+- 空白 Session 不显示「学习」入口；已建立 Session 切入学习 view 后 composer 仍向当前工作 Session 发送。
+- `conversation.view` declaration 晚于 client plugin 出现时能注册，collapse 时移除，redeclaration 后恢复；重复 id 或缺少必需宿主的组合 smoke 失败。
 - 首个 UI PR 同时加入 keyless Web replay/snapshot 与真实运行 GIF。
 
 ## 实施阶段
 
 | 阶段 | 内容 | 完成条件 |
 |---|---|---|
-| M1 技术原型 | SQLite store、typed Remote、全局 client store、better-sidebar Tab、固定 fixture 条目 | 刷新与跨 Session 视图一致，CAS 和分页可测 |
+| M1 技术原型 | SQLite store、typed Remote、插件级 client store、conversation.view Tab、固定 fixture 条目 | 刷新与跨 Session 视图一致，CAS 和分页可测 |
 | M2 P0 功能 | Observer、SourceCapsule、Scheduler、真实辅助模型、Topic 状态机、全局反馈 | PRD 行为与失败路径全部实现 |
 | M3 发布门禁 | 单元/集成、keyless snapshot、真实流程 GIF、安装与组合 smoke | 所有 P0 验收标准通过后才标记可发布 |
 
@@ -452,12 +445,12 @@ ctx.effect(() => ctx.betterSidebar.registerTab({
 |---|---|
 | 每 Session `explain/*` 自定义事件 | 每 `$DSH_HOME` 一个插件自有 SQLite 学习线程 |
 | Session projection 传输 | typed Remote 分页 + revision long-poll |
-| 行内 ConversationNode + turnTail | better-sidebar 单一学习 Tab；两者移出 P0 |
+| 行内 ConversationNode + turnTail | `conversation.view` 单一学习 Tab；两者移出 P0 |
 | 按 Session 开关、去重和反馈 | 全局开关、Topic 状态和单个活跃 Explanation |
 | “独立 agent 循环”但角色未定义 | 无工具的全局串行 Explainer Runtime |
 | 同一 Session 的并发策略 | 跨来源 Session 的有界 latest-wins 队列与全局 epoch fencing |
 | fork 继承由 Session 日志隐式决定 | fork、resume 和来源删除都不复制或删除学习状态 |
-| 依赖上游 DSH-better-sidebar（git 安装） | vendored fork 副本（pinned SHA + MANIFEST + 验证矩阵） |
+| 外部 UI 工作台依赖 | 第一方 `conversation.view`，无 vendored UI 源码 |
 
 ## 架构决策记录
 
@@ -468,8 +461,9 @@ ctx.effect(() => ctx.betterSidebar.registerTab({
 | 2026-08-12 | 学习线程同时限制一个模型调用和一个等待反馈的 Topic |
 | 2026-08-12 | P0 使用 Node 内置 SQLite；settings 与学习事实分离 |
 | 2026-08-12 | 不使用外部自定义 Session 事件、projection、ConversationNode 或 turnTail |
-| 2026-08-12 | better-sidebar 是 P0 必需 UI 依赖，业务数据不进入其 localStorage |
+| 2026-08-12 | 第一方 `conversation.view` 是 P0 唯一 UI 宿主，业务数据不进入 conversation store 或 localStorage |
 | 2026-08-12 | P0 排除子代理直接供给，只观察顶层正常完成回合 |
 | 2026-08-12 | TopicKey 只做精确去重；语义查重延后 |
-| 2026-08-12 | P0 不自动展开 sidebar，不承诺跨 Session 来源跳转 |
-| 2026-08-12 | better-sidebar 依赖以 vendored fork 副本携带（pinned SHA + MANIFEST + 验证矩阵），禁止另装上游原版 |
+| 2026-08-12 | P0 不自动切换 view，不承诺跨 Session 来源跳转 |
+| 2026-08-12 | view 入口和选择按 Session，学习数据全局；空白 Session 无入口，工作 composer 保留 |
+| 2026-08-12 | P0 删除 vendored better-sidebar，保持零外部 UI 依赖 |

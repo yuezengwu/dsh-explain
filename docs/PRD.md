@@ -34,14 +34,14 @@
 | 全局开关 | `/explain on`、`/explain off`、`/explain status`；默认关闭，作用于整个 `$DSH_HOME` |
 | 自主选题 | 只观察顶层 Session 中正常完成且包含非空 assistant 输出的回合；explain 可以返回“不讲” |
 | 全局串行 | 全局最多一个模型请求、一个活跃讲解；候选有界排队 |
-| 学习界面 | better-sidebar 中单实例「学习模式」Tab，按全局顺序显示讲解与反馈 |
+| 学习界面 | DSH 主对话区 `conversation.view` 中的「学习」Tab，按全局顺序显示讲解与反馈 |
 | 讲解内容 | 标题、是什么、为什么、常见坑；字段有长度限制 |
 | 来源标记 | 显示来源 Session、turn 和时间；P0 不承诺跨 Session 一键跳转 |
 | ✓ 懂了 | 将当前 Topic 标为全局已掌握，关闭活跃讲解并允许处理下一候选 |
 | ✗ 没懂 | 保持同一 `ExplanationId` 和 `TopicId`，生成 `revision + 1`，继续占用活跃位置 |
 | 撤销掌握 | 已掌握状态提供「撤销」操作；撤销不自动生成讲解，只允许未来再次命中该 Topic |
 | 本地持久化 | 学习历史、反馈、Topic 状态和全局顺序写入 `$DSH_HOME/dsh-explain/v1/thread.sqlite` |
-| UI 依赖 | better-sidebar 以 vendored fork 副本随插件携带（见架构「依赖 fork 副本策略」）；不要求用户单独安装上游原版 |
+| UI 依赖 | 只使用 DSH 第一方 `conversation.view` 槽位；P0 不引入外部 UI 插件 |
 
 ## 交互流程
 
@@ -56,20 +56,20 @@
 
 | 元素 | P0 位置 | 行为 |
 |---|---|---|
-| 全局学习线程 | better-sidebar「学习模式」Tab | 所有来源 Session 展示同一份数据 |
+| 全局学习线程 | 当前工作 Session 的「学习」视图 | 每个 Session 有自己的视图入口，所有入口展示同一份全局数据 |
 | 当前讲解与反馈 | 学习线程末尾 | 只有最新活跃 revision 显示 ✓ / ✗ |
 | 历史讲解 | 同一 Tab 内分页加载 | 已关闭项只读；已掌握项可撤销 |
 | 行内讲解卡片 | 不在 P0 | 本地旁路数据没有标准 ConversationNode 推送入口 |
 | 回合尾部反馈 | 不在 P0 | `conversation.chat.turnTail` 按会话作用域渲染,与全局学习线程语义不符(行内反馈入口在全局线程下无对应状态) |
 
-P0 不自动展开或抢占 better-sidebar。用户打开「学习模式」Tab 后看到全局线程；若未来要求主动展开，需要 better-sidebar 先提供明确的 `revealTab` 类 API。
+P0 不自动切换或抢占 `conversation.view`。用户在当前工作 Session 的头部选择「学习」后看到全局线程；视图选择按 Session 保存，不是学习事实。空白 Session 的 Hero 阶段不显示会话头部和视图 Tab，用户需要先进入一个已建立的 Session。学习视图只替换聊天记录区域，当前工作 Session 的 composer 仍然显示，用户从中发送的内容继续进入该工作 Session。
 
 ## 开关语义
 
 - `/explain on` 开启未来回合观察，不补扫历史 Session。
 - `/explain off` 立即提高运行 epoch、取消在途模型请求并清空内存候选；迟到结果因 epoch 不匹配而丢弃。
 - off 不删除学习历史，也不改变已掌握 Topic。
-- off 时学习 Tab 保持可读，但反馈、撤销和其他学习状态写入禁用；重新 on 后恢复交互。
+- off 时学习视图保持可读，但反馈、撤销和其他学习状态写入禁用；重新 on 后恢复交互。
 - `/explain status` 返回全局开关、模型路由是否完整、当前状态（idle / generating / awaiting-feedback / rephrasing）和候选数量。
 - provider 或 model 缺失时，`on` 明确失败；不得隐式借用来源 Session 的模型。
 
@@ -96,6 +96,7 @@ P0 不自动展开或抢占 better-sidebar。用户打开「学习模式」Tab �
 - 同时学习多个 Topic 或预生成一批未读讲解。
 - 子代理直接提交候选。
 - 行内讲解、回合尾部反馈、右侧悬浮窗和自动抢焦点。
+- 空白 Session Hero 阶段的学习入口、独立学习页面和隐藏工作 composer。
 - 自由文字追问、语音、深度档位和自适应课程。
 - 语义向量查重、知识图谱、复习计划、测验和卡片。
 - 跨 Session 来源跳转、跨 Session 定位到具体消息。
@@ -113,8 +114,9 @@ P0 不自动展开或抢占 better-sidebar。用户打开「学习模式」Tab �
 8. **持久一致**：正常重启和页面刷新后，顺序、活跃状态、revision、反馈与 Topic 状态一致。
 9. **并发反馈**：两个浏览器标签提交竞争反馈时，一个成功，另一个收到明确的 stale revision / store revision 错误。
 10. **故障透明**：数据库损坏、未知 schema 版本和模型路由缺失均明确报错，原数据不被静默重置。
-11. **界面一致**：从不同来源 Session 打开的学习 Tab 展示同一全局线程；sidebar localStorage 不影响业务状态。
-12. **测试伴随**：单元测试、集成测试、keyless Web replay/snapshot 和真实流程 GIF 从首个 UI PR 开始，发布前全部通过。
+11. **界面一致**：从不同来源 Session 打开的「学习」视图展示同一全局线程；一个 Session 的视图选择不改变业务状态，也不要求其他 Session 同步选择。
+12. **视图约束**：空白 Session 不显示「学习」入口；已建立 Session 切入学习视图后 composer 仍可向当前工作 Session 发送消息，且插件不通过 DOM/CSS 私有路径改变该行为。
+13. **测试伴随**：单元测试、集成测试、keyless Web replay/snapshot 和真实流程 GIF 从首个 UI PR 开始，发布前全部通过。
 
 ## 决策记录
 
@@ -126,6 +128,7 @@ P0 不自动展开或抢占 better-sidebar。用户打开「学习模式」Tab �
 | 2026-08-12 | 一次只允许一个活跃 Topic；用户反馈决定是否推进 |
 | 2026-08-12 | Topic 掌握状态用户全局生效，并提供撤销 |
 | 2026-08-12 | P0 数据使用插件自有本地 SQLite，不写外部自定义 Session 事件 |
-| 2026-08-12 | P0 主界面使用 better-sidebar；删除 turnTail，行内卡片移出 P0 |
+| 2026-08-12 | P0 主界面使用第一方 `conversation.view`；删除 turnTail，行内卡片移出 P0 |
 | 2026-08-12 | P0 只观察顶层正常完成回合，排除子代理直接提交 |
-| 2026-08-12 | better-sidebar 依赖以 dsh-explain 内 fork 副本方式携带（pinned SHA），抵御上游删除/停更/API 漂移 |
+| 2026-08-12 | 学习数据用户全局，但 `conversation.view` 入口和选中状态按 Session；空白 Session 无入口，工作 composer 保留 |
+| 2026-08-12 | P0 删除 vendored better-sidebar，保持零外部 UI 依赖 |
