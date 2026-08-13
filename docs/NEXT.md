@@ -1,6 +1,6 @@
 # dsh-explain M4 迭代计划：内测可控性
 
-> 状态：**计划完成，尚未进入实现**（2026-08-13）。P0 行为和证据分别见 [PRD](./PRD.md) 与 [验收矩阵](./ACCEPTANCE.md)。
+> 状态：**M4 实现与自动化门禁完成，进入真实模型候选验收**（2026-08-13）。P0 行为和证据分别见 [PRD](./PRD.md) 与 [验收矩阵](./ACCEPTANCE.md)。
 
 ## 目标
 
@@ -63,6 +63,40 @@ M4 只在 UI 中开放启用、模型路由和自主预算。超时、重试、�
 | M4.1 设置与协议 | 定义可编辑设置 DTO、settings revision/CAS、模型候选读取和设置页 | 无 YAML 的全新 `$DSH_HOME` 可选择路由、启用、关闭并诊断失败 |
 | M4.2 来源导航 | 注入公开 Session 服务、建立 inventory 判定和卡片动作 | 存在来源可打开；已删除来源稳定降级；全局线程状态不变 |
 | M4.3 产品验收 | 单元/集成、keyless Web snapshot、真实模型 GIF、hub 登记 | 下列验收标准全部通过，文档和演示对应同一候选提交 |
+
+## 实现设计
+
+### 设置协议与并发
+
+Host Remote 增加三个方法：`configuration()` 返回当前 UI 可编辑字段及 DSH settings namespace 的原生 revision；`modelCatalog()` 返回当前 provider 和建议模型目录；`updateConfiguration()` 携带 `expectedRevision`，只合并 `enabled/provider/model/maxAutoRequestsPerDay` 四个 UI 字段。写入调用 DSH settings 的原生 expected-revision CAS，不复制第二套 revision，也不整体替换 user section，因此 composition base 和高级设置不会被设置页清除。
+
+开启或在已开启状态下切换路由时，Host 在 CAS 写入前解析目标 provider/model，并要求精确 `contextWindow`。CAS 冲突返回 `SETTINGS_STALE`，路由问题沿用 `MODEL_ROUTE_REQUIRED` / `MODEL_CONTEXT_REQUIRED`，schema 或字段错误返回 `INVALID_SETTINGS`，其他失败返回 `RUNTIME_FAILED`；失败不写入部分配置。成功写入后 Runtime 立即从 settings scope 同步 Scheduler，再向客户端返回新的 configuration 和 status。
+
+模型目录只提供选择建议，不参与路由授权。未列出的 model id 可由用户输入，但启用时必须通过相同的精确容量解析。provider 拓扑变化提高 view cursor；已打开设置页会重新读取目录。
+
+### 单一 browser store
+
+插件 apply 仍只创建一个 `GlobalLearningStore`。学习视图和设置页分别增加/释放 mount 引用；第一个 mount 启动 refresh/watch，最后一个 unmount 取消 long-poll。configuration 随每次全局 refresh 读取，模型目录只在设置页首次打开后加载，并在后续 cursor 变化时刷新，避免单纯阅读学习线程触发目录查询。
+
+设置提交状态和业务错误是 store 的独立字段，不覆盖 Remote 传输错误；传输错误保留已缓存历史、configuration 和目录。过期写入先显示稳定冲突，再刷新到胜出的 revision，不把旧草稿静默覆盖回 Host。
+
+### 来源可达性
+
+`LearningView` 订阅 `ctx.sessions.list`，以 `byId[sourceSessionId]` 是否存在作为当前浏览器可见 inventory 的唯一判定。来源不是当前 Session 且仍存在时渲染跳转动作；点击前再次读取 inventory，再调用 `ctx.sessions.open(sourceSessionId)`。来源缺失时保留讲解、反馈和重讲记录，显示不可用说明；当前 Session 不显示重复动作。插件不自行查询 Session 文件、不操作 conversation store，也不改变目标 Session 的 view 选择。
+
+### 诊断状态优先级
+
+学习视图和设置页使用同一个纯派生顺序，避免同一状态显示两种解释：`disabled` → `runtime failed` → `route not configured` → `budget exhausted` → `ready/waiting`。额度耗尽显示 `autoRequestsResumeAt`；压力只在 `estimatedContextRatio` 存在时显示；最近 explain 操作和压缩时间缺失时明确显示“尚未发生”。Remote 失败作为更高层的连接错误单独呈现，同时继续显示缓存内容。
+
+## 实现前审查结论
+
+- **并发**：复用 settings provider 的串行写队列和原生 revision，避免插件 revision 与真实文档漂移；不同浏览器的 stale 写入不会覆盖胜者。
+- **原子性**：UI 四字段作为一次 merge patch 提交；启用校验、schema 校验或 CAS 失败均不改变 user section。高级字段不在 patch 中，因而不会被 UI 删除。
+- **生命周期**：两个 slot 注册都使用 `slots.inject()`；一个共享 store 由引用计数控制 watch，slot collapse/redeclaration 不产生第二条 long-poll。
+- **来源竞态**：渲染时与点击时各检查一次 inventory；两次检查之间仍可能删除，`sessions.open()` 的同步失败由 UI 捕获并降级为可重试错误，不产生未处理异常。
+- **主工作隔离**：新增读写只涉及 explain settings、plugin Remote 和 client navigation；不写 Session 日志，不改变 `deriveMessages()`，不向主 Agent 注入 ExplainContext。
+- **模型目录**：建议列表可能为空或查询失败，不阻止手工输入 model id；真正的安全条件仍是 Host 对目标路由的精确容量解析。
+- **数据格式**：M4 不修改 SQLite schema 或 entry payload，不需要迁移，也不扩大持久隐私数据。
 
 ## 验收标准
 

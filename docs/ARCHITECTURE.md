@@ -1,7 +1,7 @@
-# dsh-explain 技术架构 v6
+# dsh-explain 技术架构 v7
 
-> 状态：**v6 已实现，P0 发布门禁通过**（2026-08-13）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
-> v6 保留“每个 `$DSH_HOME` 一条全局学习线程”，把活跃讲解改为每个来源 Session 最多一个，并新增 30 分钟/50% 双触发压缩与 explain 私有全局 `ExplainContext`。
+> 状态：**v7 M4 已实现并通过自动化门禁，进入真实模型候选验收**（2026-08-13）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
+> v7 保留 v6 的学习与压缩语义，新增基于 DSH 原生 settings revision/CAS 的设置页、来源 Session 导航和可诊断状态；SQLite schema 与辅助模型协议不变。
 
 ## 架构结论
 
@@ -85,6 +85,7 @@ src/
 └── client/
     ├── index.ts          — conversation.view 注册、locale 与插件级 client store
     ├── learning-view.tsx — 全局线程、当前讲解、反馈与分页
+    ├── settings-view.tsx — UI 可编辑设置、模型目录与只读诊断
     ├── learning-store.ts — revision watch、页面缓存和乐观响应收敛
     └── invariant.ts      — client 组合与 view registration 前置条件
 ```
@@ -433,6 +434,9 @@ interface FeedbackRequest {
 | `explain.feedback(request)` | Explanation revision CAS + 幂等提交 understood / not-understood |
 | `explain.reopenTopic(request)` | Topic revision CAS + 撤销全局掌握状态 |
 | `explain.setEnabled({ enabled })` | 写 settings；开启前验证模型路由与容量 |
+| `explain.configuration()` | 当前 UI 可编辑字段与 DSH settings namespace 的原生 revision |
+| `explain.modelCatalog()` | 当前 provider 与建议模型目录；目录只提供选择建议 |
+| `explain.updateConfiguration(request)` | expected-revision CAS 合并 UI 四字段；开启或切换已启用路由前验证精确容量 |
 
 Remote 走 DSH `TypertRemoteService` 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。DSH rc.2 的生成客户端把传输结果封装为 `RemoteResult<T>`；browser store 先解封传输结果，再处理方法自身的业务结果，传输失败进入现有可见错误状态。
 
@@ -444,6 +448,18 @@ browser 的插件级 `learning-store`：
 - feedback 成功后刷新当前已物化页数；不同条目的 pending 状态按 EntryId 隔离，随后 watch 负责与 host 收敛。
 - 刷新同时读取 status、`ExplainContext` 与当前已物化的历史深度；checkpoint 变化不缩短用户已加载的历史范围。
 - reconnect 先读取 status 和最新页，不信任 localStorage 中的旧业务数据；host incarnation 变化必定使旧 watch cursor 失效。
+- 设置页与学习视图复用同一个 store 和引用计数；任一页面已挂载时只存在一个 long-poll。configuration 随 refresh 更新，模型目录只在设置页打开后加载。
+- 设置提交的 pending/error 与学习条目 mutation、Remote 传输错误分别建模。`SETTINGS_STALE` 后刷新到胜出 revision，客户端不得自动重放旧草稿。
+
+## `settings.section` 集成
+
+client half 通过 `ctx.slots.inject('settings.section', ...)` 注册「学习」页面，等待第一方设置壳层的真实 declaration，并在 collapse/redeclaration 时随 effect 移除和恢复。页面只开放 `enabled`、`provider`、`model` 和 `maxAutoRequestsPerDay`；其余高级字段继续由 composition/settings 文件管理。
+
+Host 使用 `ctx.settings.describe()` 读取 `dsh-explain` namespace 的原生 revision，并使用 `ctx.settings.update(namespace, patch, expectedRevision)` 提交一次 merge。插件不维护平行 revision，也不 `replace()` user section。开启或在已开启状态下修改路由时，先对目标 settings 调用 `resolveModelInfo()` 并要求精确 `contextWindow`；验证、schema 或 CAS 任一失败都不写部分设置。成功后 Runtime 从 owner scope 同步 Scheduler，设置页与 `/explain status` 读取同一状态。
+
+`modelCatalog()` 合并 `ctx.llm.listProviders()` 与各 provider 的 `listModels()` 结果。建议模型目录为空或单个 provider 查询失败时仍允许显式输入 model id；目录不是路由许可，启用条件始终由精确模型解析决定。`llm/adapters-updated` 提高 view cursor，使已加载目录的设置页重新读取。
+
+诊断展示按以下顺序纯派生：关闭、runtime 失败、路由未配置、额度耗尽、正常等待。额度耗尽展示最早恢复时间；压力和最近压缩只在 Host 返回对应事实时展示。Remote 传输失败单独呈现并保留缓存，不与业务状态合并成“空历史”。
 
 ## `conversation.view` 集成
 
@@ -473,7 +489,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 - 学习 view 只替换聊天记录区域。ConversationRoot 继续拥有当前工作 Session 的 composer；插件不通过跨包 CSS 或 DOM 操作隐藏、禁用或改道它。
 - 学习业务数据不进入 conversation store 或 localStorage；后者只持有 view 选择、draft 等 UI 状态。
 - 每个活跃 Explanation 的最新 revision 都独立显示 ✓ / ✗；反馈目标显式携带来源 Session 与 Explanation 身份，不能依赖“线程最后一条”。
-- P0 来源只显示文本元数据；跨 Session 导航需要另行确认公共 client API 后再设计。
+- M4 订阅公开的 `ctx.sessions.list`，以 `byId[sourceSessionId]` 判定来源是否仍在当前 inventory。非当前且可见的来源通过 `ctx.sessions.open(sourceSessionId)` 打开；当前来源不显示重复动作。缺失来源保留历史并显示不可用，不读取 Session 文件、不操作 conversation 私有 store，也不改变目标 Session 当前 view。
 
 ## 生命周期
 
@@ -536,7 +552,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 | `maxCompactionOutputTokens` | `1600` | 单次 `ExplainContext` 输出上限 |
 | `maxAttempts` | `2` | 自主候选最大尝试次数 |
 
-`dshHome` 与 `storageDir` 只允许在 composition Config 中设置，运行期间不可切换数据库。其余字段由 settings user layer 覆盖 composition base；运行时读取已解析值。`idleCompactMs` 与 `maxAutoRequestsPerDay` 必须是正整数；`contextThresholdRatio` 必须大于 0 且小于 1。会影响在途请求语义的设置变化提高 epoch 并取消旧请求；自主额度上限变化不取消在途请求，只重新判断后续候选；其他只影响未来调用的边界值在下一工作项生效。
+`dshHome` 与 `storageDir` 只允许在 composition Config 中设置，运行期间不可切换数据库。其余字段由 settings user layer 覆盖 composition base；运行时读取已解析值。M4 设置页只编辑 `enabled/provider/model/maxAutoRequestsPerDay`，以一次 revision-CAS merge 保留高级字段。`idleCompactMs` 与 `maxAutoRequestsPerDay` 必须是正整数；`contextThresholdRatio` 必须大于 0 且小于 1。会影响在途请求语义的设置变化提高 epoch 并取消旧请求；自主额度上限变化不取消在途请求，只重新判断后续候选；其他只影响未来调用的边界值在下一工作项生效。
 
 ## 测试策略
 
@@ -574,6 +590,10 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 - 「学习」view 挂载时启动 watch、卸载后取消；Session 切换后复用插件级缓存并追平最新 revision。
 - 空白 Session 不显示「学习」入口；已建立 Session 切入学习 view 后 composer 仍向当前工作 Session 发送。
 - `conversation.view` declaration 晚于 client plugin 出现时能注册，collapse 时移除，redeclaration 后恢复；重复 id 或缺少必需宿主的组合 smoke 失败。
+- 设置页从全新 settings 文档完成路由选择与启用；两个视图基于同一 revision 写入时 stale 一方失败并刷新，不覆盖胜者。
+- provider 目录为空、建议模型查询失败、未列出模型、缺少精确容量和已启用路由切换分别覆盖。
+- 来源存在时可调用公开 Session 导航；来源删除后 active/history/audit 行保留且动作稳定降级；删除与点击竞态不产生未处理异常。
+- `settings.section` 晚声明、collapse、redeclaration 与 conversation view 同样覆盖；两类页面同时挂载仍只有一个 long-poll。
 - 首个 UI PR 同时加入 keyless Web replay/snapshot 与真实运行 GIF。
 
 ## 实施阶段
@@ -583,21 +603,18 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 | M1 技术原型 | SQLite store、按来源活跃 schema、typed Remote 与本地目录安装骨架；不注册用户可见视图 | 私有数据库权限、实体 CAS、分页/长轮询、Host/Client 构建和 DSH Web 加载可测 |
 | M2 P0 功能 | Observer、SourceCapsule、Scheduler、真实辅助模型、ExplainContext、双触发压缩、Topic 状态机 | PRD 行为与失败路径全部实现 |
 | M3 发布门禁 | 单元/集成、keyless snapshot、真实流程 GIF、安装与组合 smoke | 所有 P0 验收标准通过后才标记可发布 |
+| M4 内测可控性 | 设置 revision/CAS、模型目录、来源导航、诊断状态和 rc.2 产品证据 | 用户无需编辑 YAML 即可配置启用，状态和来源路径可解释，M4 验收矩阵全部通过 |
 
-## v5 → v6 修订说明
+## v6 → v7 修订说明
 
-| v5 | v6 |
+| v6 | v7 |
 |---|---|
-| 全局最多一个活跃 Explanation | 每来源 Session 最多一个；同一 TopicKey 仍全局唯一活跃 |
-| 一个活跃项阻塞所有自主候选 | 只阻塞其来源；其他来源继续，模型调用仍全局单飞 |
-| 最近固定 `contextEntries` 作为模型历史 | `ExplainContext` checkpoint + 未压缩尾部 + 实时权威覆盖层 |
-| 无全局学习历史压缩 | 30 分钟无 explain 操作或预计上下文大于模型容量 50% 时压缩 |
-| `thread_state` 单活跃指针 | `explanations` partial unique index 保存按来源与按 Topic 活跃约束 |
-| 全局 store revision 参与反馈 CAS | Explanation/Topic 实体 revision；不同来源反馈可依次成功 |
-| 仅记录原始学习 entries | 原始 entries 保留，并新增 checkpoint/coverage/ExplainContext |
-| 模型路由只要求 provider/model | 启用还要求精确路由提供 `contextWindow` |
-| 自主请求无持久预算 | 默认最多 50 次/滚动 24 小时；发送、失败和重试均持久占额，重讲与压缩豁免 |
-| 重讲来源摘要与 Topic 标题更新未定义 | revision 1 entry 保存有界来源摘要；Topic 标题随最新成功 revision 更新，旧 entry 不改写 |
+| 仅通过命令或 settings 文件编辑运行设置 | 独立「学习」设置页只编辑四个普通字段，并复用 settings 原生 revision/CAS |
+| `setEnabled()` 是唯一专用设置 Remote | 增加 configuration、modelCatalog 和原子 updateConfiguration 协议 |
+| 学习视图只显示来源短 id | 订阅公开 Session inventory，并可安全打开仍存在的非当前来源 |
+| 关闭、失败和等待的展示有限 | 明确区分关闭、失败、未配置、额度耗尽与正常等待，显示恢复时间和压力 |
+| store 只由学习 view 激活 | 设置页和学习 view 引用计数共享同一 store 与 long-poll |
+| SQLite schema 2 与模型协议 | 保持不变；M4 不迁移学习数据，不扩大持久隐私面 |
 
 ## 架构决策记录
 
@@ -623,3 +640,6 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 | 2026-08-12 | P0 不自动切换 view，不承诺跨 Session 来源跳转 |
 | 2026-08-12 | view 入口和选择按 Session，学习数据全局；空白 Session 无入口，工作 composer 保留 |
 | 2026-08-12 | P0 删除 vendored better-sidebar，保持零外部 UI 依赖 |
+| 2026-08-13 | M4 设置页复用 DSH settings 原生 revision/CAS，不建立第二套 revision，不整体替换 user section |
+| 2026-08-13 | 模型目录只提供建议；未列出 id 仍以 Host 精确 contextWindow 解析决定能否启用 |
+| 2026-08-13 | 来源导航只使用公开 Session inventory/open API；来源缺失保留全局学习历史并稳定降级 |

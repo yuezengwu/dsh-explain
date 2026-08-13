@@ -15,8 +15,10 @@ const REPOSITORY = fileURLToPath(new URL('..', import.meta.url))
 const SNAPSHOT_DIRECTORY = join(REPOSITORY, 'tests/snapshots/learning-view')
 const SESSION_FIXTURE = join(SNAPSHOT_DIRECTORY, 'session.jsonl')
 const UI_GOLDEN = join(SNAPSHOT_DIRECTORY, 'ui.expected.md')
+const SETTINGS_GOLDEN = join(SNAPSHOT_DIRECTORY, 'settings.expected.md')
 const SESSION_ID = 'web-snapshot-session'
 const SOURCE_SESSION_ID = SessionId('fixture-source')
+const MISSING_SOURCE_SESSION_ID = SessionId('missing-source')
 const FIXED_TIME = Date.UTC(2026, 0, 2, 3, 4, 5)
 const DAY_MS = 86_400_000
 
@@ -95,6 +97,23 @@ async function seedLearningDatabase(dshHome: string): Promise<void> {
       confidence: 'high',
     }],
   }, generation)
+  store.commitAutoDecision(lease, {
+    ...capsule,
+    sourceSessionId: MISSING_SOURCE_SESSION_ID,
+    turn: 2,
+    endSeq: 15,
+    observedAt: FIXED_TIME + 1,
+    userText: '穷尽检查为什么能发现遗漏分支？',
+    assistantText: 'never 类型让缺失分支在编译期显现。',
+  }, {
+    kind: 'explain',
+    topicKey: 'typescript/exhaustiveness',
+    title: '用 never 完成穷尽检查',
+    what: '所有联合成员处理后，剩余值应当收窄为 never。',
+    why: '新增联合成员却没有补充分支时，编译器会立即报错。',
+    pitfall: 'default 分支直接吞掉值会掩盖遗漏成员。',
+    contextObservations: [],
+  }, generation)
   const batch = store.compactionBatch()
   const observationId = batch?.observations[0]?.observationId
   if (batch === undefined || observationId === undefined) throw new Error('learning fixture has no compactable observation')
@@ -116,14 +135,19 @@ async function seedLearningDatabase(dshHome: string): Promise<void> {
   store.close()
 }
 
-async function seedDshSession(dshSource: string, dshHome: string, workspace: string): Promise<void> {
+async function seedDshSession(
+  dshSource: string,
+  dshHome: string,
+  workspace: string,
+  sessionId: string,
+): Promise<void> {
   execFileSync(process.execPath, [join(REPOSITORY, 'tests/seed-web-session.mjs')], {
     cwd: REPOSITORY,
     env: {
       ...dshEnvironment(dshHome),
       DSH_SOURCE_DIR: dshSource,
       DSH_WEB_FIXTURE: SESSION_FIXTURE,
-      DSH_WEB_SESSION_ID: SESSION_ID,
+      DSH_WEB_SESSION_ID: sessionId,
       DSH_WEB_WORKSPACE: workspace,
     },
     encoding: 'utf8',
@@ -217,22 +241,23 @@ function normalizeAria(value: string): string {
     .replace(/\d{4}\/\d{1,2}\/\d{1,2} \d{2}:\d{2}:\d{2}/g, '{{clock}}')
 }
 
-async function compareOrRefresh(actual: string): Promise<void> {
+async function compareOrRefresh(actual: string, golden = UI_GOLDEN): Promise<void> {
   const payload = `${actual}\n`
   if (snapshotMode() === 'refresh') {
-    await writeFile(UI_GOLDEN, payload)
+    await writeFile(golden, payload)
     return
   }
-  if (!existsSync(UI_GOLDEN)) {
-    throw new Error(`missing ${UI_GOLDEN}; run pnpm run test:web:refresh`)
+  if (!existsSync(golden)) {
+    throw new Error(`missing ${golden}; run pnpm run test:web:refresh`)
   }
-  expect(payload).toBe(await readFile(UI_GOLDEN, 'utf8'))
+  expect(payload).toBe(await readFile(golden, 'utf8'))
 }
 
 describe('keyless assembled DSH Web learning view', () => {
   let root: string
   let dshHome: string
   let workspace: string
+  let sourceWorkspace: string
   let host: ChildProcessWithoutNullStreams | undefined
   let browser: Browser | undefined
   let page: Page | undefined
@@ -242,8 +267,12 @@ describe('keyless assembled DSH Web learning view', () => {
     const dshSource = requireDshSource()
     root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-explain-web-snapshot-')))
     dshHome = join(root, 'home')
-    workspace = join(root, 'workspace')
-    await mkdir(workspace, { recursive: true })
+    workspace = join(root, 'workspace-primary')
+    sourceWorkspace = join(root, 'workspace-source')
+    await Promise.all([
+      mkdir(workspace, { recursive: true }),
+      mkdir(sourceWorkspace, { recursive: true }),
+    ])
     runDsh(dshSource, dshHome, ['plugin', '--profile', 'web', 'add', REPOSITORY])
     await writeFile(join(dshHome, 'profiles/web/cordis.patch.yml'), [
       '- id: directory-picker',
@@ -254,7 +283,8 @@ describe('keyless assembled DSH Web learning view', () => {
       '',
     ].join('\n'))
     await seedLearningDatabase(dshHome)
-    await seedDshSession(dshSource, dshHome, workspace)
+    await seedDshSession(dshSource, dshHome, sourceWorkspace, SOURCE_SESSION_ID)
+    await seedDshSession(dshSource, dshHome, workspace, SESSION_ID)
     const port = await freePort()
     host = await startDsh(dshSource, dshHome, port)
     browser = await chromium.launch()
@@ -270,7 +300,7 @@ describe('keyless assembled DSH Web learning view', () => {
     await continueButton.click()
     await page.locator('[class*="onboardingStage"]').waitFor({ state: 'detached', timeout: 15_000 })
     expect(await page.getByRole('tab', { name: '学习' }).count()).toBe(0)
-    const session = page.getByRole('treeitem', { name: /workspace 刚刚/ })
+    const session = page.getByRole('treeitem', { name: /workspace-primary 刚刚/ })
     try {
       await session.waitFor({ timeout: 15_000 })
     } catch (error) {
@@ -294,19 +324,49 @@ describe('keyless assembled DSH Web learning view', () => {
     if (failures.length > 1) throw new AggregateError(failures, 'web snapshot cleanup failed')
   })
 
-  it('renders the global context and another source active card while disabled', async () => {
+  it('renders available and missing sources while disabled', async () => {
     if (page === undefined) throw new Error('web page is not initialized')
     const view = page.getByTestId('dsh-explain-learning-view')
     const snapshot = await stableAria(view)
     await compareOrRefresh(snapshot)
-    expect(snapshot).toContain('学习模式当前已关闭；历史仍可阅读。')
+    expect(snapshot).toContain('学习模式已关闭')
     expect(snapshot).toContain('正在学习 TypeScript 的可辨识联合。')
     expect(snapshot).toContain('其他会话的活跃讲解')
-    expect(await view.getByRole('button', { name: '✓ 懂了' }).isDisabled()).toBe(true)
+    expect(snapshot).toContain('来源会话不可用')
+    expect(await view.getByRole('button', { name: '打开来源会话' }).count()).toBe(1)
+    const feedback = view.getByRole('button', { name: '✓ 懂了' })
+    expect(await feedback.count()).toBe(2)
+    expect(await feedback.first().isDisabled()).toBe(true)
+    expect(await feedback.last().isDisabled()).toBe(true)
+    expect(pageErrors).toEqual([])
+  })
+
+  it('saves one native settings revision and opens an available source Session', async () => {
+    if (page === undefined) throw new Error('web page is not initialized')
+    await page.getByRole('button', { name: '设置', exact: true }).click()
+    const settingsDialog = page.getByRole('dialog', { name: '设置', exact: true })
+    await settingsDialog.waitFor({ timeout: 15_000 })
+    await settingsDialog.getByRole('button', { name: '学习', exact: true }).click()
+    const settings = page.getByTestId('dsh-explain-settings-section')
+    await settings.waitFor({ timeout: 15_000 })
+    await settings.getByRole('spinbutton', { name: '每 24 小时自主请求上限' }).fill('12')
+    await settings.getByRole('button', { name: '保存设置' }).click()
+    await settings.getByText('设置 revision 1', { exact: true }).waitFor({ timeout: 15_000 })
+    await compareOrRefresh(await stableAria(settings), SETTINGS_GOLDEN)
+    await settingsDialog.getByRole('button', { name: '关闭', exact: true }).click()
+
+    const view = page.getByTestId('dsh-explain-learning-view')
+    await view.getByRole('button', { name: '打开来源会话' }).click()
+    await page.getByRole('treeitem', { name: /workspace-source 刚刚/, selected: true }).waitFor({ timeout: 15_000 })
+    await page.getByRole('tab', { name: '学习' }).click()
+    await page.getByRole('heading', { name: '用判别字段安全缩小联合类型' }).waitFor({ timeout: 15_000 })
+    expect(await page.getByText('来源会话不可用').count()).toBeGreaterThan(0)
     expect(pageErrors).toEqual([])
   })
 
   it('keeps the fixture inventory closed', async () => {
-    expect((await readdir(SNAPSHOT_DIRECTORY)).sort()).toEqual(['session.jsonl', 'ui.expected.md'])
+    expect((await readdir(SNAPSHOT_DIRECTORY)).sort()).toEqual([
+      'session.jsonl', 'settings.expected.md', 'ui.expected.md',
+    ])
   })
 })

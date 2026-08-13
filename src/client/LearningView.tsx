@@ -2,28 +2,39 @@ import { useEffect, useMemo } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import type {
+  ObservableSnapshot,
+  SessionId,
+  SessionListState,
+  SnapshotStore,
+} from '@deepseek-ai/dsh-client-runtime/client'
 import type { ThreadEntryView } from 'dsh-explain/types'
 import type { LearningSnapshot } from './learning-store.ts'
+import { diagnosticState } from './diagnostics.ts'
 
 /** Session-bound actions layered over the browser-wide learning snapshot. */
 export interface LearningViewInjected {
-  hooks: { learning: SnapshotStore<LearningSnapshot> }
+  hooks: {
+    learning: SnapshotStore<LearningSnapshot>
+    sessions: ObservableSnapshot<SessionListState>
+  }
   activate: () => () => void
   loadOlder: () => Promise<void>
   refresh: () => Promise<void>
   feedback: (entry: ThreadEntryView, action: 'understood' | 'not-understood') => Promise<void>
   reopen: (entry: ThreadEntryView) => Promise<void>
+  openSource: (sourceSessionId: SessionId) => boolean
 }
 
 type LearningViewProps = ConvViewProps & InjectFace<LearningViewInjected> & PropsLocale<'explain'>
 
 /** Global learning thread rendered through one Session-scoped conversation view entry. */
 export function LearningView({
-  sessionId, useLearning, activate, loadOlder, refresh, feedback, reopen, t,
+  sessionId, useLearning, useSessions, activate, loadOlder, refresh, feedback, reopen, openSource, t,
 }: LearningViewProps) {
   useEffect(() => activate(), [activate])
   const snapshot = useLearning(value => value)
+  const sources = useSessions(value => value.byId)
   const active = useMemo(() => latestActiveExplanations(snapshot.entries), [snapshot.entries])
   const current = active.filter(entry => entry.sourceSessionId === sessionId)
   const other = active.filter(entry => entry.sourceSessionId !== sessionId)
@@ -43,8 +54,19 @@ export function LearningView({
             <div className="dsh-explain-status">
               {snapshot.phase === 'loading'
                 ? t('status.loading')
-                : snapshot.status?.enabled === false ? t('status.disabled') : null}
+                : snapshot.status === undefined ? null : t(`diagnostic.${diagnosticState(snapshot.status)}`)}
             </div>
+            {snapshot.status?.autoRequestsResumeAt !== undefined
+              && diagnosticState(snapshot.status) === 'budget-exhausted' && (
+              <div className="dsh-explain-status">
+                {t('status.budgetResumes')} {new Date(snapshot.status.autoRequestsResumeAt).toLocaleString()}
+              </div>
+            )}
+            {snapshot.status?.estimatedContextRatio !== undefined && (
+              <div className="dsh-explain-status">
+                {t('diagnostic.pressure')} {(snapshot.status.estimatedContextRatio * 100).toFixed(1)}%
+              </div>
+            )}
           </div>
           {snapshot.phase === 'error' && (
             <Button size="sm" variant="outline" onClick={() => { void refresh() }}>{t('action.retry')}</Button>
@@ -57,6 +79,12 @@ export function LearningView({
         {snapshot.status?.lastError !== undefined && (
           <div className="dsh-explain-error" role="alert">
             {snapshot.status.lastError.code}: {snapshot.status.lastError.message}
+          </div>
+        )}
+        {snapshot.navigationError !== undefined && (
+          <div className="dsh-explain-error" role="alert">
+            {snapshot.navigationError === 'SOURCE_UNAVAILABLE'
+              ? t('error.sourceUnavailable') : t('error.sourceOpenFailed')}
           </div>
         )}
 
@@ -87,6 +115,8 @@ export function LearningView({
                 pending={snapshot.pendingEntryIds.includes(entry.entryId)}
                 disabled={snapshot.status?.enabled !== true}
                 onFeedback={feedback}
+                sourceAvailable={entry.sourceSessionId !== undefined && sources[entry.sourceSessionId] !== undefined}
+                onOpenSource={openSource}
                 t={t}
               />
             ))}
@@ -104,6 +134,8 @@ export function LearningView({
                 pending={snapshot.pendingEntryIds.includes(entry.entryId)}
                 disabled={snapshot.status?.enabled !== true}
                 onFeedback={feedback}
+                sourceAvailable={entry.sourceSessionId !== undefined && sources[entry.sourceSessionId] !== undefined}
+                onOpenSource={openSource}
                 t={t}
               />
             ))}
@@ -125,6 +157,9 @@ export function LearningView({
                     pending={snapshot.pendingEntryIds.includes(entry.entryId)}
                     disabled={snapshot.status?.enabled !== true}
                     onReopen={reopen}
+                    currentSessionId={sessionId}
+                    sourceAvailable={entry.sourceSessionId !== undefined && sources[entry.sourceSessionId] !== undefined}
+                    onOpenSource={openSource}
                     t={t}
                   />
                 ))}
@@ -181,12 +216,16 @@ function ContextPanel({ snapshot, t }: { readonly snapshot: LearningSnapshot; re
   )
 }
 
-function ExplanationCard({ entry, current = false, pending, disabled, onFeedback, t }: {
+function ExplanationCard({
+  entry, current = false, pending, disabled, sourceAvailable, onFeedback, onOpenSource, t,
+}: {
   readonly entry: ThreadEntryView
   readonly current?: boolean
   readonly pending: boolean
   readonly disabled: boolean
+  readonly sourceAvailable: boolean
   readonly onFeedback: LearningViewInjected['feedback']
+  readonly onOpenSource: LearningViewInjected['openSource']
   readonly t: LearningViewProps['t']
 }) {
   if (entry.kind !== 'explanation') return null
@@ -214,6 +253,13 @@ function ExplanationCard({ entry, current = false, pending, disabled, onFeedback
           onClick={() => { void onFeedback(entry, 'not-understood') }}>
           {pending ? t('action.pending') : t('feedback.notUnderstood')}
         </Button>
+        <SourceNavigation
+          entry={entry}
+          current={current}
+          available={sourceAvailable}
+          onOpen={onOpenSource}
+          t={t}
+        />
       </div>
     </article>
   )
@@ -223,12 +269,17 @@ function Field({ title, text }: { readonly title: string; readonly text: string 
   return <div className="dsh-explain-field"><h4>{title}</h4><p>{text}</p></div>
 }
 
-function HistoryRow({ entry, canReopen, pending, disabled, onReopen, t }: {
+function HistoryRow({
+  entry, canReopen, pending, disabled, currentSessionId, sourceAvailable, onReopen, onOpenSource, t,
+}: {
   readonly entry: ThreadEntryView
   readonly canReopen: boolean
   readonly pending: boolean
   readonly disabled: boolean
+  readonly currentSessionId: SessionId
+  readonly sourceAvailable: boolean
   readonly onReopen: LearningViewInjected['reopen']
+  readonly onOpenSource: LearningViewInjected['openSource']
   readonly t: LearningViewProps['t']
 }) {
   let title = entry.topicTitle
@@ -244,14 +295,40 @@ function HistoryRow({ entry, canReopen, pending, disabled, onReopen, t }: {
         <div className="dsh-explain-history-title">{title}</div>
         <EntryMeta entry={entry} t={t} />
       </div>
-      {entry.topicState === 'mastered' && <span className="dsh-explain-badge">{t('entry.mastered')}</span>}
-      {canReopen && (
-        <Button size="sm" variant="outline" disabled={disabled || pending}
-          onClick={() => { void onReopen(entry) }}>
-          {pending ? t('action.pending') : t('action.reopen')}
-        </Button>
-      )}
+      <div className="dsh-explain-history-actions">
+        {entry.topicState === 'mastered' && <span className="dsh-explain-badge">{t('entry.mastered')}</span>}
+        {canReopen && (
+          <Button size="sm" variant="outline" disabled={disabled || pending}
+            onClick={() => { void onReopen(entry) }}>
+            {pending ? t('action.pending') : t('action.reopen')}
+          </Button>
+        )}
+        <SourceNavigation
+          entry={entry}
+          current={entry.sourceSessionId === currentSessionId}
+          available={sourceAvailable}
+          onOpen={onOpenSource}
+          t={t}
+        />
+      </div>
     </div>
+  )
+}
+
+function SourceNavigation({ entry, current, available, onOpen, t }: {
+  readonly entry: ThreadEntryView
+  readonly current: boolean
+  readonly available: boolean
+  readonly onOpen: LearningViewInjected['openSource']
+  readonly t: LearningViewProps['t']
+}) {
+  const sourceSessionId = entry.sourceSessionId
+  if (sourceSessionId === undefined || current) return null
+  if (!available) return <span className="dsh-explain-source-unavailable">{t('entry.sourceUnavailable')}</span>
+  return (
+    <Button size="sm" variant="outline" onClick={() => { onOpen(sourceSessionId) }}>
+      {t('action.openSource')}
+    </Button>
   )
 }
 

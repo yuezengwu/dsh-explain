@@ -1,4 +1,4 @@
-# dsh-explain P0 验收矩阵
+# dsh-explain 验收矩阵
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。真实模型与浏览器流程记录在私有仓库 [PR #2](https://github.com/dsh-external/dsh-explain/pull/2)；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
@@ -35,3 +35,18 @@ pnpm run build
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
 git diff --check
 ```
+
+## M4 内测可控性
+
+| # | 标准 | 自动化证据 |
+|---:|---|---|
+| 1 | 无文件配置启动 | `plugin.spec.ts` 从空 settings namespace 读取 revision 0，并通过一次 Remote 写入启用有效模型；assembled Web 从空 user section 保存设置 revision 1 |
+| 2 | 无效路由不启用 | 既有 `setEnabled` route 测试与 `plugin.spec.ts` 的模型容量校验路径；失败结果不改变 settings revision |
+| 3 | 设置并发收敛 | `plugin.spec.ts` 验证 stale expected revision 返回 `SETTINGS_STALE`，胜者保持；`client.spec.tsx` 验证冲突后刷新到权威 revision |
+| 4 | 关闭保持历史 | P0 disabled 单元测试；assembled Web 在 off 状态展示两条活跃讲解且反馈禁用 |
+| 5 | 额度透明 | 设置页 ARIA snapshot 显示已用/上限、恢复时间与压力；Scheduler 预算门禁继续覆盖重讲豁免 |
+| 6 | 来源可达 | assembled Web 从学习卡调用公开 Session 服务，实际选中另一个持久来源 Session，再看到同一全局学习线程 |
+| 7 | 来源删除降级 | assembled Web 同时预置一个不存在于 inventory 的来源，讲解保留并显示“来源会话不可用”，浏览器无未处理错误 |
+| 8 | 宿主生命周期 | 两个 UI 入口均通过 `slots.inject()` 注册；`client.spec.tsx` 验证设置页/学习页共享引用计数式 store 和单一 watch 生命周期 |
+| 9 | 主工作隔离 | M4 不新增 Session 事件、projection 或 prompt 注入；P0 `deriveMessages()` 不变测试继续通过 |
+| 10 | 测试伴随 | `pnpm run typecheck`、48 个单元/集成测试、3 个 keyless assembled Web 场景、本地目录 link/pack 门禁与 PR 内真实 rc.2 模型 GIF |

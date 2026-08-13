@@ -47,6 +47,67 @@ export type SetEnabledResult =
       }
     }
 
+/** UI-editable settings and their native DSH settings revision. */
+export interface ExplainConfigurationView {
+  readonly revision: number
+  readonly enabled: boolean
+  readonly provider?: string
+  readonly model?: string
+  readonly maxAutoRequestsPerDay: number
+}
+
+/** One advisory model entry returned by a registered provider. */
+export interface ExplainModelOptionView {
+  readonly id: string
+  readonly name: string
+}
+
+/** One provider and its advisory model catalog. */
+export interface ExplainProviderOptionView {
+  readonly id: string
+  readonly name: string
+  readonly models: readonly ExplainModelOptionView[]
+  readonly error?: { readonly code: 'MODEL_CATALOG_UNAVAILABLE'; readonly message: string }
+}
+
+/** Current model choices; catalog membership never authorizes a route. */
+export interface ExplainModelCatalogView {
+  readonly providers: readonly ExplainProviderOptionView[]
+}
+
+/** Atomic editable-settings update based on one native settings revision. */
+export interface UpdateConfigurationRequest {
+  readonly expectedRevision: number
+  readonly enabled: boolean
+  readonly provider?: string
+  readonly model?: string
+  readonly maxAutoRequestsPerDay: number
+}
+
+/** Stable configuration failure returned without a partial settings write. */
+export interface UpdateConfigurationFailure {
+  readonly code:
+    | 'SETTINGS_STALE'
+    | 'INVALID_SETTINGS'
+    | 'MODEL_ROUTE_REQUIRED'
+    | 'MODEL_CONTEXT_REQUIRED'
+    | 'RUNTIME_FAILED'
+  readonly message: string
+}
+
+/** Configuration update result with the authoritative current revision. */
+export type UpdateConfigurationResult =
+  | {
+      readonly ok: true
+      readonly configuration: ExplainConfigurationView
+      readonly status: ExplainStatusView
+    }
+  | {
+      readonly ok: false
+      readonly error: UpdateConfigurationFailure
+      readonly configuration: ExplainConfigurationView
+    }
+
 /** Sanitized explanation payload visible to the browser. */
 export interface ExplanationPayloadView {
   readonly title: string
