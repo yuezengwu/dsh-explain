@@ -1,6 +1,6 @@
 # dsh-explain — DSH 学习模式插件
 
-> ✅ **状态：P0 已实现并通过 M3 发布门禁；当前适配 DSH 0.0.1-rc.2。**
+> ✅ **状态：M4 内测可控性候选已实现并通过自动化门禁；当前适配 DSH 0.0.1-rc.2。**
 > 产品需求见 [docs/PRD.md](docs/PRD.md)；技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 **一句话定位**：把多个 DSH 工作会话中值得学习的内容汇入用户唯一的全局学习线程，为每个来源会话保留至多一个活跃讲解，并用全局学习上下文持续适配用户的知识水平和讲解偏好。
@@ -16,8 +16,10 @@
 - 主模型不知道 explain 存在；explain 不写主 Session 日志、不注入主模型上下文、不阻塞主 turn。
 - 学习历史、来源活跃状态、压缩检查点和 `ExplainContext` 持久化到 `$DSH_HOME/dsh-explain/v1/thread.sqlite`；开关与模型设置走 `$DSH_HOME/settings.yaml`。
 - 首个讲解 entry 保存最多 2,000 字符的受限来源摘要供后续重讲；来源 Session 删除不影响重讲，摘要不向学习视图返回。
-- P0 的唯一交互界面是 DSH 第一方 `conversation.view` 槽位中的「学习」Tab；不使用 `conversation.chat.turnTail`，行内讲解移出 P0。
+- 学习线程使用 DSH 第一方 `conversation.view` 槽位中的「学习」Tab；普通配置与运行诊断使用第一方 `settings.section`，不引入外部 UI 宿主。
 - 「学习」是 Session-scoped 视图入口，但业务数据来自同一个全局 client store 和 typed Remote；不同工作 Session 看到同一条学习线程。
+- 设置页和学习视图复用同一个 browser store；用户可在设置中选择辅助模型、启用学习模式、调整滚动 24 小时自主额度，并查看路由、额度恢复、上下文压力和最近压缩。
+- 讲解来源仍在当前 Session inventory 时可直接打开；来源被删除后历史保持可读并显示不可用。
 - P0 不自动切换视图。空白 Session 的 Hero 阶段不显示视图 Tab；进入学习视图后，当前工作 Session 的 composer 仍然保留。
 - P0 没有外部 UI 依赖，不携带或要求安装 better-sidebar。
 
@@ -31,18 +33,19 @@
 
 - [x] 需求查重：产品目标无直接重复，相关插件可提供局部实现参考。
 - [x] PRD P0 定稿：单一学习线程、按来源活跃讲解、自主调用预算、双触发压缩、全局 ExplainContext 和可自动验证的验收标准。
-- [x] 技术架构 v6：本地 SQLite、实体级并发、持久来源摘要、全局单飞与调用预算、压缩检查点、typed Remote 和 `conversation.view` 学习界面。
+- [x] 技术架构 v7：保留 v6 学习与压缩语义，增加原生 settings revision/CAS、模型目录、来源导航和诊断状态。
 - [x] UI 路径核验：沿用第一方 `ui-trajectory` 的 `ctx.slots.inject('conversation.view', ...)` 注册方式，无外部 UI 依赖。
 - [x] M1 基础设施：独立插件构建、本地 SQLite schema、实体级 CAS、分页/长轮询和自动生成的 typed Remote。
 - [x] M2 主实现：来源观察、辅助模型单飞调度、持久预算、重讲、双触发压缩、ExplainContext 与 `conversation.view` 学习界面。
 - [x] M2 真实 DSH Web/模型流程验收与 GIF。
 - [x] M3 发布门禁：P0 验收矩阵、无密钥 assembled Web snapshot、安装与组合 smoke。
+- [x] M4 内测可控性：无 YAML 设置页、并发设置收敛、来源跳转/缺失降级、共享诊断 store 和扩展 assembled Web snapshot。
 
-M1 建立持久层和 Host/Client RPC 基础；M2 把观察、模型、反馈、压缩与学习界面接到同一条真实运行链，并已通过本地 DSH Web 真实模型流程。P0 发布证据见 [验收矩阵](docs/ACCEPTANCE.md)。
+M1 建立持久层和 Host/Client RPC 基础；M2 完成学习闭环；M3 建立 P0 发布门禁；M4 让内测用户无需编辑 YAML 即可配置和诊断，并能从讲解返回仍存在的来源会话。自动化证据见 [验收矩阵](docs/ACCEPTANCE.md)。
 
-## 下一迭代
+## M4 范围
 
-M4 聚焦内测可控性：使用 DSH 第一方设置槽位提供学习模式配置与诊断，通过公开 Session 服务从讲解返回来源会话，并补齐相应的 keyless Web 验收和 rc.2 真实模型演示。完整范围、非目标、实施顺序与验收标准见 [M4 迭代计划](docs/NEXT.md)。
+M4 使用 DSH 第一方设置槽位提供学习模式配置与诊断，通过公开 Session 服务从讲解返回来源会话，并补齐相应的 keyless Web 验收和 rc.2 真实模型演示。完整范围、非目标、设计审查与验收标准见 [M4 迭代记录](docs/NEXT.md)。
 
 ## 本地开发
 
@@ -59,7 +62,7 @@ pnpm run typecheck
 pnpm run build
 ```
 
-`test:web` 使用全新临时 `$DSH_HOME`、持久 Session fixture 和预置 Explain SQLite 运行无密钥的真实 DSH Web 组合，并比对学习视图 ARIA golden；更新有意的界面输出时运行 `DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web:refresh` 并审查 snapshot diff。
+`test:web` 使用全新临时 `$DSH_HOME`、持久 Session fixture 和预置 Explain SQLite 运行无密钥的真实 DSH Web 组合，并比对学习视图与设置页 ARIA golden；它还验证 native settings revision 写入、可用来源跳转和缺失来源降级。更新有意的界面输出时运行 `DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web:refresh` 并审查 snapshot diff。
 
 开发验收使用本地目录安装，不经过 npm：
 

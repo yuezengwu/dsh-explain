@@ -1,11 +1,11 @@
 - main:
   - heading "全局学习线程" [level=1]
-  - text: 学习模式当前已关闭；历史仍可阅读。
-  - strong: "1"
+  - text: 学习模式已关闭
+  - strong: "2"
   - text: 学习中
   - strong: "0"
   - text: 已掌握
-  - strong: "1"
+  - strong: "2"
   - text: 待反馈
   - strong: 0/50
   - text: 自主额度
@@ -18,7 +18,20 @@
   - text: 优先使用一个具体代码示例。
   - heading "当前会话" [level=2]
   - text: 当前会话暂无讲解
-  - heading "其他会话的活跃讲解 1" [level=2]
+  - heading "其他会话的活跃讲解 2" [level=2]
+  - article:
+    - heading "用 never 完成穷尽检查" [level=3]
+    - text: 来源 missing-… 回合 2
+    - time: {{clock}}
+    - heading "是什么" [level=4]
+    - paragraph: 所有联合成员处理后，剩余值应当收窄为 never。
+    - heading "为什么" [level=4]
+    - paragraph: 新增联合成员却没有补充分支时，编译器会立即报错。
+    - heading "常见坑" [level=4]
+    - paragraph: default 分支直接吞掉值会掩盖遗漏成员。
+    - button "✓ 懂了" [disabled]
+    - button "✗ 没懂" [disabled]
+    - text: 来源会话不可用
   - article:
     - heading "用判别字段安全缩小联合类型" [level=3]
     - text: 来源 fixture-… 回合 1
@@ -31,5 +44,6 @@
     - paragraph: 把标记写成宽泛的 string 会失去自动收窄。
     - button "✓ 懂了" [disabled]
     - button "✗ 没懂" [disabled]
+    - button "打开来源会话"
   - heading "学习历史" [level=2]
   - text: 还没有讲解。完成工作回合后，explain 会在值得讲解时记录到这里。

@@ -4,6 +4,8 @@ import type { ExplainRuntime } from './runtime.ts'
 import type { ExplainStore } from './store.ts'
 import type {
   ExplainContextView,
+  ExplainConfigurationView,
+  ExplainModelCatalogView,
   ExplainStatusView,
   FeedbackMutationResult,
   FeedbackRequest,
@@ -13,6 +15,8 @@ import type {
   SetEnabledResult,
   ThreadPageRequest,
   ThreadPageResult,
+  UpdateConfigurationRequest,
+  UpdateConfigurationResult,
   WatchRequest,
   WatchResult,
 } from './types.ts'
@@ -62,6 +66,28 @@ export class ExplainGateway extends TypertRemoteService {
   async setEnabled(request: SetEnabledRequest): Promise<SetEnabledResult> {
     const error = await this.runtime.setEnabled(request.enabled)
     return error === undefined ? { ok: true, status: this.status() } : { ok: false, error }
+  }
+
+  /** Read the settings-page fields and native settings revision. */
+  @Remote
+  configuration(): ExplainConfigurationView {
+    return this.runtime.configuration()
+  }
+
+  /** Read current providers and advisory model choices. */
+  @Remote
+  modelCatalog(): Promise<ExplainModelCatalogView> {
+    return this.runtime.modelCatalog()
+  }
+
+  /** Merge settings-page fields with native settings revision CAS. */
+  @Remote
+  async updateConfiguration(request: UpdateConfigurationRequest): Promise<UpdateConfigurationResult> {
+    const error = await this.runtime.updateConfiguration(request)
+    const configuration = this.runtime.configuration()
+    return error === undefined
+      ? { ok: true, configuration, status: this.status() }
+      : { ok: false, error, configuration }
   }
 
   /** Read one backward page from the append-only learning thread. */

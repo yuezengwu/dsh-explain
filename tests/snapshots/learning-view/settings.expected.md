@@ -1,0 +1,34 @@
+- heading "学习模式" [level=2]
+- paragraph: 配置辅助模型、全局开关和自主讲解额度。学习历史始终保存在本机。
+- button "刷新"
+- checkbox "启用学习模式 开启后只观察未来完成的顶层工作回合，不补扫历史。"
+- strong: 启用学习模式
+- text: 开启后只观察未来完成的顶层工作回合，不补扫历史。 Provider
+- combobox "Provider":
+  - option "选择 provider" [selected]
+  - option "DeepSeek (deepseek-official)"
+- text: 模型
+- combobox "模型 建议列表不限制路由；未列出的 id 会在启用时校验容量。"
+- text: 建议列表不限制路由；未列出的 id 会在启用时校验容量。 每 24 小时自主请求上限
+- spinbutton "每 24 小时自主请求上限 失败与重试计入额度；用户显式重讲和压缩不计入。": "12"
+- text: 失败与重试计入额度；用户显式重讲和压缩不计入。
+- button "保存设置"
+- text: 设置 revision 1
+- heading "运行诊断" [level=3]
+- text: 学习模式已关闭
+- term: 辅助模型路由
+- definition: 不可用
+- term: 自主额度
+- definition: 0/12
+- term: 最早恢复时间
+- definition: 尚未发生
+- term: 当前上下文压力
+- definition: 不可用
+- term: 活跃讲解
+- definition: "2"
+- term: 等待候选
+- definition: "0"
+- term: 最近 explain 操作
+- definition: 尚未发生
+- term: 最近压缩
+- definition: {{clock}}

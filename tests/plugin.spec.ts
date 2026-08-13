@@ -4,9 +4,14 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import CommandService from '@deepseek-ai/dsh-commands'
-import LlmService from '@deepseek-ai/dsh-llm'
+import LlmService, {
+  type GenerateOptions,
+  LlmAdapter,
+  type LlmResolvedModelInfo,
+  type StreamChunk,
+} from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
-import Settings, { type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import Settings, { settingsNamespace, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import TokenMeterService from '@deepseek-ai/dsh-token-meter'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { Config, apply, inject, name } from '../src/index.ts'
@@ -22,6 +27,25 @@ class MemorySettings extends Settings {
   protected override persist(namespace: SettingsNamespace, section: Record<string, unknown>): Promise<void> {
     this.data[namespace] = structuredClone(section)
     return Promise.resolve()
+  }
+}
+
+class CatalogAdapter extends LlmAdapter {
+  override listModels(provider: string) {
+    return Promise.resolve([{ provider, id: 'learning-model', name: 'Learning Model' }])
+  }
+
+  override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
+    return Promise.resolve({
+      provider,
+      id: model,
+      name: model,
+      context: { contextWindow: 128_000 },
+    })
+  }
+
+  override async * stream(_options: GenerateOptions): AsyncIterable<StreamChunk> {
+    throw new Error('not used by configuration tests')
   }
 }
 
@@ -51,6 +75,9 @@ describe('dsh-explain plugin lifecycle', () => {
       expect(remoteMethods(ctx.explain)).toEqual([
         { method: 'status', invocation: { kind: 'direct' } },
         { method: 'setEnabled', invocation: { kind: 'direct' } },
+        { method: 'configuration', invocation: { kind: 'direct' } },
+        { method: 'modelCatalog', invocation: { kind: 'direct' } },
+        { method: 'updateConfiguration', invocation: { kind: 'direct' } },
         { method: 'threadPage', invocation: { kind: 'direct' } },
         { method: 'context', invocation: { kind: 'direct' } },
         { method: 'watch', invocation: { kind: 'direct' } },
@@ -68,6 +95,71 @@ describe('dsh-explain plugin lifecycle', () => {
         ok: false,
         error: { code: 'MODEL_ROUTE_REQUIRED' },
       })
+      expect(ctx.explain.configuration()).toEqual({
+        revision: 0,
+        enabled: false,
+        maxAutoRequestsPerDay: 50,
+      })
+      await expect(ctx.explain.updateConfiguration({
+        expectedRevision: 9,
+        enabled: false,
+        maxAutoRequestsPerDay: 10,
+      })).resolves.toMatchObject({
+        ok: false,
+        error: { code: 'SETTINGS_STALE' },
+        configuration: { revision: 0 },
+      })
+
+      ctx.llm.registerAdapter(['learning-provider'], new CatalogAdapter())
+      await expect(ctx.explain.modelCatalog()).resolves.toEqual({
+        providers: [{
+          id: 'learning-provider',
+          name: 'learning-provider',
+          models: [{ id: 'learning-model', name: 'Learning Model' }],
+        }],
+      })
+      await expect(ctx.explain.updateConfiguration({
+        expectedRevision: 0,
+        enabled: true,
+        provider: 'learning-provider',
+        model: 'learning-model',
+        maxAutoRequestsPerDay: 10,
+      })).resolves.toMatchObject({
+        ok: true,
+        configuration: {
+          revision: 1,
+          enabled: true,
+          provider: 'learning-provider',
+          model: 'learning-model',
+          maxAutoRequestsPerDay: 10,
+        },
+        status: { enabled: true, routeReady: true, contextWindow: 128_000 },
+      })
+      await expect(ctx.explain.updateConfiguration({
+        expectedRevision: 0,
+        enabled: false,
+        maxAutoRequestsPerDay: 20,
+      })).resolves.toMatchObject({ ok: false, error: { code: 'SETTINGS_STALE' } })
+
+      await ctx.settings.update(settingsNamespace('dsh-explain'), { timeoutMs: 9_000 })
+      expect(ctx.explain.configuration().revision).toBe(2)
+      await expect(ctx.explain.updateConfiguration({
+        expectedRevision: 2,
+        enabled: true,
+        provider: 'learning-provider',
+        model: 'learning-model',
+        maxAutoRequestsPerDay: 25,
+      })).resolves.toMatchObject({ ok: true, configuration: { revision: 3 } })
+      expect(ctx.settings.describe().find(descriptor => descriptor.ns === 'dsh-explain')?.user)
+        .toMatchObject({ timeoutMs: 9_000, maxAutoRequestsPerDay: 25 })
+      await expect(ctx.explain.updateConfiguration({
+        expectedRevision: 3,
+        enabled: true,
+        provider: 'learning-provider',
+        model: 'learning-model',
+        maxAutoRequestsPerDay: 0,
+      })).resolves.toMatchObject({ ok: false, error: { code: 'INVALID_SETTINGS' } })
+      expect(ctx.explain.configuration()).toMatchObject({ revision: 3, maxAutoRequestsPerDay: 25 })
     } finally {
       await fiber.dispose()
       await commands.dispose()

@@ -5,19 +5,24 @@ import explainRemote from 'dsh-explain/remote'
 import type {} from '@deepseek-ai/dsh-api-gateway/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from 'dsh-explain/remote'
 import { LearningView, type LearningViewInjected } from './LearningView.tsx'
+import {
+  LearningSettingsSection,
+  type LearningSettingsInjected,
+} from './LearningSettingsSection.tsx'
 import { GlobalLearningStore } from './learning-store.ts'
 import { en, NS, zh } from './locales.ts'
 import { LEARNING_VIEW_CSS } from './styles.ts'
 
 /** Required services: typed Remote, locale dictionaries, and conversation slots. */
-export const inject = ['remote', 'locale', 'slots']
+export const inject = ['remote', 'locale', 'slots', 'sessions']
 
 /** Mount the generated codecs and one Session-scoped view over the global store. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const unmountRemote = await ctx.remote.$mount(explainRemote)
-  const feature = ctx.inject(['remote.explain', 'locale', 'slots'], (scope) => {
+  const feature = ctx.inject(['remote.explain', 'locale', 'slots', 'sessions'], (scope) => {
     const learning = new GlobalLearningStore(scope)
     scope.effect(() => () => { learning.dispose() }, 'dsh-explain: learning store')
     scope.effect(() => scope.locale.register(NS, { zh, en }), 'dsh-explain: dictionaries')
@@ -36,14 +41,28 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       locale: NS,
       label: () => t('view.learning'),
       inject: (_sessionId: SessionId): LearningViewInjected => ({
-        hooks: { learning: learning.store },
+        hooks: { learning: learning.store, sessions: scope.sessions.list },
         activate: () => learning.mount(),
         loadOlder: () => learning.loadOlder(),
         refresh: () => learning.refresh(),
         feedback: (entry, action) => learning.feedback(entry, action),
         reopen: entry => learning.reopen(entry),
+        openSource: sourceSessionId => learning.openSource(sourceSessionId),
       }),
     }, LearningView))
+    scope.slots.inject('settings.section', () => scope.slots.register({
+      name: 'settings.section',
+      id: 'dsh-explain:learning',
+      order: 15,
+      locale: NS,
+      label: () => t('settings.nav'),
+      inject: (): LearningSettingsInjected => ({
+        hooks: { learning: learning.store },
+        activate: () => learning.mountSettings(),
+        refresh: () => learning.refresh(),
+        updateConfiguration: request => learning.updateConfiguration(request),
+      }),
+    }, LearningSettingsSection))
   })
   try {
     await feature.await()
