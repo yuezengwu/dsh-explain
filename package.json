@@ -2,7 +2,15 @@
   "name": "dsh-explain",
   "version": "0.1.0",
   "private": true,
-  "description": "Private DSH learning-mode plugin with a global local-first learning thread.",
+  "description": "DSH learning-mode plugin with a global local-first learning thread.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuezengwu/dsh-explain.git"
+  },
+  "homepage": "https://github.com/yuezengwu/dsh-explain#readme",
+  "bugs": {
+    "url": "https://github.com/yuezengwu/dsh-explain/issues"
+  },
   "type": "module",
   "main": "./lib/index.js",
   "types": "./lib/types/index.d.ts",
