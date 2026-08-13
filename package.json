@@ -115,6 +115,6 @@
   "engines": {
     "node": "^22.19 || >=24"
   },
-  "license": "BSD-3-Clause",
+  "license": "MIT",
   "packageManager": "pnpm@11.7.0"
 }
