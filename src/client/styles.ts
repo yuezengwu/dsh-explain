@@ -1,6 +1,6 @@
 /** Browser stylesheet injected and removed with the client plugin fiber. */
 export const LEARNING_VIEW_CSS = `
-.dsh-explain-root{box-sizing:border-box;height:100%;min-height:0;width:100%;overflow:auto;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);padding:24px 24px calc(var(--dsh-composer-height,152px) + 32px)}
+.dsh-explain-root{box-sizing:border-box;height:100%;min-height:0;width:100%;overflow:auto;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base);padding:24px 24px calc(var(--dsh-composer-height,152px) + 32px)}
 .dsh-explain-shell{width:min(900px,100%);margin:0 auto;display:flex;flex-direction:column;gap:20px}
 .dsh-explain-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .dsh-explain-heading h1{font:var(--dsw-font-title-2);margin:0}

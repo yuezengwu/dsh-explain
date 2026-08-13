@@ -119,6 +119,7 @@ describe('conversation learning view', () => {
     } as unknown as ComponentProps<typeof LearningView>
 
     const mounted = render(React.createElement(LearningView, props))
+    expect(mounted.container.querySelector('[data-conversation-composer-overlay]')).toBeTruthy()
     expect(screen.getByRole('heading', { name: '全局学习线程' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Current concept' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Other concept' })).toBeTruthy()

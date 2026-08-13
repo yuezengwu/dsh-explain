@@ -46,7 +46,11 @@ export function LearningView({
   }
 
   return (
-    <div className="dsh-explain-root" data-testid="dsh-explain-learning-view">
+    <div
+      className="dsh-explain-root"
+      data-conversation-composer-overlay=""
+      data-testid="dsh-explain-learning-view"
+    >
       <main className="dsh-explain-shell">
         <header className="dsh-explain-heading">
           <div>
