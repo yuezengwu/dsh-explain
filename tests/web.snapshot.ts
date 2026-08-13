@@ -255,6 +255,15 @@ async function compareOrRefresh(actual: string, golden = UI_GOLDEN): Promise<voi
   expect(payload).toBe(await readFile(golden, 'utf8'))
 }
 
+async function openWorkspaceSession(page: Page, workspaceLabel: string): Promise<void> {
+  const workspace = page.getByRole('treeitem', { name: workspaceLabel, exact: true })
+  await workspace.waitFor({ timeout: 15_000 })
+  if (await workspace.getAttribute('aria-expanded') !== 'true') await workspace.click()
+  const session = page.locator('[role="treeitem"][aria-selected="false"]').filter({ hasText: workspaceLabel })
+  await session.waitFor({ timeout: 15_000 })
+  await session.click()
+}
+
 describe('keyless assembled DSH Web learning view', () => {
   let root: string
   let dshHome: string
@@ -301,14 +310,16 @@ describe('keyless assembled DSH Web learning view', () => {
     await continueButton.waitFor({ timeout: 15_000 })
     await continueButton.click()
     await page.locator('[class*="onboardingStage"]').waitFor({ state: 'detached', timeout: 15_000 })
+    const configureLater = page.getByRole('button', { name: '稍后配置', exact: true })
+    await configureLater.waitFor({ timeout: 15_000 })
+    await configureLater.click()
+    await configureLater.waitFor({ state: 'detached', timeout: 15_000 })
     expect(await page.getByRole('tab', { name: '学习' }).count()).toBe(0)
-    const session = page.getByRole('treeitem', { name: /workspace-primary 刚刚/ })
     try {
-      await session.waitFor({ timeout: 15_000 })
+      await openWorkspaceSession(page, 'workspace-primary')
     } catch (error) {
       throw new Error(`seeded Session did not appear\n${await page.locator('body').ariaSnapshot()}`, { cause: error })
     }
-    await session.click()
     const learning = page.getByRole('tab', { name: '学习' })
     await learning.waitFor({ timeout: 15_000 })
     expect(await learning.count()).toBe(1)
@@ -376,7 +387,9 @@ describe('keyless assembled DSH Web learning view', () => {
 
     const view = page.getByTestId('dsh-explain-learning-view')
     await view.getByRole('button', { name: '打开来源会话' }).click()
-    await page.getByRole('treeitem', { name: /workspace-source 刚刚/, selected: true }).waitFor({ timeout: 15_000 })
+    await page.locator('[role="treeitem"][aria-selected="true"]')
+      .filter({ hasText: 'workspace-source' })
+      .waitFor({ timeout: 15_000 })
     await page.getByRole('tab', { name: '学习' }).click()
     await page.getByRole('heading', { name: '用判别字段安全缩小联合类型' }).waitFor({ timeout: 15_000 })
     expect(await page.getByText('来源会话不可用').count()).toBeGreaterThan(0)

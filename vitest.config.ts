@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
 const require = createRequire(import.meta.url)
+const testingLibraryRequire = createRequire(require.resolve('@testing-library/react/package.json'))
 
 export default defineConfig({
   resolve: {
@@ -17,9 +18,9 @@ export default defineConfig({
         find: /^@deepseek-ai\/dsh-client-runtime\/client$/,
         replacement: fileURLToPath(new URL('./tests/client-runtime-stub.ts', import.meta.url)),
       },
-      { find: /^react$/, replacement: require.resolve('react') },
-      { find: /^react\/jsx-runtime$/, replacement: require.resolve('react/jsx-runtime') },
-      { find: /^react\/jsx-dev-runtime$/, replacement: require.resolve('react/jsx-dev-runtime') },
+      { find: /^react$/, replacement: testingLibraryRequire.resolve('react') },
+      { find: /^react\/jsx-runtime$/, replacement: testingLibraryRequire.resolve('react/jsx-runtime') },
+      { find: /^react\/jsx-dev-runtime$/, replacement: testingLibraryRequire.resolve('react/jsx-dev-runtime') },
     ],
   },
   test: {

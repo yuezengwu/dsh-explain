@@ -16,7 +16,9 @@ try {
   cpSync(join(repository, 'src'), join(packageRoot, 'src'), { recursive: true })
   rmSync(join(packageRoot, 'src', 'client'), { recursive: true, force: true })
   mkdirSync(protocolRoot, { recursive: true })
-  cpSync(join(dshSource, 'src'), join(protocolRoot, 'src'), { recursive: true })
+  mkdirSync(join(protocolRoot, 'src'), { recursive: true })
+  cpSync(join(dshSource, 'lib', 'types', 'index.d.ts'), join(protocolRoot, 'src', 'index.ts'))
+  cpSync(join(dshSource, 'lib', 'types', 'types.d.ts'), join(protocolRoot, 'src', 'types.ts'))
   const protocolManifest = JSON.parse(readFileSync(join(dshSource, 'package.json'), 'utf8'))
   protocolManifest.exports = { '.': './src/index.ts' }
   writeFileSync(join(protocolRoot, 'package.json'), `${JSON.stringify(protocolManifest, null, 2)}\n`)

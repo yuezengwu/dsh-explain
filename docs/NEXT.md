@@ -182,7 +182,7 @@ M4 只在 UI 中开放启用、模型路由和自主预算。超时、重试、�
 
 - 在私有 hub 的 `catalog.source.json` 登记插件分类和本地目录安装方式。
 - 更新 keyless assembled Web snapshot，覆盖设置页、来源跳转和来源缺失降级。
-- 使用当前 DSH rc.2 和真实模型重新录制完整学习循环 GIF；记录插件提交、DSH 提交和素材哈希。
+- 使用当前 DSH 0.1.0-rc.6 和真实模型重新录制完整学习循环 GIF；记录插件提交、DSH 提交和素材哈希。
 
 ## 非目标
 
@@ -244,7 +244,7 @@ Host Remote 增加三个方法：`configuration()` 返回当前 UI 可编辑字�
 7. **来源删除降级**：删除来源 Session 后讲解、反馈和重讲历史继续可读，导航动作变为不可用说明且没有浏览器错误。
 8. **宿主生命周期**：`settings.section` 与 Session 服务晚注册、collapse 和 redeclaration 时，贡献正确建立、移除和恢复，无重复注册或悬挂订阅。
 9. **主工作隔离**：设置、诊断和导航不改变主 Session 日志、`deriveMessages()` 或主 Agent 请求。
-10. **测试伴随**：相关单元/集成测试、keyless assembled Web snapshot、真实 rc.2 模型流程和 GIF 在同一变更中通过并可追溯。
+10. **测试伴随**：相关单元/集成测试、keyless assembled Web snapshot、真实 DSH 0.1.0-rc.6 模型流程和 GIF 在同一变更中通过并可追溯。
 
 ## M4 后的候选顺序
 

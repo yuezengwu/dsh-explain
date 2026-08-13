@@ -468,7 +468,7 @@ interface FeedbackRequest {
 | `explain.modelCatalog()` | 当前 provider 与建议模型目录；目录只提供选择建议 |
 | `explain.updateConfiguration(request)` | expected-revision CAS 合并 UI 四字段；开启或切换已启用路由前验证精确容量 |
 
-Remote 走 DSH `TypertRemoteService` 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。DSH rc.2 的生成客户端把传输结果封装为 `RemoteResult<T>`；browser store 先解封传输结果，再处理方法自身的业务结果，传输失败进入现有可见错误状态。
+Remote 走 DSH `TypertRemoteService` 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。DSH 0.1.0-rc.6 的生成客户端把传输结果封装为 `RemoteResult<T>`；browser store 先解封传输结果，再处理方法自身的业务结果，传输失败进入现有可见错误状态。
 
 browser 的插件级 `learning-store`：
 
@@ -637,7 +637,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 | M1 技术原型 | SQLite store、按来源活跃 schema、typed Remote 与本地目录安装骨架；不注册用户可见视图 | 私有数据库权限、实体 CAS、分页/长轮询、Host/Client 构建和 DSH Web 加载可测 |
 | M2 P0 功能 | Observer、SourceCapsule、Scheduler、真实辅助模型、ExplainContext、双触发压缩、Topic 状态机 | PRD 行为与失败路径全部实现 |
 | M3 发布门禁 | 单元/集成、keyless snapshot、真实流程 GIF、安装与组合 smoke | 所有 P0 验收标准通过后才标记可发布 |
-| M4 内测可控性 | 设置 revision/CAS、模型目录、来源导航、诊断状态和 rc.2 产品证据 | 用户无需编辑 YAML 即可配置启用，状态和来源路径可解释，M4 验收矩阵全部通过 |
+| M4 内测可控性 | 设置 revision/CAS、模型目录、来源导航、诊断状态和产品证据 | 用户无需编辑 YAML 即可配置启用，状态和来源路径可解释，M4 验收矩阵全部通过 |
 | M5 主动学习命令 | command/composer 入口、manual 调度、稳定失败、来源标识和产品证据 | 用户可显式生成一条不占自主额度的讲解，主 Agent 历史不变 |
 | M6 P1 可选集成 | selection/suggested Host 协议、命令目录发现、可编辑草稿和 Advisor 显式选择路径 | 可选插件不读私有状态、不自动提交、不增加后台调用，四插件组合可验收 |
 

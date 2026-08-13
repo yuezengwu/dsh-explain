@@ -2,7 +2,7 @@
 
 # dsh-explain — Learning mode for DSH
 
-> ✅ **Status: the M6 Explain Host protocol is implemented and passes the automated gates. Optional consumer integrations are still in progress. The current minimum supported DSH version is `0.0.1-rc.2`.**
+> ✅ **Status: the M6 Explain Host protocol is implemented and passes the automated gates. Optional consumer integrations are still in progress. The current minimum supported DSH version is `0.1.0-rc.6`.**
 > See the [product requirements](docs/PRD.md) and [technical architecture](docs/ARCHITECTURE.md) for the full design. The detailed design documents are currently written in Chinese.
 
 `dsh-explain` turns useful material from multiple [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) work sessions into one private, local-first learning thread. It keeps at most one active explanation per source session and continuously adapts explanations to the user's knowledge, preferences, and learning progress.
@@ -53,12 +53,24 @@ M1 established persistence and Host/Client RPC. M2 completed the learning loop. 
 
 M6 integrates `dsh-selection-chat`, `dsh-suggested-replies`, and `dsh-advisor` through the public DSH command catalog and composer-write path. It does not read private data owned by those plugins or add automatic model calls. The scope, cross-repository order, design review, and acceptance criteria are recorded in [docs/NEXT.md](docs/NEXT.md).
 
-## Local development
+## Install
 
-The repository links DSH runtime packages from a built DSH source checkout instead of resolving them from npm. Prepare that checkout, install the public build dependencies, and create the local links:
+Explain currently targets DSH `0.1.0-rc.6`. DSH is a developer preview, so older private-preview package lines are not supported.
 
 ```sh
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm install
+npx @deepseek-ai/dsh@0.1.0-rc.6 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.0-rc.6 web
+```
+
+Git-hosted plugins build during installation. If pnpm asks for build approval, add the printed `dsh-explain` entry to the profile's `pnpm-workspace.yaml` and repeat the install command.
+
+## Local development
+
+The default build uses the public DSH `0.1.0-rc.6` API packages. A built DSH source checkout is required for assembled-Web acceptance; link it explicitly after installing dependencies:
+
+```sh
+pnpm install
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
 pnpm run test
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web
@@ -66,7 +78,7 @@ pnpm run typecheck
 pnpm run build
 ```
 
-The minimum development baseline is DSH `0.0.1-rc.2`. The plugin does not include the rc.1 TypeRT gateway compatibility layer.
+The source checkout must match the `0.1.0-rc.6` public API surface. Compatibility layers for earlier private-preview package lines are not retained.
 
 `test:web` starts a real keyless DSH Web composition with a fresh temporary `$DSH_HOME`, a durable session fixture, and a pre-seeded Explain database. It compares the Learning and Settings ARIA output against golden snapshots and verifies native settings revisions, source navigation, and the missing-source fallback. To intentionally update the UI output, run `DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web:refresh` and review the snapshot diff.
 
