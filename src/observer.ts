@@ -10,6 +10,23 @@ export function captureSourceCapsule(
   maxSourceChars: number,
 ): SourceCapsule | undefined {
   if (end.data.reason.kind !== 'completed') return undefined
+  return captureEligibleSourceCapsule(session, end, maxSourceChars)
+}
+
+function captureExplicitSourceCapsule(
+  session: Session,
+  end: SessionEvent<'turn/end'>,
+  maxSourceChars: number,
+): SourceCapsule | undefined {
+  if (end.data.reason.kind !== 'completed' && end.data.reason.kind !== 'max-tokens') return undefined
+  return captureEligibleSourceCapsule(session, end, maxSourceChars)
+}
+
+function captureEligibleSourceCapsule(
+  session: Session,
+  end: SessionEvent<'turn/end'>,
+  maxSourceChars: number,
+): SourceCapsule | undefined {
   const start = findTurnStart(session.events, end.data.turn, end.seq)
   if (start === undefined) return undefined
   const events = session.events.slice(start, end.seq + 1)
@@ -72,21 +89,60 @@ export function captureManualExplainTarget(
   request: string,
   maxSourceChars: number,
 ): ManualExplainTarget {
+  return buildManualTarget(session, request, maxSourceChars, 'manual', latestSourceCapsule(session, maxSourceChars))
+}
+
+/** Pair selected visible text with its newest reliable source coordinate. */
+export function captureSelectionExplainTarget(
+  session: Session,
+  selection: string,
+  maxSourceChars: number,
+): ManualExplainTarget {
+  const normalized = normalizeText(selection)
+  if (normalized === '') throw new Error('dsh-explain: selected explanation text must not be empty')
+  return buildManualTarget(
+    session,
+    normalized,
+    maxSourceChars,
+    'selection',
+    selectionSourceCapsule(session, normalized, maxSourceChars),
+  )
+}
+
+/** Pair one suggested-replies accessory with the exact settled turn that produced it. */
+export function captureSuggestedExplainTarget(
+  session: Session,
+  turn: number,
+  request: string,
+  maxSourceChars: number,
+): ManualExplainTarget | undefined {
+  const source = sourceCapsuleForTurn(session, turn, maxSourceChars)
+  if (source === undefined) return undefined
+  return buildManualTarget(session, request, maxSourceChars, 'suggested', source)
+}
+
+function buildManualTarget(
+  session: Session,
+  request: string,
+  maxSourceChars: number,
+  origin: ManualExplainTarget['origin'],
+  source: SourceCapsule | undefined,
+): ManualExplainTarget {
   const normalized = normalizeText(request)
   if (normalized === '') throw new Error('dsh-explain: manual explanation request must not be empty')
-  const recent = latestSourceCapsule(session, maxSourceChars)
   const bounded = boundCapsule(
     normalized,
-    recent?.assistantText ?? '',
-    recent?.tools ?? [],
+    source?.assistantText ?? '',
+    source?.tools ?? [],
     maxSourceChars,
   )
   return {
+    origin,
     request: bounded.userText,
     capsule: {
       sourceSessionId: session.id,
-      turn: recent?.turn ?? 0,
-      endSeq: session.events.at(-1)?.seq ?? 0,
+      turn: source?.turn ?? 0,
+      endSeq: source?.endSeq ?? session.events.at(-1)?.seq ?? 0,
       observedAt: Date.now(),
       ...(session.header.cwd === undefined ? {} : { cwdLabel: basename(session.header.cwd).slice(0, 160) }),
       userText: bounded.userText,
@@ -95,6 +151,63 @@ export function captureManualExplainTarget(
       truncated: bounded.truncated,
     },
   }
+}
+
+function selectionSourceCapsule(
+  session: Session,
+  selection: string,
+  maxSourceChars: number,
+): SourceCapsule | undefined {
+  const needle = searchableText(selection)
+  for (let index = session.events.length - 1; index >= 0; index -= 1) {
+    const event = session.events[index]
+    if (event === undefined || !searchableEventText(event).includes(needle)) continue
+    if (event.type === 'assistant/message' || event.type === 'tool/result') {
+      return sourceCapsuleForTurn(session, event.data.turn, maxSourceChars)
+    }
+    if (event.type === 'user/message') {
+      return previousSourceCapsule(session, index, maxSourceChars)
+    }
+  }
+  return undefined
+}
+
+function searchableEventText(event: SessionEvent): string {
+  if (event.type === 'user/message') return searchableText(textBlocks(event.data.content).join('\n'))
+  if (event.type === 'assistant/message') return searchableText(textBlocks(event.data.message.content).join('\n'))
+  if (event.type === 'tool/result') return searchableText(textBlocks(event.data.message.content).join('\n'))
+  return ''
+}
+
+function searchableText(text: string): string {
+  return text.replace(/\s+/gu, ' ').trim()
+}
+
+function previousSourceCapsule(
+  session: Session,
+  beforeIndex: number,
+  maxSourceChars: number,
+): SourceCapsule | undefined {
+  for (let index = beforeIndex - 1; index >= 0; index -= 1) {
+    const event = session.events[index]
+    if (event?.type !== 'turn/end') continue
+    const capsule = captureExplicitSourceCapsule(session, event, maxSourceChars)
+    if (capsule !== undefined) return capsule
+  }
+  return undefined
+}
+
+function sourceCapsuleForTurn(
+  session: Session,
+  turn: number,
+  maxSourceChars: number,
+): SourceCapsule | undefined {
+  for (let index = session.events.length - 1; index >= 0; index -= 1) {
+    const event = session.events[index]
+    if (event?.type !== 'turn/end' || event.data.turn !== turn) continue
+    return captureExplicitSourceCapsule(session, event, maxSourceChars)
+  }
+  return undefined
 }
 
 function latestSourceCapsule(session: Session, maxSourceChars: number): SourceCapsule | undefined {

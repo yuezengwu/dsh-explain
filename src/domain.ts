@@ -17,6 +17,7 @@ export interface SourceCapsule {
 
 /** One explicit learning request paired with bounded context from its source Session. */
 export interface ManualExplainTarget {
+  readonly origin: 'manual' | 'selection' | 'suggested'
   readonly request: string
   readonly capsule: SourceCapsule
 }
@@ -90,7 +91,7 @@ export interface RephraseTarget {
   readonly revision: number
   readonly feedbackOrdinal: number
   readonly sourceSummary: PersistedSourceSummary
-  readonly origin: 'autonomous' | 'manual'
+  readonly origin: 'autonomous' | ManualExplainTarget['origin']
   readonly revisions: readonly ({ readonly revision: number } & ExplanationContent)[]
 }
 

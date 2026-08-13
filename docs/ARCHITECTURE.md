@@ -1,7 +1,7 @@
-# dsh-explain 技术架构 v8
+# dsh-explain 技术架构 v9
 
-> 状态：**v8 M5 主动学习命令已实现并通过自动化门禁**（2026-08-13）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
-> v8 保留 v7 的数据与 UI 结构，增加复用 DSH command/composer 的显式学习请求、调度优先级、稳定失败和来源标识；SQLite schema 不变，explanation payload 增加向后兼容的可选 `origin`。
+> 状态：**v9 M6 Explain Host 协议已实现并通过自动化门禁**（2026-08-13）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
+> v9 保留 v8 的数据与 UI 结构，增加 `--selection` 与携带精确来源回合的 `--suggested` 封闭协议、来源定位和本地化标识；SQLite schema 不变，explanation payload 只扩展向后兼容的可选 `origin`。
 
 ## 架构结论
 
@@ -212,16 +212,22 @@ interface ExplanationEntryPayload {
   what: string
   why: string
   pitfall: string
-  origin?: 'manual'
+  origin?: 'manual' | 'selection' | 'suggested'
   sourceSummary?: PersistedSourceSummary
 }
 ```
 
-`sourceSummary` 在 revision 1 必需、在 revision 2 及以后禁止；后续 revision 通过 `ExplanationId` 读取首个 entry。自主讲解的 `userText` 来自当前来源 turn；主动讲解的 `userText` 来自命令请求。两者先规范化空白，再按首尾保留截断到固定 2,000 字符；`toolNames` 只保留调用名，按首次出现去重且最多 32 个；`cwdLabel` 沿用 capsule 中不含绝对路径的显示值，最长 160 字符。三项上限是持久化隐私格式约束，不接受 Config/settings 放宽。`truncated` 表示 userText 或工具名列表发生截断。摘要不包含 assistant 全文、工具参数、工具结果、reasoning、system prompt、绝对路径或其他 turn。来源 Session 删除后该读取路径仍然成立。`threadPage` 的客户端 DTO 必须剥离 `sourceSummary`，P0 不在 UI、Remote 或日志中回显它。Compactor 构造 closed Explanation 输入时也必须剥离该字段；它只用于活跃 Explanation 的 rephrase。`origin: 'manual'` 随后续 revision 保留并可向 UI 投影；旧 entry 没有该字段时解释为自主来源，不需要 schema 迁移。
+`sourceSummary` 在 revision 1 必需、在 revision 2 及以后禁止；后续 revision 通过 `ExplanationId` 读取首个 entry。自主讲解的 `userText` 来自当前来源 turn；显式讲解的 `userText` 来自命令请求。两者先规范化空白，再按首尾保留截断到固定 2,000 字符；`toolNames` 只保留调用名，按首次出现去重且最多 32 个；`cwdLabel` 沿用 capsule 中不含绝对路径的显示值，最长 160 字符。三项上限是持久化隐私格式约束，不接受 Config/settings 放宽。`truncated` 表示 userText 或工具名列表发生截断。摘要不包含 assistant 全文、工具参数、工具结果、reasoning、system prompt、绝对路径或其他 turn。来源 Session 删除后该读取路径仍然成立。`threadPage` 的客户端 DTO 必须剥离 `sourceSummary`，P0 不在 UI、Remote 或日志中回显它。Compactor 构造 closed Explanation 输入时也必须剥离该字段；它只用于活跃 Explanation 的 rephrase。三种非自主 `origin` 都随后续 revision 保留并可向 UI 投影；旧 entry 没有该字段时解释为自主来源，不需要 schema 迁移。
 
 ### 主动命令捕获
 
-`/explain <request>` 由 DSH command runtime 先写标准 `command/run`，再调用插件 handler；因此原始命令输入可由来源 Session 日志重建，且不会成为主 Agent message。handler 规范化并按 `maxSourceChars` 限制请求，从当前 Session 反向选择最近一个符合普通 Observer 规则的 completed turn，临时携带其 assistant 文本与工具结果预览。没有合格回合时使用 `turn = 0`、空 assistant 和空工具列表；UI 不显示该占位 turn。主动请求不会补扫其他 Session，也不会持久化完整来源 assistant 或工具结果。
+`/explain <request>` 由 DSH command runtime 先写标准 `command/run`，再调用插件 handler；因此原始命令输入可由来源 Session 日志重建，且不会成为主 Agent message。handler 规范化并按 `maxSourceChars` 限制请求，再根据封闭变体构造显式来源：
+
+- 普通请求反向选择最近一个符合普通 Observer 规则的 completed turn；没有时使用 `turn = 0`。
+- `--selection <text>` 从当前 Session 事件中逆序查找包含规范化选中文本的最新消息。assistant 或 tool result 使用本 turn；user 或 context 消息使用它之前最近的合格已结束 turn；重复文本取最新匹配。无可靠匹配时使用 `turn = 0`，选中文本仍是请求事实。
+- `--suggested <turn> <request>` 只读指定 turn，防止草稿停留期间的新回合使来源漂移。显式快捷入口允许 `completed` 或 `max-tokens` 结束回合，但不放宽自动 Observer 的 completed-only 规则。指定 turn 不存在或不合格时返回 `EXPLAIN_SOURCE_UNAVAILABLE`，不回退到其他回合。
+
+三种变体都不补扫其他 Session，也不持久化完整 assistant 或工具结果。selection 匹配只决定有界 capsule，reasoning 和工具参数不参与搜索；它们只有在用户选中文本本身进入标准 command 日志时才成为该次请求的一部分。
 
 ## 全局调度
 
@@ -310,7 +316,7 @@ Scheduler 全局最多持有一个 `AbortController` 和一个模型 promise。�
 
 一次重讲请求使用同一全局基线和实时覆盖层，再加入目标讲解的全部 revisions、该目标的 `not-understood` 反馈和 revision 1 entry 持久化的 `sourceSummary`；不读取来源 Session。缺少或无法解析摘要属于数据库不变量破坏，返回 `EXPLAIN_SOURCE_SUMMARY_INVALID`，不能降级成无来源重讲。实时覆盖层按结构化字段拼接，永远覆盖旧检查点中相冲突的 Topic 状态。
 
-一次主动请求使用同一全局基线和实时覆盖层，再加入规范化的 `manualRequest` 与当前来源最近一个合格回合的有界 capsule。prompt 要求输出语言跟随 `manualRequest`，并禁止 `skip` 与 context observation；生成只回答用户显式学习目标，不利用命令去修改主 Agent。完整渲染后与自主/重讲一样计价和执行压力压缩。
+一次显式请求使用同一全局基线和实时覆盖层，再加入规范化的 `manualRequest`、`requestOrigin` 与已按上述规则定位的有界 capsule。prompt 要求输出语言跟随 `manualRequest`，并禁止 `skip` 与 context observation；生成只回答用户显式学习目标，不利用命令去修改主 Agent。完整渲染后与自主/重讲一样计价和执行压力压缩。
 
 每个请求完全渲染后，把固定 system prompt 和各条 user/assistant 内容都表示为对应 role 的临时 `Message`，逐条调用 `ctx.tokenMeter.estimateMessage()` 并加上 `maxOutputTokens` 预留；辅助调用不携带工具 schema。分母来自 `resolveModelInfo().context.contextWindow`。这是 DSH 固定启发式，不声称等于 provider tokenizer。占用大于 `contextThresholdRatio = 0.5` 时，目标工作转入压力压缩；压缩后必须从数据库重新组装并重新计价。
 
@@ -401,7 +407,7 @@ interface ManualExplanation {
 
 成功提交 rephrase 时也把 `topics.title` 更新为该 revision 的最新标题并提高 `topicRevision`。entries 是 append-only：任何旧 revision 的标题保持生成时原值，`maxTopicHints` 和实时覆盖层读取 `topics.title`。标题变化不得改变 `TopicKey`、掌握状态或其他来源的 Explanation。
 
-接受主动结果时，host 在一个事务中重新校验 lease、来源活跃槽和 Topic 活跃门，必要时把既有 mastered Topic 恢复为 learning，创建新的 Explanation revision 1，并把 `origin: 'manual'`、有界 `sourceSummary` 与 generation 写入 payload。主动请求成功是 explain 用户操作：更新 `last_user_action_at`、`activityGeneration` 和 `storeRevision`，但不写 `auto_request_usage`。Topic 或来源竞争失败时整个结果丢弃并返回稳定冲突。
+接受显式结果时，host 在一个事务中重新校验 lease、来源活跃槽和 Topic 活跃门，必要时把既有 mastered Topic 恢复为 learning，创建新的 Explanation revision 1，并把请求的 `manual | selection | suggested` origin、有界 `sourceSummary` 与 generation 写入 payload。显式请求成功是 explain 用户操作：更新 `last_user_action_at`、`activityGeneration` 和 `storeRevision`，但不写 `auto_request_usage`。Topic 或来源竞争失败时整个结果丢弃并返回稳定冲突。
 
 ### 超时与失败
 
@@ -513,7 +519,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 - 学习 view 只替换聊天记录区域。ConversationRoot 继续拥有当前工作 Session 的 composer；插件不通过跨包 CSS 或 DOM 操作隐藏、禁用或改道它。
 - 学习业务数据不进入 conversation store 或 localStorage；后者只持有 view 选择、draft 等 UI 状态。
 - 每个活跃 Explanation 的最新 revision 都独立显示 ✓ / ✗；反馈目标显式携带来源 Session 与 Explanation 身份，不能依赖“线程最后一条”。
-- `origin: 'manual'` 的 explanation 显示本地化“主动请求”元信息；`sourceTurn = 0` 只表示空白来源捕获，不渲染成真实回合。
+- `manual | selection | suggested` origin 分别显示本地化“主动请求”、“选中解释”和“学习建议”元信息；`sourceTurn = 0` 只表示无可靠来源坐标，不渲染成真实回合。
 - M4 订阅公开的 `ctx.sessions.list`，以 `byId[sourceSessionId]` 判定来源是否仍在当前 inventory。非当前且可见的来源通过 `ctx.sessions.open(sourceSessionId)` 打开；当前来源不显示重复动作。缺失来源保留历史并显示不可用，不读取 Session 文件、不操作 conversation 私有 store，也不改变目标 Session 当前 view。
 
 ## 生命周期
@@ -585,7 +591,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 
 - TopicKey、模型 JSON、SourceCapsule 与分页游标校验。
 - 状态机、按来源 latest-wins、来源活跃门、公平选择、工作优先级和 epoch fencing。
-- 主动请求捕获、空白来源、严格非 skip 输出、稳定结算、取消、来源/Topic 门和自主预算豁免。
+- 显式请求捕获、selection 逆序匹配、suggested 精确 turn、空白/失效来源、严格非 skip 输出、稳定结算、取消、来源/Topic 门和自主预算豁免。
 - revision 1 `sourceSummary` 生成、字段上限、Remote 剥离、来源删除后的重讲与损坏拒绝。
 - 滚动 24 小时边界、发送前持久占额、失败/重试计数、候选暂停恢复和重讲豁免。
 - 新 Explanation 与 rephrase 对 `topics.title/topicRevision` 的更新，以及旧 entry 不变。
@@ -607,7 +613,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 - 预计压力大于 50% 时先压缩并重新估算；失败和无法降压路径不发送目标请求且不标记覆盖。
 - 第二 host runtime 遇到有效租约时加载失败，过期后可接管。
 - 主 Session `deriveMessages()` 与未安装插件时相同。
-- `/explain <request>` 经真实 command runtime 成功追加 manual entry；command 生命周期可重建请求，但主模型消息不变。
+- `/explain <request>`、`--selection`、`--suggested <turn>` 经真实 command runtime 成功追加对应 origin entry；command 生命周期可重建请求，但主模型消息不变。
 
 ### Client 与产品测试
 
@@ -633,16 +639,16 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 | M3 发布门禁 | 单元/集成、keyless snapshot、真实流程 GIF、安装与组合 smoke | 所有 P0 验收标准通过后才标记可发布 |
 | M4 内测可控性 | 设置 revision/CAS、模型目录、来源导航、诊断状态和 rc.2 产品证据 | 用户无需编辑 YAML 即可配置启用，状态和来源路径可解释，M4 验收矩阵全部通过 |
 | M5 主动学习命令 | command/composer 入口、manual 调度、稳定失败、来源标识和产品证据 | 用户可显式生成一条不占自主额度的讲解，主 Agent 历史不变 |
+| M6 P1 可选集成 | selection/suggested Host 协议、命令目录发现、可编辑草稿和 Advisor 显式选择路径 | 可选插件不读私有状态、不自动提交、不增加后台调用，四插件组合可验收 |
 
-## v7 → v8 修订说明
+## v8 → v9 修订说明
 
-| v7 | v8 |
+| v8 | v9 |
 |---|---|
-| `/explain` 只接受 `on/off/status` | 其他非空输入成为一次主动学习请求；三个管理子命令精确保留 |
-| 调度优先级从 rephrase 开始 | manual 在未开始工作中最高，且可抢占自主生成或 idle 压缩 |
-| explanation 来源只有隐式自主 | payload 可选 `origin: 'manual'`，旧 payload 解释为自主；SQLite schema 2 不变 |
-| 自主/重讲读取 ExplainContext | 主动请求也读取相同全局基线与覆盖层，并执行 50% 压力门 |
-| 自主预算豁免只有重讲/压缩 | 用户显式主动讲解同样豁免，仍受单飞、超时与来源/Topic 门约束 |
+| 显式来源只有普通 manual | 扩展为 `manual | selection | suggested`，后续 rephrase 保留 origin，旧 payload 仍解释为自主 |
+| 所有主动请求都猜测最新 completed turn | selection 逆序匹配选中消息；suggested 封装精确 turn，来源失效明确失败 |
+| 显式与自动都只接受 completed | 显式精确来源还可接受 max-tokens；自动 Observer 保持 completed-only |
+| UI 只区分自主/主动 | 增加本地化“选中解释”与“学习建议”标识 |
 
 ## 架构决策记录
 
@@ -672,5 +678,6 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 | 2026-08-13 | 模型目录只提供建议；未列出 id 仍以 Host 精确 contextWindow 解析决定能否启用 |
 | 2026-08-13 | 来源导航只使用公开 Session inventory/open API；来源缺失保留全局学习历史并稳定降级 |
 | 2026-08-13 | `/explain <request>` 复用 DSH command runtime，不进入主 Agent；主动请求优先、预算豁免，并以 `origin: 'manual'` 投影到全局学习线程 |
+| 2026-08-13 | M6 可选插件只经 command 目录发现 Explain，只填写可编辑草稿；selection 逆序定位文本，suggested 携带精确 turn 避免提交竞态 |
   Manual --> Ready: explanation / 稳定失败
   Manual --> Disabled: explain off / abort

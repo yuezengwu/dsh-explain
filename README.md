@@ -1,6 +1,6 @@
 # dsh-explain — DSH 学习模式插件
 
-> ✅ **状态：M5 主动学习命令已实现并通过自动化门禁；当前适配 DSH 0.0.1-rc.2。**
+> ✅ **状态：M6 Explain Host 协议已实现并通过自动化门禁；可选消费方插件待接入。当前适配 DSH 0.0.1-rc.2。**
 > 产品需求见 [docs/PRD.md](docs/PRD.md)；技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 **一句话定位**：把多个 DSH 工作会话中值得学习的内容汇入用户唯一的全局学习线程，为每个来源会话保留至多一个活跃讲解，并用全局学习上下文持续适配用户的知识水平和讲解偏好。
@@ -34,7 +34,7 @@
 
 - [x] 需求查重：产品目标无直接重复，相关插件可提供局部实现参考。
 - [x] PRD P0 定稿：单一学习线程、按来源活跃讲解、自主调用预算、双触发压缩、全局 ExplainContext 和可自动验证的验收标准。
-- [x] 技术架构 v7：保留 v6 学习与压缩语义，增加原生 settings revision/CAS、模型目录、来源导航和诊断状态。
+- [x] 技术架构 v9：保留 v8 主动学习语义，增加选中文本与预测回复的封闭 Host 协议、精确来源定位和来源标识。
 - [x] UI 路径核验：沿用第一方 `ui-trajectory` 的 `ctx.slots.inject('conversation.view', ...)` 注册方式，无外部 UI 依赖。
 - [x] M1 基础设施：独立插件构建、本地 SQLite schema、实体级 CAS、分页/长轮询和自动生成的 typed Remote。
 - [x] M2 主实现：来源观察、辅助模型单飞调度、持久预算、重讲、双触发压缩、ExplainContext 与 `conversation.view` 学习界面。
@@ -42,12 +42,14 @@
 - [x] M3 发布门禁：P0 验收矩阵、无密钥 assembled Web snapshot、安装与组合 smoke。
 - [x] M4 内测可控性：无 YAML 设置页、并发设置收敛、来源跳转/缺失降级、共享诊断 store 和扩展 assembled Web snapshot。
 - [x] M5 主动学习命令：composer 中的 `/explain <学习请求>`、显式请求调度、来源标识、持久重讲摘要和稳定失败结果。
+- [x] M6.1 Explain Host 协议：`--selection` / `--suggested <turn>` 来源定位、origin 持久化、重讲传播和稳定失败。
+- [ ] M6 P1 可选集成：选中文字、预测回复学习建议和 Advisor 可见建议经可编辑 `/explain` 草稿进入同一学习闭环。
 
-M1 建立持久层和 Host/Client RPC 基础；M2 完成学习闭环；M3 建立 P0 发布门禁；M4 让内测用户无需编辑 YAML 即可配置和诊断，并能从讲解返回仍存在的来源会话；M5 允许用户从工作 composer 主动发起一次学习。自动化证据见 [验收矩阵](docs/ACCEPTANCE.md)。
+M1 建立持久层和 Host/Client RPC 基础；M2 完成学习闭环；M3 建立 P0 发布门禁；M4 让内测用户无需编辑 YAML 即可配置和诊断，并能从讲解返回仍存在的来源会话；M5 允许用户从工作 composer 主动发起一次学习；M6 把同一命令协议接入可选插件工作流。自动化证据见 [验收矩阵](docs/ACCEPTANCE.md)。
 
 ## 当前迭代
 
-M5 复用 DSH 第一方 command/composer 路径增加主动学习，不新增 UI 宿主或 Remote；完整范围、非目标、设计审查与验收标准见 [迭代记录](docs/NEXT.md)。
+M6 通过 DSH command 目录和 composer 公共写入路径集成 `dsh-selection-chat`、`dsh-suggested-replies` 与 `dsh-advisor`，不读取其他插件私有数据，也不增加自动模型调用；完整范围、跨仓库顺序、设计审查与验收标准见 [迭代记录](docs/NEXT.md)。
 
 ## 本地开发
 

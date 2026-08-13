@@ -1,5 +1,96 @@
 # dsh-explain 迭代计划
 
+## M6：P1 可选插件集成
+
+> 状态：**Explain Host 协议已实现并通过自动化门禁，消费方插件待接入**（2026-08-13）。设计基线为 `dsh-explain@f66051d`、`dsh-selection-chat@878bd59`、`dsh-suggested-replies@66d5e36` 与 `dsh-advisor@068c511`。
+
+### 目标
+
+把主动 Explain 入口接到三个已经存在的用户工作流中：选中对话文字后请求解释、在预测回复旁选择学习刚完成的回答、选中 Advisor 的可见建议后理解其概念和依据。三个入口最终都生成可编辑的 `/explain` 草稿，由用户再次提交；它们不自动调用模型、不占自主额度，也不改变主 Agent 历史。
+
+### 集成原则
+
+- `dsh-explain` 继续独占全局学习线程、ExplainContext、Topic 门、来源槽、调用预算和辅助模型 Scheduler。其他插件不读取 SQLite、typed Remote 私有 DTO 或 ExplainContext。
+- 插件是否安装通过当前 Session 的 DSH `command.list` 结果判断；只有目录中存在 `explain` 时才显示集成入口。不从 DOM、package list、插件 id 或远端仓库状态猜测。
+- 入口只调用公开 composer 写入路径并设置草稿，不自动 `submit()`。composer 不是 `plain` 或已有非空草稿时拒绝覆盖并显示稳定提示。
+- 所有模型调用仍从 `/explain` command handler 进入同一个 manual 队列。集成本身不创建第二个 Remote 写入口、Session 自定义事件或后台模型调用。
+- 任一插件缺失、停用、热卸载或命令目录刷新时，其增强入口独立消失；`/explain <请求>`、自主讲解和学习 Tab 保持可用。
+
+### 1. `dsh-selection-chat`：选中内容后解释
+
+`dsh-selection-chat` 在现有选区工具条增加「解释」动作。工具条打开时按当前 `sessionId` 调用 `remote.commands.list()`；目录中没有 `explain`、查询失败或当前选区不合格时不显示动作。点击后把空 composer 设置为：
+
+```text
+/explain --selection <规范化后的选中文字>
+```
+
+选区仍受 `dsh-selection-chat` 的单消息容器、单次消费和 10,000 字符上限约束。动作不复用现有 `[quoted]` 格式，因为 slash command 必须占据完整草稿；非空草稿不得被静默覆盖。
+
+`dsh-explain` 增加封闭的 `--selection` 手动来源。handler 以选中文字作为显式学习请求，并从当前 Session 事件中逆序查找包含该规范化文字的最新消息：assistant/tool 结果使用其 turn，user 或其他 context 消息使用其前一个合格 completed turn；重复文本取最新匹配。找不到可靠坐标时使用 `turn = 0`，UI 不伪造回合号。匹配只决定有界来源 capsule，选中文字本身始终进入 command 日志并作为请求事实。
+
+revision 1 payload 的可选 `origin` 扩为 `manual | selection | suggested`；旧 payload 缺失 origin 仍表示自主来源，SQLite schema 不变。学习界面把 selection 显示为「选中解释」。
+
+### 2. `dsh-suggested-replies`：学习建议气泡
+
+`dsh-suggested-replies` 在 ready 候选行末尾增加一个确定性附件气泡「学习刚才的回答」。它不修改模型要求的 `suggestionCount`，不写入 suggested-replies sidecar，也不触发额外候选模型调用。当前 Session 的命令目录存在 `explain` 且 sidecar ready 状态仍对应当前已结束 turn 时才显示；点击把空 composer 设置为：
+
+```text
+/explain --suggested <来源回合> 请解释刚才回答中最关键、最值得学习的概念。
+```
+
+文案随客户端语言本地化，模型最终表达仍跟随请求语言。候选生成时的精确 turn 写入草稿，`--suggested <turn>` 不在提交时重新猜测“最新回合”，避免草稿停留期间新 turn 完成导致来源漂移。显式快捷入口可定位 `completed` 或 `max-tokens` 结束回合；自动 Observer 仍只接受 `completed`。指定 turn 不存在或不合格时返回 `EXPLAIN_SOURCE_UNAVAILABLE`，不退回其他回合。其余沿用 manual 优先级、来源/Topic 原子门、50% 压力门和自主预算豁免；payload 记录 `origin: suggested`，学习界面显示「学习建议」。
+
+### 3. `dsh-advisor`：显式解释建议
+
+P1 不让 explain 订阅 Advisor runtime，也不改变 Advisor 的 `inject/steer` 路由。Advisor 建议已经作为带 `source.kind = advisor` 的可见、可持久化 context 消息呈现；用户可用 `dsh-selection-chat` 选中建议正文，再走同一个 `--selection` 入口。
+
+该用户手势是唯一桥接授权：普通 Observer 继续只接受真实用户消息和当前 turn 的 assistant/tool 内容，Advisor 消息不会自动成为自主候选、ExplainContext observation 或 Topic 状态。`--selection` 的显式文本可以进入 Explain Agent，但不会回写或影响 Advisor，也不会被注入主 Agent。P1 不修改 `dsh-advisor` 代码；它只进入四插件组合验收矩阵。
+
+### 调度、预算与隐私
+
+- selection/suggested 都是现有 manual 工作的来源变体，优先级、抢占、取消、租约和全局单飞语义不增加新分支；同一 Session 的 pending/active gate 在模型调用前和提交事务中各检查一次。
+- 两个快捷入口均不占 `maxAutoRequestsPerDay`；用户真正提交命令后才可能产生 Explain 模型成本。
+- 安装 Advisor 与 suggested-replies 本身仍可能使一个 completed turn 分别产生各自的后台调用；M6 不引入跨插件全局模型仲裁器。集成代码必须证明没有在这些既有调用之外再发请求，并在组合文档中明确成本叠加。
+- 选中文字最多 10,000 字符，之后仍经过 explain `maxSourceChars`；持久化 `sourceSummary` 继续使用固定 2,000 字符隐私上限，不保存完整 assistant、工具参数、工具结果、reasoning 或绝对路径。
+- 其他插件只看 command 名称与自身已有状态；ExplainContext、学习历史、反馈、Topic 和模型路由不跨插件暴露。
+
+### 跨仓库实施顺序
+
+| 阶段 | 仓库 | 修改 | 完成门 |
+|---|---|---|---|
+| M6.1 | `dsh-explain` | 先定义 `--selection` / `--suggested <turn>` 解析、来源定位、origin 投影和稳定失败 | **已完成**：command/主消息隔离、精确来源匹配、旧 payload 兼容和 Scheduler 测试通过 |
+| M6.2 | `dsh-selection-chat` | 命令目录发现、Explain 动作、空草稿保护和本地化 | explain 缺失时无动作；存在时只填草稿；选区/忙态/热卸载通过 |
+| M6.3 | `dsh-suggested-replies` | ready 行附件气泡、命令目录发现和草稿保护 | 不改变模型候选数/sidecar/调用数；点击只填携带精确 turn 的 `--suggested` 草稿 |
+| M6.4 | `dsh-explain` | 合入两个已发布的集成行为、更新 PRD/Architecture/README 和组合 fixture | 单插件、任意两插件、四插件组合均可启动和卸载；无私有数据耦合 |
+| M6.5 | 四插件组合 | 真实 Advisor 建议选择、学习建议、普通选择、反馈闭环与 GIF | 同一候选提交上完成真实 DSH Web、真实模型、数据库与主 Session 证据 |
+
+这些仓库相互独立，不建立跨仓库 PR stack。先合入 explain 的命令协议，再分别合入两个 UI 消费方，最后回到 explain 完成组合验收；消费方在协议提交合入前用精确 SHA 进行测试，不能跟随移动的 `main`。
+
+### 审查结论
+
+- **不使用插件私有 API**：两个 UI 插件只依赖 DSH command/composer 公共能力；不需要 npm 运行依赖、复制源码或读取对方文件。
+- **不自动发送**：选区和建议气泡只形成可检查、可编辑的草稿，避免误触直接产生模型成本。
+- **不伪造来源**：选区无法映射到可靠事件时明确降级为无回合坐标，不能把当前最新 turn 冒充被选择的旧消息。
+- **不让 Advisor 污染 ExplainContext**：只有用户显式选择的 Advisor 文字进入一次 manual 请求；自动观察路径保持隔离。
+- **不复制权威状态机**：UI 不预判 Topic、来源槽或 Scheduler 竞争；Host 的双重 gate 决定最终结果。
+- **不让草稿制造 TOCTOU**：suggested 草稿携带候选对应的精确 turn；提交后 Host 只读该 turn，无效时明确失败。
+- **无 DSH 核心修改**：当前 `command.list`、composer input facade、`conversation.input.dock` 和 context 行可选文本已足够；P1 不增加核心 slot。
+
+### 验收标准
+
+1. explain 未安装时，selection-chat 和 suggested-replies 都不出现 Explain 入口，普通功能不变。
+2. explain 已安装时，两个入口使用当前 Session 的 command 目录发现，不依赖加载顺序；命令目录失效后能收敛。
+3. 选中文字只在单消息合法选区、plain 且空草稿时生成 `--selection` 草稿；不自动提交、不覆盖草稿。
+4. 选中旧 assistant、tool 结果、用户文本和 Advisor 建议时，来源坐标分别正确；重复文本取最新匹配，无法匹配显示无回合坐标。
+5. suggested 附件不占模型候选数量、不进入其 sidecar，且不增加 suggested-replies 或 Explain 的后台调用；草稿固定候选生成时的精确 turn，不受之后新回合影响。
+6. 两种入口提交后分别持久化 `origin: selection/suggested`，UI 标签正确，rephrase 保留 origin。
+7. disabled、来源占用、Topic 活跃、压力不可解、取消和 teardown 返回稳定 Explain 结果且不写部分数据。
+8. 两种入口成功、失败和取消都不改变自主调用额度；成功仍更新 explain 用户操作时间。
+9. Advisor 未被选择时绝不进入 Explain 请求、observation 或 ExplainContext；被选择后只进入该次 command 和私有来源摘要。
+10. 主 Session `deriveMessages()` 在快捷入口提交前后保持不变；只有标准 `command/run` / `command/done` 增量。
+11. 四插件同时启用时各自单插件测试、assembled Web snapshot、组合/HMR/卸载测试和总调用计数断言通过。
+12. 用户可完成「选中 Advisor 建议 → 解释 → 学习 Tab 查看 → ✗ 重讲 → ✓ 掌握」真实模型闭环，并以私有 GIF 留证。
+
 ## M5：主动学习命令
 
 > 状态：**设计、实现与自动化门禁完成；真实模型证据随合入 PR 保存**（2026-08-13）。

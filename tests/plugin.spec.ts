@@ -5,6 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import CommandService from '@deepseek-ai/dsh-commands'
 import LlmService, {
+  createAssistantMessage,
+  createUserMessage,
   type GenerateOptions,
   LlmAdapter,
   type LlmResolvedModelInfo,
@@ -44,10 +46,15 @@ class CatalogAdapter extends LlmAdapter {
     })
   }
 
-  override async * stream(_options: GenerateOptions): AsyncIterable<StreamChunk> {
+  override async * stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    const block = options.messages?.[0]?.content[0]
+    const payload = block?.type === 'text' ? JSON.parse(block.text) as { requestOrigin?: string } : {}
+    const origin = payload.requestOrigin ?? 'manual'
     const text = JSON.stringify({
-      topicKey: 'manual/discriminated-unions',
-      title: 'Discriminated unions on request',
+      topicKey: `${origin}/discriminated-unions`,
+      title: origin === 'manual'
+        ? 'Discriminated unions on request'
+        : origin === 'selection' ? 'Selected text on request' : 'Suggested answer on request',
       what: 'A literal tag selects one union member.',
       why: 'The checker can prove which fields exist.',
       pitfall: 'Keep the tag literal.',
@@ -57,6 +64,25 @@ class CatalogAdapter extends LlmAdapter {
     yield { type: 'block-end', index: 0, block: { type: 'text', text } }
     yield { type: 'finish', reason: { kind: 'stop' } }
   }
+}
+
+function appendCompletedTurn(session: Session, assistantText: string): void {
+  session.append('turn/start', { turn: 1 })
+  session.append('step/start', { turn: 1, step: 1 })
+  session.append('user/message', createUserMessage({
+    source: { kind: 'user' },
+    content: [{ type: 'text', text: 'What should I learn?' }],
+  }), { surfaceOp: 'append' })
+  session.append('assistant/message', {
+    turn: 1,
+    step: 1,
+    message: createAssistantMessage({
+      source: { provider: 'test', model: 'test' },
+      content: [{ type: 'text', text: assistantText }],
+    }),
+  }, { surfaceOp: 'append' })
+  session.append('step/end', { turn: 1, step: 1 })
+  session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
 }
 
 afterEach(() => {
@@ -185,6 +211,57 @@ describe('dsh-explain plugin lifecycle', () => {
         sourceTurn: 0,
       })
       expect(ctx.explain.status()).toMatchObject({ autoRequestsUsed: 0, activeExplanationCount: 1 })
+      await expect(ctx.commands.execute(
+        agent,
+        '/explain --selection',
+        new AbortController().signal,
+      )).resolves.toMatchObject({
+        result: {
+          kind: 'error',
+          text: 'EXPLAIN_INVALID_REQUEST: Usage: /explain --selection <selected text>',
+        },
+      })
+
+      const selectionSession = Session.create(SessionId('selection-command-source'))
+      appendCompletedTurn(selectionSession, 'Selected explanation target.')
+      await expect(ctx.commands.execute(
+        { session: selectionSession, ctx: new Context() } as never,
+        '/explain --selection Selected explanation target.',
+        new AbortController().signal,
+      )).resolves.toMatchObject({
+        result: { kind: 'success', text: 'Explanation added to Learning: Selected text on request' },
+      })
+      expect(ctx.explain.threadPage({ limit: 10 }).entries[0]).toMatchObject({
+        origin: 'selection',
+        sourceSessionId: SessionId('selection-command-source'),
+        sourceTurn: 1,
+      })
+
+      const suggestedSession = Session.create(SessionId('suggested-command-source'))
+      appendCompletedTurn(suggestedSession, 'Suggested explanation target.')
+      await expect(ctx.commands.execute(
+        { session: suggestedSession, ctx: new Context() } as never,
+        '/explain --suggested 1 请解释刚才回答中最关键、最值得学习的概念。',
+        new AbortController().signal,
+      )).resolves.toMatchObject({
+        result: { kind: 'success', text: 'Explanation added to Learning: Suggested answer on request' },
+      })
+      expect(ctx.explain.threadPage({ limit: 10 }).entries[0]).toMatchObject({
+        origin: 'suggested',
+        sourceSessionId: SessionId('suggested-command-source'),
+        sourceTurn: 1,
+      })
+      await expect(ctx.commands.execute(
+        { session: Session.create(SessionId('missing-suggested-source')), ctx: new Context() } as never,
+        '/explain --suggested 9 Explain the answer.',
+        new AbortController().signal,
+      )).resolves.toMatchObject({
+        result: {
+          kind: 'error',
+          text: 'EXPLAIN_SOURCE_UNAVAILABLE: The referenced answer is no longer available as a settled turn.',
+        },
+      })
+      expect(ctx.explain.status()).toMatchObject({ autoRequestsUsed: 0, activeExplanationCount: 3 })
       await expect(ctx.explain.updateConfiguration({
         expectedRevision: 0,
         enabled: false,

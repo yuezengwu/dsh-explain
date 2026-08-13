@@ -98,13 +98,17 @@ async function seedLearningDatabase(dshHome: string): Promise<void> {
     }],
   }, generation)
   store.commitManualExplanation(lease, {
-    ...capsule,
-    sourceSessionId: MISSING_SOURCE_SESSION_ID,
-    turn: 0,
-    endSeq: 15,
-    observedAt: FIXED_TIME + 1,
-    userText: '穷尽检查为什么能发现遗漏分支？',
-    assistantText: 'never 类型让缺失分支在编译期显现。',
+    origin: 'manual',
+    request: '穷尽检查为什么能发现遗漏分支？',
+    capsule: {
+      ...capsule,
+      sourceSessionId: MISSING_SOURCE_SESSION_ID,
+      turn: 0,
+      endSeq: 15,
+      observedAt: FIXED_TIME + 1,
+      userText: '穷尽检查为什么能发现遗漏分支？',
+      assistantText: 'never 类型让缺失分支在编译期显现。',
+    },
   }, {
     topicKey: 'typescript/exhaustiveness',
     title: '用 never 完成穷尽检查',

@@ -233,6 +233,7 @@ describe('real LLM-service scheduler integration', () => {
   it('runs a manual request ahead of background work without consuming autonomous budget', async () => {
     const { store, adapter, scheduler } = await setup()
     const result = await scheduler.requestManual({
+      origin: 'manual',
       request: 'Explain discriminated unions',
       capsule: source('manual-source'),
     }, new AbortController().signal)
@@ -249,6 +250,7 @@ describe('real LLM-service scheduler integration', () => {
     expect(store.autoBudget(50).used).toBe(0)
 
     await expect(scheduler.requestManual({
+      origin: 'manual',
       request: 'Explain it again',
       capsule: source('manual-source'),
     }, new AbortController().signal)).resolves.toEqual({
@@ -265,6 +267,7 @@ describe('real LLM-service scheduler integration', () => {
     const { store, adapter, scheduler } = await setup(SETTINGS, target => { target.delayMs = 100 })
     const controller = new AbortController()
     const pending = scheduler.requestManual({
+      origin: 'manual',
       request: 'Explain cancellation',
       capsule: source('cancelled-manual'),
     }, controller.signal)
@@ -297,6 +300,7 @@ describe('real LLM-service scheduler integration', () => {
     scheduler.learningStateChanged()
     await until(() => adapter.active === 1)
     await expect(scheduler.requestManual({
+      origin: 'manual',
       request: 'Explain the failed request',
       capsule: source('manual-failure'),
     }, new AbortController().signal)).resolves.toEqual({
@@ -327,6 +331,7 @@ describe('real LLM-service scheduler integration', () => {
       }],
     })
     const result = await scheduler.requestManual({
+      origin: 'manual',
       request: 'Explain this request under context pressure',
       capsule: {
         ...source('manual-pressure'),

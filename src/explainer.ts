@@ -168,6 +168,7 @@ export function renderManualExplainRequest(
       },
       limits: { titleChars: 120, fieldChars: 2_000, topicKeyChars: 80 },
       learningContext: context,
+      requestOrigin: target.origin,
       manualRequest: target.request,
       sourceCapsule: target.capsule,
     })],
