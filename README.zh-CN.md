@@ -2,7 +2,7 @@
 
 # dsh-explain — DSH 学习模式插件
 
-> ✅ **状态：M6 Explain Host 协议已实现并通过自动化门禁；可选消费方插件待接入。当前适配 DSH 0.0.1-rc.2。**
+> ✅ **状态：M6 Explain Host 协议已实现并通过自动化门禁；可选消费方插件待接入。当前最低支持 DSH 0.1.0-rc.6。**
 > 产品需求见 [docs/PRD.md](docs/PRD.md)；技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 **一句话定位**：把多个 DSH 工作会话中值得学习的内容汇入用户唯一的全局学习线程，为每个来源会话保留至多一个活跃讲解，并用全局学习上下文持续适配用户的知识水平和讲解偏好。
@@ -53,20 +53,32 @@ M1 建立持久层和 Host/Client RPC 基础；M2 完成学习闭环；M3 建立
 
 M6 通过 DSH command 目录和 composer 公共写入路径集成 `dsh-selection-chat`、`dsh-suggested-replies` 与 `dsh-advisor`，不读取其他插件私有数据，也不增加自动模型调用；完整范围、跨仓库顺序、设计审查与验收标准见 [迭代记录](docs/NEXT.md)。
 
-## 本地开发
+## 安装
 
-仓库不从 npm 解析或发布私有 DSH 包。先准备已构建的 DSH 源码目录，再安装公开的构建依赖并建立本地链接：
-
-当前开发基线和最低支持版本为 DSH `0.0.1-rc.2`；插件不保留 rc.1 的 TypeRT gateway 兼容层。
+Explain 当前适配 DSH `0.1.0-rc.6`。DSH 仍处于开发者预览阶段，本插件不支持更早的私有预览包版本线。
 
 ```sh
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm install
+npx @deepseek-ai/dsh@0.1.0-rc.6 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.0-rc.6 web
+```
+
+Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按错误信息把 `dsh-explain` 加入该 profile 的 `pnpm-workspace.yaml`，然后重新运行安装命令。
+
+## 本地开发
+
+默认构建使用公开的 DSH `0.1.0-rc.6` API 包。assembled Web 验收仍需要已构建的 DSH 源码 checkout；安装依赖后显式建立本地链接：
+
+```sh
+pnpm install
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
 pnpm run test
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web
 pnpm run typecheck
 pnpm run build
 ```
+
+源码 checkout 必须匹配 `0.1.0-rc.6` 的公开 API；插件不保留更早私有预览版本线的兼容层。
 
 `test:web` 使用全新临时 `$DSH_HOME`、持久 Session fixture 和预置 Explain SQLite 运行无密钥的真实 DSH Web 组合，并比对学习视图与设置页 ARIA golden；它还验证 native settings revision 写入、可用来源跳转和缺失来源降级。更新有意的界面输出时运行 `DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web:refresh` 并审查 snapshot diff。
 
