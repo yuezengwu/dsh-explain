@@ -45,6 +45,8 @@ M1 建立持久层和 Host/Client RPC 基础；M2 把观察、模型、反馈、
 
 仓库不从 npm 解析或发布私有 DSH 包。先准备已构建的 DSH 源码目录，再安装公开的构建依赖并建立本地链接：
 
+当前开发基线和最低支持版本为 DSH `0.0.1-rc.2`；插件不保留 rc.1 的 TypeRT gateway 兼容层。
+
 ```sh
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm install
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check

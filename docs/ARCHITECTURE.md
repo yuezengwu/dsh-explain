@@ -434,7 +434,7 @@ interface FeedbackRequest {
 | `explain.reopenTopic(request)` | Topic revision CAS + 撤销全局掌握状态 |
 | `explain.setEnabled({ enabled })` | 写 settings；开启前验证模型路由与容量 |
 
-Remote 走 DSH typed gateway 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。
+Remote 走 DSH `TypertRemoteService` 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。DSH rc.2 的生成客户端把传输结果封装为 `RemoteResult<T>`；browser store 先解封传输结果，再处理方法自身的业务结果，传输失败进入现有可见错误状态。
 
 browser 的插件级 `learning-store`：
 

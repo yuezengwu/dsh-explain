@@ -164,21 +164,29 @@ describe('conversation learning view', () => {
 
 describe('global learning store lifecycle', () => {
   it('fences a stale mount while an initial refresh is shared with a new mount', async () => {
-    let resolveStatus!: (value: LearningSnapshot['status']) => void
-    const status = new Promise<LearningSnapshot['status']>(resolve => { resolveStatus = resolve })
-    const watch = vi.fn((_request: unknown, signal: AbortSignal) => new Promise<{ changed: boolean }>(resolve => {
-      signal.addEventListener('abort', () => { resolve({ changed: false }) }, { once: true })
+    let resolveStatus!: (value: { readonly ok: true; readonly value: NonNullable<LearningSnapshot['status']> }) => void
+    const status = new Promise<{ readonly ok: true; readonly value: NonNullable<LearningSnapshot['status']> }>(
+      resolve => { resolveStatus = resolve },
+    )
+    const watch = vi.fn((_request: unknown, signal: AbortSignal) => new Promise(resolve => {
+      signal.addEventListener('abort', () => { resolve({ ok: true, value: { changed: false } }) }, { once: true })
     }))
     const remote = {
       status: vi.fn(() => status),
       context: vi.fn().mockResolvedValue({
-        dialogueProfile: [], knowledgeOverview: '', learningTrend: '', inferred: false,
-        stats: {
-          learningTopics: 0, masteredTopics: 0, activeExplanations: 0,
-          understoodFeedback: 0, notUnderstoodFeedback: 0,
+        ok: true,
+        value: {
+          dialogueProfile: [], knowledgeOverview: '', learningTrend: '', inferred: false,
+          stats: {
+            learningTopics: 0, masteredTopics: 0, activeExplanations: 0,
+            understoodFeedback: 0, notUnderstoodFeedback: 0,
+          },
         },
       }),
-      threadPage: vi.fn().mockResolvedValue({ entries: [], hasMore: false, storeRevision: 0 }),
+      threadPage: vi.fn().mockResolvedValue({
+        ok: true,
+        value: { entries: [], hasMore: false, storeRevision: 0 },
+      }),
       watch,
     }
     const learning = new GlobalLearningStore({ remote: { explain: remote } } as unknown as Context)
@@ -186,19 +194,61 @@ describe('global learning store lifecycle', () => {
     firstUnmount()
     const secondUnmount = learning.mount()
     resolveStatus({
-      enabled: true,
-      runtimeState: 'ready',
-      activeExplanationCount: 0,
-      pendingCandidateCount: 0,
-      autoRequestsUsed: 0,
-      autoRequestsLimit: 50,
-      routeReady: true,
-      storeRevision: 0,
-      cursor: { incarnation: 'lifecycle-test', revision: 0 },
+      ok: true,
+      value: {
+        enabled: true,
+        runtimeState: 'ready',
+        activeExplanationCount: 0,
+        pendingCandidateCount: 0,
+        autoRequestsUsed: 0,
+        autoRequestsLimit: 50,
+        routeReady: true,
+        storeRevision: 0,
+        cursor: { incarnation: 'lifecycle-test', revision: 0 },
+      },
     })
 
     await waitFor(() => { expect(watch).toHaveBeenCalledTimes(1) })
     secondUnmount()
+    learning.dispose()
+  })
+
+  it('surfaces typed Remote transport failures without replacing cached data', async () => {
+    const remote = {
+      status: vi.fn().mockResolvedValue({
+        ok: false,
+        error: { code: 'TRANSPORT', message: 'connection lost' },
+      }),
+      context: vi.fn().mockResolvedValue({
+        ok: true,
+        value: {
+          dialogueProfile: [], knowledgeOverview: '', learningTrend: '', inferred: false,
+          stats: {
+            learningTopics: 0, masteredTopics: 0, activeExplanations: 0,
+            understoodFeedback: 0, notUnderstoodFeedback: 0,
+          },
+        },
+      }),
+      threadPage: vi.fn().mockResolvedValue({
+        ok: true,
+        value: { entries: [], hasMore: false, storeRevision: 0 },
+      }),
+    }
+    const learning = new GlobalLearningStore({ remote: { explain: remote } } as unknown as Context)
+    const cached = explanation(1, 'cached-session', 'closed', 'Cached explanation')
+    learning.store.set({
+      ...learning.store.getSnapshot(),
+      phase: 'ready',
+      entries: [cached],
+    })
+
+    await learning.refresh()
+
+    expect(learning.store.getSnapshot()).toMatchObject({
+      phase: 'error',
+      entries: [cached],
+      error: 'TRANSPORT: connection lost',
+    })
     learning.dispose()
   })
 })

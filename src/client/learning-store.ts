@@ -1,5 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-gateway/client'
+import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import {
   createSnapshotStore,
   type SessionId,
@@ -97,7 +98,10 @@ export class GlobalLearningStore {
     if (!snapshot.hasMore || snapshot.entries.length === 0) return
     try {
       const oldest = snapshot.entries.at(-1)!
-      const page = await this.ctx.remote.explain.threadPage({ beforeOrdinal: oldest.ordinal, limit: PAGE_SIZE })
+      const page = unwrapRemote(await this.ctx.remote.explain.threadPage({
+        beforeOrdinal: oldest.ordinal,
+        limit: PAGE_SIZE,
+      }))
       const current = this.store.getSnapshot()
       const seen = new Set(current.entries.map(entry => entry.entryId))
       const appended = page.entries.filter(entry => !seen.has(entry.entryId))
@@ -119,32 +123,34 @@ export class GlobalLearningStore {
     const explanationId = entry.explanationId
     const sourceSessionId = entry.sourceSessionId
     const revision = entry.revision
-    await this.mutate(entry.entryId, async () => await this.ctx.remote.explain.feedback({
+    await this.mutate(entry.entryId, async () => unwrapRemote(await this.ctx.remote.explain.feedback({
       requestId: requestId(),
       sourceSessionId: sourceSessionId as SessionId,
       explanationId,
       revision,
       action,
-    }))
+    })))
   }
 
   /** Reopen the exact mastered Topic revision rendered by the view. */
   async reopen(entry: ThreadEntryView): Promise<void> {
-    await this.mutate(entry.entryId, async () => await this.ctx.remote.explain.reopenTopic({
+    await this.mutate(entry.entryId, async () => unwrapRemote(await this.ctx.remote.explain.reopenTopic({
       requestId: requestId(),
       topicId: entry.topicId,
       expectedTopicRevision: entry.topicRevision,
-    }))
+    })))
   }
 
   private async refreshNow(): Promise<void> {
     try {
       const desired = Math.max(PAGE_SIZE, this.store.getSnapshot().entries.length)
-      const [status, context, initialPages] = await Promise.all([
+      const [statusResult, contextResult, initialPages] = await Promise.all([
         this.ctx.remote.explain.status(),
         this.ctx.remote.explain.context(),
         this.readPages(desired),
       ])
+      const status = unwrapRemote(statusResult)
+      const context = unwrapRemote(contextResult)
       let pages = initialPages
       while (pages.hasMore && pages.entries.length < this.store.getSnapshot().entries.length) {
         pages = await this.readPages(this.store.getSnapshot().entries.length)
@@ -171,10 +177,10 @@ export class GlobalLearningStore {
     let beforeOrdinal: number | undefined
     let hasMore = false
     do {
-      const page = await this.ctx.remote.explain.threadPage({
+      const page = unwrapRemote(await this.ctx.remote.explain.threadPage({
         ...(beforeOrdinal === undefined ? {} : { beforeOrdinal }),
         limit: Math.min(100, Math.max(PAGE_SIZE, minimum - entries.length)),
-      })
+      }))
       entries.push(...page.entries)
       hasMore = page.hasMore
       beforeOrdinal = entries.at(-1)?.ordinal
@@ -213,7 +219,7 @@ export class GlobalLearningStore {
       const controller = new AbortController()
       this.watchController = controller
       try {
-        const result = await this.ctx.remote.explain.watch({ after: cursor }, controller.signal)
+        const result = unwrapRemote(await this.ctx.remote.explain.watch({ after: cursor }, controller.signal))
         if (result.changed) {
           await this.refresh()
           if (this.store.getSnapshot().phase === 'error') await delay(RETRY_MS)
@@ -248,6 +254,11 @@ export class GlobalLearningStore {
 
 function requestId(): RequestId {
   return `browser:${crypto.randomUUID()}` as RequestId
+}
+
+function unwrapRemote<T>(result: RemoteResult<T>): T {
+  if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
+  return result.value
 }
 
 async function delay(milliseconds: number): Promise<void> {

@@ -1,5 +1,5 @@
 import type { Context } from '@deepseek-ai/cordis'
-import { GatewayService, Remote } from '@deepseek-ai/dsh-type-meta'
+import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { ExplainRuntime } from './runtime.ts'
 import type { ExplainStore } from './store.ts'
 import type {
@@ -18,7 +18,7 @@ import type {
 } from './types.ts'
 
 /** Host-side typed Remote service for the global learning thread. */
-export class ExplainGateway extends GatewayService {
+export class ExplainGateway extends TypertRemoteService {
   /** Register the explain namespace against one store and live config source. */
   constructor(
     ctx: Context,

@@ -8,7 +8,7 @@ import LlmService from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
 import Settings, { type SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import TokenMeterService from '@deepseek-ai/dsh-token-meter'
-import { remoteMethods } from '@deepseek-ai/dsh-type-meta'
+import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { Config, apply, inject, name } from '../src/index.ts'
 
 const directories: string[] = []
@@ -47,7 +47,7 @@ describe('dsh-explain plugin lifecycle', () => {
     const fiber = ctx.plugin({ name, Config, inject, apply }, { dshHome })
     await fiber.await()
     try {
-      expect(ctx.explain.typertGateway).toMatchObject({ serviceKey: 'explain', namespace: 'explain' })
+      expect(ctx.explain.typertRemote).toMatchObject({ serviceKey: 'explain', namespace: 'explain' })
       expect(remoteMethods(ctx.explain)).toEqual([
         { method: 'status', invocation: { kind: 'direct' } },
         { method: 'setEnabled', invocation: { kind: 'direct' } },

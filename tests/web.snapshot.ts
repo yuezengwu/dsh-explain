@@ -265,9 +265,10 @@ describe('keyless assembled DSH Web learning view', () => {
     })
     page.on('pageerror', error => { pageErrors.push(String(error)) })
     await page.goto(`http://127.0.0.1:${port}`, { waitUntil: 'load' })
-    const continueButton = page.getByRole('button', { name: '继续' })
+    const continueButton = page.getByRole('button', { name: '继续', exact: true })
     await continueButton.waitFor({ timeout: 15_000 })
     await continueButton.click()
+    await page.locator('[class*="onboardingStage"]').waitFor({ state: 'detached', timeout: 15_000 })
     expect(await page.getByRole('tab', { name: '学习' }).count()).toBe(0)
     const session = page.getByRole('treeitem', { name: /workspace 刚刚/ })
     try {
