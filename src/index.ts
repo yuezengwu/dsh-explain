@@ -11,9 +11,10 @@ import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-token-meter'
 import { resolveExplainConfig, type ExplainConfig } from './config.ts'
 import { ExplainGateway } from './gateway.ts'
-import { captureSourceCapsule } from './observer.ts'
+import { captureManualExplainTarget, captureSourceCapsule } from './observer.ts'
 import { ExplainRuntime } from './runtime.ts'
 import { ExplainStore } from './store.ts'
+import type { ThreadEntryView } from './types.ts'
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -79,19 +80,35 @@ export async function apply(ctx: Context, config: ExplainConfig): Promise<void> 
 function registerExplainCommand(ctx: Context, runtime: ExplainRuntime, gateway: ExplainGateway): void {
   ctx.commands.register({
     name: 'explain',
-    description: 'Control the global auxiliary learning thread',
-    input: { hint: 'on | off | status' },
+    description: 'Request a learning explanation or control the global learning thread',
+    input: { hint: '<request> | on | off | status' },
     handler: async (invocation): Promise<CommandResult> => {
       const action = invocation.rawInput.trim()
       if (action === 'status') return { kind: 'success', text: renderStatus(gateway.status()) }
-      if (action !== 'on' && action !== 'off') {
-        return { kind: 'error', text: 'Usage: /explain on | off | status' }
+      if (action === 'on' || action === 'off') {
+        const error = await runtime.setEnabled(action === 'on', invocation.signal)
+        if (error !== undefined) return { kind: 'error', text: `${error.code}: ${error.message}` }
+        return { kind: 'success', text: renderStatus(gateway.status()) }
       }
-      const error = await runtime.setEnabled(action === 'on', invocation.signal)
-      if (error !== undefined) return { kind: 'error', text: `${error.code}: ${error.message}` }
-      return { kind: 'success', text: renderStatus(gateway.status()) }
+      if (action === '') return { kind: 'error', text: 'Usage: /explain <request> | on | off | status' }
+      const target = captureManualExplainTarget(
+        invocation.agent.session,
+        action,
+        runtime.settings().maxSourceChars,
+      )
+      const result = await runtime.scheduler.requestManual(target, invocation.signal)
+      return result.ok
+        ? { kind: 'success', text: `Explanation added to Learning: ${explanationTitle(result.entry)}` }
+        : { kind: 'error', text: `${result.error.code}: ${result.error.message}` }
     },
   })
+}
+
+function explanationTitle(entry: ThreadEntryView): string {
+  if (entry.kind !== 'explanation' || !('title' in entry.payload)) {
+    throw new Error('dsh-explain: manual explanation committed no explanation title')
+  }
+  return entry.payload.title
 }
 
 function renderStatus(status: ReturnType<ExplainGateway['status']>): string {

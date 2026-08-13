@@ -11,9 +11,10 @@ import type { AuxiliaryContext, SourceCapsule } from '../src/domain.ts'
 import {
   renderCompactionRequest,
   renderExplainRequest,
+  renderManualExplainRequest,
   renderRephraseRequest,
 } from '../src/explainer.ts'
-import { captureSourceCapsule } from '../src/observer.ts'
+import { captureManualExplainTarget, captureSourceCapsule } from '../src/observer.ts'
 import { CandidateQueue } from '../src/queue.ts'
 
 const EMPTY_CONTEXT: AuxiliaryContext = {
@@ -104,6 +105,42 @@ describe('completed-turn source observation', () => {
     const emptyEnd = empty.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
     expect(captureSourceCapsule(empty, emptyEnd, 100)).toBeUndefined()
   })
+
+  it('pairs a manual request with the latest completed source turn or an empty-session marker', () => {
+    const session = Session.create(SessionId('manual-source'))
+    session.append('turn/start', { turn: 1 })
+    session.append('step/start', { turn: 1, step: 1 })
+    session.append('user/message', createUserMessage({
+      source: { kind: 'user' },
+      content: [{ type: 'text', text: 'What does this branch do?' }],
+    }), { surfaceOp: 'append' })
+    session.append('assistant/message', {
+      turn: 1,
+      step: 1,
+      message: createAssistantMessage({
+        source: { provider: 'test', model: 'test' },
+        content: [{ type: 'text', text: 'It narrows the union.' }],
+      }),
+    }, { surfaceOp: 'append' })
+    session.append('step/end', { turn: 1, step: 1 })
+    session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+
+    expect(captureManualExplainTarget(session, '  请解释这个分支  ', 10_000)).toMatchObject({
+      request: '请解释这个分支',
+      capsule: {
+        sourceSessionId: SessionId('manual-source'),
+        turn: 1,
+        userText: '请解释这个分支',
+        assistantText: 'It narrows the union.',
+      },
+    })
+
+    const empty = Session.create(SessionId('manual-empty'))
+    expect(captureManualExplainTarget(empty, 'Explain discriminated unions', 10_000)).toMatchObject({
+      request: 'Explain discriminated unions',
+      capsule: { turn: 0, endSeq: 0, assistantText: '', tools: [] },
+    })
+  })
 })
 
 describe('latest-wins candidate queue', () => {
@@ -178,10 +215,21 @@ describe('strict auxiliary JSON parsing', () => {
       revision: 1,
       feedbackOrdinal: 2,
       sourceSummary: { userText: 'question', toolNames: [], truncated: false },
+      origin: 'autonomous',
       revisions: [{ revision: 1, title: 'T', what: 'W', why: 'Y', pitfall: 'P' }],
     }, 500)
     expect(rephrase.parse('{"title":"T2","what":"W2","why":"Y2","pitfall":"P2"}'))
       .toEqual({ title: 'T2', what: 'W2', why: 'Y2', pitfall: 'P2' })
+
+    const manual = renderManualExplainRequest(EMPTY_CONTEXT, {
+      request: 'Explain narrowing',
+      capsule: capsule('manual', 0, 1),
+    }, 500)
+    expect(manual.parse('{"topicKey":"typescript/narrowing","title":"T","what":"W","why":"Y","pitfall":"P"}'))
+      .toEqual({ topicKey: 'typescript/narrowing', title: 'T', what: 'W', why: 'Y', pitfall: 'P' })
+    expect(() => manual.parse('{"kind":"skip","reason":"not-useful"}')).toThrow(/unexpected fields/)
+    expect(() => manual.parse('{"topicKey":"Bad Topic","title":"T","what":"W","why":"Y","pitfall":"P"}'))
+      .toThrow(/invalid topicKey/)
   })
 
   it('allows checkpoint citations only from the supplied evidence sets', () => {

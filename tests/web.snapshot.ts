@@ -97,22 +97,20 @@ async function seedLearningDatabase(dshHome: string): Promise<void> {
       confidence: 'high',
     }],
   }, generation)
-  store.commitAutoDecision(lease, {
+  store.commitManualExplanation(lease, {
     ...capsule,
     sourceSessionId: MISSING_SOURCE_SESSION_ID,
-    turn: 2,
+    turn: 0,
     endSeq: 15,
     observedAt: FIXED_TIME + 1,
     userText: '穷尽检查为什么能发现遗漏分支？',
     assistantText: 'never 类型让缺失分支在编译期显现。',
   }, {
-    kind: 'explain',
     topicKey: 'typescript/exhaustiveness',
     title: '用 never 完成穷尽检查',
     what: '所有联合成员处理后，剩余值应当收窄为 never。',
     why: '新增联合成员却没有补充分支时，编译器会立即报错。',
     pitfall: 'default 分支直接吞掉值会掩盖遗漏成员。',
-    contextObservations: [],
   }, generation)
   const batch = store.compactionBatch()
   const observationId = batch?.observations[0]?.observationId
@@ -333,11 +331,28 @@ describe('keyless assembled DSH Web learning view', () => {
     expect(snapshot).toContain('正在学习 TypeScript 的可辨识联合。')
     expect(snapshot).toContain('其他会话的活跃讲解')
     expect(snapshot).toContain('来源会话不可用')
+    expect(snapshot).toContain('主动请求')
+    expect(snapshot).not.toContain('回合 0')
     expect(await view.getByRole('button', { name: '打开来源会话' }).count()).toBe(1)
     const feedback = view.getByRole('button', { name: '✓ 懂了' })
     expect(await feedback.count()).toBe(2)
     expect(await feedback.first().isDisabled()).toBe(true)
     expect(await feedback.last().isDisabled()).toBe(true)
+    expect(pageErrors).toEqual([])
+  })
+
+  it('discovers the explain request command from the composer', async () => {
+    if (page === undefined) throw new Error('web page is not initialized')
+    const composer = page.getByRole('textbox', { name: '给智能体发消息' })
+    await composer.fill('/expl')
+    const option = page.getByRole('option', {
+      name: /explain Request a learning explanation or control the global learning thread/,
+    })
+    await option.waitFor({ timeout: 15_000 })
+    await option.click()
+    expect(await composer.inputValue()).toBe('/explain ')
+    await page.getByText('<request> | on | off | status', { exact: true }).waitFor({ timeout: 15_000 })
+    await composer.fill('')
     expect(pageErrors).toEqual([])
   })
 

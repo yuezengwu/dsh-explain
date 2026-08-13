@@ -1,4 +1,48 @@
-# dsh-explain M4 迭代计划：内测可控性
+# dsh-explain 迭代计划
+
+## M5：主动学习命令
+
+> 状态：**设计、实现与自动化门禁完成；真实模型证据随合入 PR 保存**（2026-08-13）。
+
+### 目标
+
+用户无需等待自主选题，可直接在当前工作 Session 的 composer 输入 `/explain <学习请求>`，把一次显式学习目标交给 explain agent。命令生成一条进入全局学习线程、等待 ✓ / ✗ 的讲解，不进入主 Agent 请求，也不改变全局线程、按来源活跃门、Topic 全局门和辅助模型单飞不变量。
+
+### 宿主路径核验
+
+DSH command runtime 已把带 `input.hint` 的命令公开给 composer slash discovery，并在 handler 前后写入标准 `command/run` / `command/done`。命令结果不会进入主 Agent 历史。因此 M5 只扩展现有 `/explain` definition 和 host Scheduler，不新增输入框组件、Remote 方法、Session 自定义事件或 UI 宿主。
+
+### 设计
+
+- 精确输入 `on`、`off`、`status` 保持现有管理语义；其他规范化后的非空文本是一条主动学习请求，空参数返回包含两类用法的帮助。
+- handler 从当前 Session 捕获最近一个合格 completed turn 的有界 assistant/工具上下文；没有合格回合时以 `turn = 0` 表示空白来源。命令文本按 `maxSourceChars` 限制，模型展示语言跟随请求。
+- 主动工作进入同一个 Scheduler，优先于尚未开始的 rephrase、自主候选和 idle 压缩。新请求可取消后台自主生成或 idle 压缩，但不抢占已在途的主动请求或 rephrase。
+- 每来源最多一个活跃或待处理主动讲解；模型必须返回完整 explanation，不能 skip。提交时原子复核来源槽和全局 Topic 活跃门；显式请求可以让已掌握但当前不活跃的 Topic 重新进入 learning。
+- 主动请求读取最新 `ExplainContext`、未压缩尾部和实时 Topic/活跃覆盖层，执行同一 50% 压力门、全局单飞、超时、租约和 epoch fencing；它不写自主预算表。
+- revision 1 payload 使用可选 `origin: 'manual'`，Remote 投影为“主动请求”。旧 payload 没有 origin 时保持自主语义；SQLite schema 不变。空白来源的 turn 0 不在 UI 显示。
+- 成功 explanation 保存固定上限的私有来源摘要供后续 ✗ 重讲；完整命令本身由来源 Session 的标准 command 日志拥有，主模型 `deriveMessages()` 不包含它。
+
+### 实现前审查结论
+
+- **兼容性**：只把过去的无效 `/explain <其他文本>` 空间变为有效请求；三个管理子命令和 Remote 均不变。
+- **优先级**：显式请求不能插入正在生成的另一条显式请求或重讲，否则 command 的等待与反馈目标会失去可预测顺序；只抢占可安全重排的后台自主/idle 工作。
+- **原子性**：入队前 gate 只提供快速失败，最终提交仍在 SQLite 事务中复核来源、Topic 与 lease，避免模型在途期间的竞争结果落库。
+- **预算**：主动请求由用户显式发起，不消耗防后台烧 token 的自主额度；它仍可能产生 provider 成本，并受开关、路由、压力、超时与单飞约束。
+- **取消与生命周期**：command signal、off、设置语义变化、lease 丢失和 teardown 都能结算请求；队列项移除监听器，迟到模型结果不能提交。
+- **压缩抢占**：主动请求取消 idle 压缩后清除该 generation 的 attempted 标记，使被抢占的 dirty 批次仍可在后续 idle 周期重试。
+- **隐私与主 Agent 隔离**：模型只看到有界请求、最近来源 capsule 和 explain 私有上下文；SQLite 不新增完整转录，command 输入不会成为主模型 message。
+
+### 验收标准
+
+1. composer discovery 显示 `/explain` 及 `<request> | on | off | status` 提示；管理子命令行为不回归。
+2. enabled 且路由可用时，`/explain <request>` 从有历史或空白 Session 成功创建 `origin: manual` 的活跃讲解；空白来源不显示 turn 0。
+3. 讲解读取 ExplainContext、不能 skip，并在来源/Topic 竞争时不提交部分数据。
+4. 同时存在主动、自主、重讲或压缩时 adapter 最大并发为 1；主动请求按设计优先，取消和 off 返回稳定结果。
+5. 成功、失败和取消均不改变滚动 24 小时自主额度；成功会更新 explain 用户操作时间。
+6. command 生命周期保留原始请求，主 Session `deriveMessages()` 不变；typed Remote 不泄露私有来源摘要。
+7. 单元/Host 集成、类型、构建、keyless assembled Web 与真实模型 GIF 均基于同一候选提交通过。
+
+## M4：内测可控性（已完成）
 
 > 状态：**M4 实现与自动化门禁完成，进入真实模型候选验收**（2026-08-13）。P0 行为和证据分别见 [PRD](./PRD.md) 与 [验收矩阵](./ACCEPTANCE.md)。
 

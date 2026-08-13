@@ -1,7 +1,7 @@
-# dsh-explain 技术架构 v7
+# dsh-explain 技术架构 v8
 
-> 状态：**v7 M4 已实现并通过自动化门禁，进入真实模型候选验收**（2026-08-13）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
-> v7 保留 v6 的学习与压缩语义，新增基于 DSH 原生 settings revision/CAS 的设置页、来源 Session 导航和可诊断状态；SQLite schema 与辅助模型协议不变。
+> 状态：**v8 M5 主动学习命令已实现并通过自动化门禁**（2026-08-13）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
+> v8 保留 v7 的数据与 UI 结构，增加复用 DSH command/composer 的显式学习请求、调度优先级、稳定失败和来源标识；SQLite schema 不变，explanation payload 增加向后兼容的可选 `origin`。
 
 ## 架构结论
 
@@ -9,14 +9,14 @@
 
 - 多个顶层工作 Session 只提供候选素材。
 - 每个来源 Session 最多有一个 Topic 等待反馈；不同来源可以同时等待。
-- 全局 Scheduler 一次只运行一个自主讲解、重讲或压缩请求。
-- 自主判断受持久化的滚动 24 小时调用预算约束；重讲和压缩不占自主额度。
+- 全局 Scheduler 一次只运行一个主动讲解、自主讲解、重讲或压缩请求。
+- 自主判断受持久化的滚动 24 小时调用预算约束；主动讲解、重讲和压缩不占自主额度。
 - 同一 `TopicKey` 全局最多一个活跃讲解，Topic 掌握状态用户全局生效。
 - 学习事实存入插件自有 SQLite，不进入主 Session 日志。
 - `ExplainContext` 汇总对话偏好、知识概况和学习进展，只进入辅助模型请求。
 - 已关闭讲解在 30 分钟无 explain 操作或预计请求压力超过模型容量 50% 时压缩；原始 entries 永久保留供 UI 分页。
 - 主模型不可见：不 append 自定义 Session 事件、不 inject、不 steer、不改变 `deriveMessages()`。
-- P0 的唯一交互界面是 DSH 第一方 `conversation.view` 中的「学习」Tab；每个 Session 有独立入口和选中状态，所有入口读取同一份全局数据。
+- 学习历史与反馈位于 DSH 第一方 `conversation.view` 的「学习」Tab；主动入口复用第一方 composer slash command。每个 Session 有独立视图入口和选中状态，所有入口读取同一份全局数据。
 
 ```mermaid
 flowchart LR
@@ -24,6 +24,7 @@ flowchart LR
   S2["顶层 Session B"] --> O
   SN["其他顶层 Session"] --> O
   O --> Q["按来源 latest-wins 队列"]
+  X["composer: /explain 学习请求"] --> R
   Q --> R["全局单飞 Scheduler"]
   R --> L["辅助 LLM"]
   L --> D["GlobalLearningThread / SQLite"]
@@ -60,7 +61,7 @@ dsh-explain
 ### P0 组合前置条件
 
 1. DSH web profile 组合 `@deepseek-ai/dsh-client-runtime`、`@deepseek-ai/dsh-client-locale`、`@deepseek-ai/dsh-client-ui-slots` 与 `@deepseek-ai/dsh-client-ui-conversation`。
-2. host 组合提供 `llm`、`tokenMeter`、`settings` 与全局 Session 事件源；explain 声明硬 inject，缺失任一服务时不激活。`tokenMeter` 只用于 `estimateMessage()`，模型容量由 `llm.resolveModelInfo()` 所有。
+2. host 组合提供 `commands`、`llm`、`tokenMeter`、`settings` 与全局 Session 事件源；explain 声明硬 inject，缺失任一服务时不激活。`tokenMeter` 只用于 `estimateMessage()`，模型容量由 `llm.resolveModelInfo()` 所有。
 3. package peerDependencies 声明直接使用的第一方包；`dsh.client.inject` 声明 locale、runtime 与 ui-conversation 的组合元数据。该字段不承担 apply 顺序。
 4. client 插件声明实际读取的 `slots`、`locale` 与 `remote` 服务；对 `conversation.view` 的贡献必须通过 `ctx.slots.inject()` 等待真实 slot declaration，不用裸 `slots.register()` 猜测加载顺序。
 5. 安装与组合 smoke 使用正常的本地目录安装与 Web profile，断言 `dsh-explain:learning` 在 view ring 中恰好注册一次；第一方视图宿主由 package peer 与 `dsh.client.inject` 声明为必需组合依赖，slot 的实际声明时序仍由 `slots.inject()` 处理。
@@ -211,11 +212,16 @@ interface ExplanationEntryPayload {
   what: string
   why: string
   pitfall: string
+  origin?: 'manual'
   sourceSummary?: PersistedSourceSummary
 }
 ```
 
-`sourceSummary` 在 revision 1 必需、在 revision 2 及以后禁止；后续 revision 通过 `ExplanationId` 读取首个 entry。`userText` 先规范化空白，再按首尾保留截断到固定 2,000 字符；`toolNames` 只保留调用名，按首次出现去重且最多 32 个；`cwdLabel` 沿用 capsule 中不含绝对路径的显示值，最长 160 字符。三项上限是持久化隐私格式约束，不接受 Config/settings 放宽。`truncated` 表示 userText 或工具名列表发生截断。摘要不包含 assistant 全文、工具参数、工具结果、reasoning、system prompt、绝对路径或其他 turn。来源 Session 删除后该读取路径仍然成立。`threadPage` 的客户端 DTO 必须剥离 `sourceSummary`，P0 不在 UI、Remote 或日志中回显它。Compactor 构造 closed Explanation 输入时也必须剥离该字段；它只用于活跃 Explanation 的 rephrase。
+`sourceSummary` 在 revision 1 必需、在 revision 2 及以后禁止；后续 revision 通过 `ExplanationId` 读取首个 entry。自主讲解的 `userText` 来自当前来源 turn；主动讲解的 `userText` 来自命令请求。两者先规范化空白，再按首尾保留截断到固定 2,000 字符；`toolNames` 只保留调用名，按首次出现去重且最多 32 个；`cwdLabel` 沿用 capsule 中不含绝对路径的显示值，最长 160 字符。三项上限是持久化隐私格式约束，不接受 Config/settings 放宽。`truncated` 表示 userText 或工具名列表发生截断。摘要不包含 assistant 全文、工具参数、工具结果、reasoning、system prompt、绝对路径或其他 turn。来源 Session 删除后该读取路径仍然成立。`threadPage` 的客户端 DTO 必须剥离 `sourceSummary`，P0 不在 UI、Remote 或日志中回显它。Compactor 构造 closed Explanation 输入时也必须剥离该字段；它只用于活跃 Explanation 的 rephrase。`origin: 'manual'` 随后续 revision 保留并可向 UI 投影；旧 entry 没有该字段时解释为自主来源，不需要 schema 迁移。
+
+### 主动命令捕获
+
+`/explain <request>` 由 DSH command runtime 先写标准 `command/run`，再调用插件 handler；因此原始命令输入可由来源 Session 日志重建，且不会成为主 Agent message。handler 规范化并按 `maxSourceChars` 限制请求，从当前 Session 反向选择最近一个符合普通 Observer 规则的 completed turn，临时携带其 assistant 文本与工具结果预览。没有合格回合时使用 `turn = 0`、空 assistant 和空工具列表；UI 不显示该占位 turn。主动请求不会补扫其他 Session，也不会持久化完整来源 assistant 或工具结果。
 
 ## 全局调度
 
@@ -225,12 +231,15 @@ interface ExplanationEntryPayload {
 stateDiagram-v2
   [*] --> Disabled
   Disabled --> Ready: on
+  Ready --> Manual: 取主动请求
   Ready --> Generating: 取可执行自主候选
   Ready --> Rephrasing: 取重讲任务
   Ready --> Compacting: 压力或不活跃触发
+  Manual --> Ready: explanation / 稳定失败
   Generating --> Ready: skip / explanation / 失败
   Rephrasing --> Ready: revision + 1 / 失败
   Compacting --> Ready: checkpoint / no-op / 失败
+  Manual --> Disabled: explain off / abort
   Generating --> Disabled: explain off / abort
   Rephrasing --> Disabled: explain off / abort
   Compacting --> Disabled: explain off / abort
@@ -242,20 +251,21 @@ stateDiagram-v2
 ### 队列规则
 
 - 每个来源 Session 最多一个自主候选；新候选替换该 Session 的旧候选。
+- 每个来源 Session 最多一个待处理或在途主动请求；来源已有活跃 Explanation 时在入队前返回 `EXPLAIN_SOURCE_BUSY`。
 - `maxPendingCandidates` 默认 8，作为 Config/settings 字段可修改。
 - 达到上限时丢弃最旧的自主候选并记录 debug 日志。
 - 来源存在活跃 Explanation 时不取该来源的自主候选；其他来源不受影响。
 - 可执行自主候选按 `observedAt` 最早优先；繁忙来源不能通过持续替换让其他来源饥饿。
 - 预算允许时才取自主候选；`maxAutoRequestsPerDay` 耗尽时保留各来源 latest-wins 候选，并为最早占额的 24 小时过期点设置一次唤醒。新候选仍按来源替换，队列总上限仍生效。
 - ✗ 产生的 rephrase 工作不进入自主候选上限，按反馈 entry 的全局 ordinal 处理。
-- 工作优先级为：当前目标请求必需的压力压缩、rephrase、可执行自主候选、不活跃压缩。压力压缩完成后回到原目标重新组装和计价，不能直接复用压缩前请求。
+- 工作优先级为：当前目标请求必需的压力压缩、主动请求、rephrase、可执行自主候选、不活跃压缩。新主动请求可以取消在途自主生成或 idle 压缩并在其清理后先运行；它不抢占已在途的主动请求或 rephrase。压力压缩完成后回到原目标重新组装和计价，不能直接复用压缩前请求。
 - 反馈事务必须先通过目标 Explanation 的 active revision 校验。只有已接受的反馈才能改变 Scheduler：✓ 取消同一讲解尚未完成的 rephrase；✗ 在没有同一 rephrase 在途时立即启动或重试。陈旧反馈不取消任何工作。
 
 ### 自主调用预算
 
 `maxAutoRequestsPerDay` 默认 50，含义是全局滚动 24 小时内最多向 provider 发送 50 个自主判断请求，不是自然日配额。Scheduler 在为自主目标执行压力压缩前先只读检查预算；已耗尽时不发起与该目标相关的压力压缩。目标通过压力检查后、真正调用 provider 前，再在一个 SQLite 事务中删除 `started_at <= now - 24h` 的旧占额、重新计数并插入新的 `AutoRequestId`。第二次检查失败时目标回到候选队列等待。
 
-占额提交成功即计数，因此 provider 失败、超时、取消、迟到丢弃和 `maxAttempts` 重试都各消耗一次；进程在占额后、发送前崩溃也保守计数，确保任何崩溃路径都不能突破消费上限。自主模型返回 `skip` 同样计数。用户提交 ✗ 产生的 rephrase 和 Compactor 请求不写该表；它们仍受全局单飞、上下文阈值与超时约束。设置提高或最早占额过期时立即重新调度，设置降低时不撤销在途请求，只阻止后续自主发送。
+占额提交成功即计数，因此 provider 失败、超时、取消、迟到丢弃和 `maxAttempts` 重试都各消耗一次；进程在占额后、发送前崩溃也保守计数，确保任何崩溃路径都不能突破消费上限。自主模型返回 `skip` 同样计数。主动请求、用户提交 ✗ 产生的 rephrase 和 Compactor 请求不写该表；它们仍受全局单飞、上下文阈值与超时约束。设置提高或最早占额过期时立即重新调度，设置降低时不撤销在途请求，只阻止后续自主发送。
 
 ### 单飞与迟到结果
 
@@ -266,6 +276,7 @@ Scheduler 全局最多持有一个 `AbortController` 和一个模型 promise。�
 - 全局开关仍为 on。
 - runtime lease 的 owner + generation 仍匹配。
 - 自主生成时目标来源仍无活跃 Explanation、候选仍是该来源最新项；输出 Topic 未掌握且未在其他来源活跃。
+- 主动生成时命令信号仍有效、目标来源仍无活跃 Explanation，且输出 Topic 未在任何来源活跃；已掌握 Topic 可由显式请求原子恢复为 learning。
 - 重讲时目标仍是相同 `sourceSessionId + ExplanationId + revision`。
 - 压缩时捕获的 `contextGeneration` 未变化，所有拟覆盖 Explanation 仍为 closed 且未被覆盖。
 
@@ -299,6 +310,8 @@ Scheduler 全局最多持有一个 `AbortController` 和一个模型 promise。�
 
 一次重讲请求使用同一全局基线和实时覆盖层，再加入目标讲解的全部 revisions、该目标的 `not-understood` 反馈和 revision 1 entry 持久化的 `sourceSummary`；不读取来源 Session。缺少或无法解析摘要属于数据库不变量破坏，返回 `EXPLAIN_SOURCE_SUMMARY_INVALID`，不能降级成无来源重讲。实时覆盖层按结构化字段拼接，永远覆盖旧检查点中相冲突的 Topic 状态。
 
+一次主动请求使用同一全局基线和实时覆盖层，再加入规范化的 `manualRequest` 与当前来源最近一个合格回合的有界 capsule。prompt 要求输出语言跟随 `manualRequest`，并禁止 `skip` 与 context observation；生成只回答用户显式学习目标，不利用命令去修改主 Agent。完整渲染后与自主/重讲一样计价和执行压力压缩。
+
 每个请求完全渲染后，把固定 system prompt 和各条 user/assistant 内容都表示为对应 role 的临时 `Message`，逐条调用 `ctx.tokenMeter.estimateMessage()` 并加上 `maxOutputTokens` 预留；辅助调用不携带工具 schema。分母来自 `resolveModelInfo().context.contextWindow`。这是 DSH 固定启发式，不声称等于 provider tokenizer。占用大于 `contextThresholdRatio = 0.5` 时，目标工作转入压力压缩；压缩后必须从数据库重新组装并重新计价。
 
 ## 压缩与 `ExplainContext`
@@ -312,7 +325,7 @@ Compactor 的输入是上一检查点、按时间排序的一批未覆盖 observ
 ### 双触发器
 
 - `IdleTrigger`：存在未覆盖 observation 或 closed Explanation，且 `now - (last_user_action_at ?? first_explain_output_at) >= idleCompactMs`。成功 `/explain on`、用户反馈或 reopen 更新 `last_user_action_at`；status、视图 mount、分页、watch、刷新和模型活动不更新。
-- `PressureTrigger`：待执行自主或重讲请求的预计占用严格大于 `contextThresholdRatio`。Scheduler 在目标调用前运行必要压缩。
+- `PressureTrigger`：待执行主动、自主或重讲请求的预计占用严格大于 `contextThresholdRatio`。Scheduler 在目标调用前运行必要压缩。
 - 同一个 `{ contextGeneration, activityGeneration }` 的 idle 检查最多启动一次。无可压缩项是 no-op，不产生 LLM 调用；新 observation、Explanation 关闭或成功用户操作分别推进对应 generation 并重新布置 timer。
 - idle 压缩失败保留脏代数并记录稳定状态，等下一次用户操作后的新 idle 周期、新 closed Explanation 或后续压力触发；压力压缩失败返回 `EXPLAIN_COMPACTION_FAILED`，原目标不继续调用模型。
 - 若全部可压缩项已成功覆盖而目标请求仍大于 50%，返回 `EXPLAIN_CONTEXT_PRESSURE_UNRESOLVED`。不得静默删除活跃讲解、缩短 `ExplainContext` 字段或绕过阈值。
@@ -372,13 +385,23 @@ interface RephraseDecision {
   why: string
   pitfall: string
 }
+
+interface ManualExplanation {
+  topicKey: string
+  title: string
+  what: string
+  why: string
+  pitfall: string
+}
 ```
 
-模型 JSON 是不可信边界：拒绝额外字段、非法 TopicKey、空白展示字段、超长字段和非字符串值。`contextObservations` 最多四项，`value` 最大 240 字符；host 为接受的观察生成 ObservationId，并绑定当前来源 Session/turn，观察本身不能关闭或掌握 Topic。`title` 最大 120 字符，`what / why / pitfall` 各最大 2,000 字符。自主讲解的展示字段沿用当前来源用户文本的语言，rephrase 沿用已有讲解语言；Compactor 请求显式携带由上一检查点、最新讲解标题或最新对话偏好依次选出的 `languageSample`，所有展示字段沿用该样本文本的语言。样本含有可区分的非拉丁书写系统时，host 还要求每个非空展示字段保留该书写系统；不符合时整项解析失败且不写检查点。rephrase 只能返回 `RephraseDecision`，不能改变 `TopicKey` 或产生 context observation。解析失败按模型失败处理，不能把原文回退成展示内容。
+模型 JSON 是不可信边界：拒绝额外字段、非法 TopicKey、空白展示字段、超长字段和非字符串值。`contextObservations` 最多四项，`value` 最大 240 字符；host 为接受的观察生成 ObservationId，并绑定当前来源 Session/turn，观察本身不能关闭或掌握 Topic。`title` 最大 120 字符，`what / why / pitfall` 各最大 2,000 字符。主动讲解的展示字段沿用命令请求语言，自主讲解沿用当前来源用户文本语言，rephrase 沿用已有讲解语言；Compactor 请求显式携带由上一检查点、最新讲解标题或最新对话偏好依次选出的 `languageSample`，所有展示字段沿用该样本文本的语言。样本含有可区分的非拉丁书写系统时，host 还要求每个非空展示字段保留该书写系统；不符合时整项解析失败且不写检查点。主动请求必须返回 `ManualExplanation`，不能 skip 或产生 context observation；rephrase 只能返回 `RephraseDecision`，不能改变 `TopicKey` 或产生 context observation。解析失败按模型失败处理，不能把原文回退成展示内容。
 
 接受一个自主结果时，host 在同一事务中重新校验来源候选、来源活跃槽和 Topic 状态，写入 observations，并按 decision 写入或跳过 Explanation。创建 Explanation 时，revision 1 entry 同时写入该候选的 `sourceSummary`；新建或既有 Topic 的 `topics.title` 都更新为本次成功提交的标题，并提高 `topicRevision`。结果产生 observation 或 Explanation 时才首次设置 `first_explain_output_at` 并提高 `storeRevision`；新 observation 另提高 `contextGeneration`。没有 observation 的 skip 不写业务数据。任一约束失败时整项结果丢弃，不能只提交画像推断而丢弃其过期来源判断；自主调用占额已经发生且不回退。
 
 成功提交 rephrase 时也把 `topics.title` 更新为该 revision 的最新标题并提高 `topicRevision`。entries 是 append-only：任何旧 revision 的标题保持生成时原值，`maxTopicHints` 和实时覆盖层读取 `topics.title`。标题变化不得改变 `TopicKey`、掌握状态或其他来源的 Explanation。
+
+接受主动结果时，host 在一个事务中重新校验 lease、来源活跃槽和 Topic 活跃门，必要时把既有 mastered Topic 恢复为 learning，创建新的 Explanation revision 1，并把 `origin: 'manual'`、有界 `sourceSummary` 与 generation 写入 payload。主动请求成功是 explain 用户操作：更新 `last_user_action_at`、`activityGeneration` 和 `storeRevision`，但不写 `auto_request_usage`。Topic 或来源竞争失败时整个结果丢弃并返回稳定冲突。
 
 ### 超时与失败
 
@@ -386,6 +409,7 @@ interface RephraseDecision {
 - 自主候选失败最多按 `maxAttempts` 重试，默认 2；耗尽后丢弃候选并记录日志，不污染学习线程。
 - 重讲失败时，已提交的 not-understood 反馈保留；线程仍停留在原 revision，UI 显示失败并允许用户再次点击 ✗。同一 `RequestId` 不重复追加反馈。
 - provider 返回的 usage 在成功生成 explanation、rephrase 或 checkpoint 时随对应记录持久化；自主调用占额独立记录已发送的失败和重试。失败细节进入 host 日志，用户界面只接收稳定错误码和安全消息。
+- 主动命令把 disabled、runtime 不可用、来源繁忙、Topic 活跃、请求取消、模型失败、压缩失败或无法降压映射为稳定 `EXPLAIN_*` 结果；不得把 provider 异常文本回显给用户。
 
 ## 反馈状态转换
 
@@ -489,6 +513,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 - 学习 view 只替换聊天记录区域。ConversationRoot 继续拥有当前工作 Session 的 composer；插件不通过跨包 CSS 或 DOM 操作隐藏、禁用或改道它。
 - 学习业务数据不进入 conversation store 或 localStorage；后者只持有 view 选择、draft 等 UI 状态。
 - 每个活跃 Explanation 的最新 revision 都独立显示 ✓ / ✗；反馈目标显式携带来源 Session 与 Explanation 身份，不能依赖“线程最后一条”。
+- `origin: 'manual'` 的 explanation 显示本地化“主动请求”元信息；`sourceTurn = 0` 只表示空白来源捕获，不渲染成真实回合。
 - M4 订阅公开的 `ctx.sessions.list`，以 `byId[sourceSessionId]` 判定来源是否仍在当前 inventory。非当前且可见的来源通过 `ctx.sessions.open(sourceSessionId)` 打开；当前来源不显示重复动作。缺失来源保留历史并显示不可用，不读取 Session 文件、不操作 conversation 私有 store，也不改变目标 Session 当前 view。
 
 ## 生命周期
@@ -505,7 +530,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 1. 先将 enabled 持久化为 false。
 2. 提高 epoch 并 abort 在途请求。
 3. 清空内存自主候选。
-4. 保留数据库历史、Topic 状态、各来源未关闭 Explanation、checkpoint 与 `ExplainContext`；重新启用后继续等待其反馈。
+4. 以 `EXPLAIN_DISABLED` 结算尚未开始的主动命令，保留数据库历史、Topic 状态、各来源未关闭 Explanation、checkpoint 与 `ExplainContext`；重新启用后继续等待其反馈。
 5. client 仍可读取历史，但 `feedback` 与 `reopenTopic` 返回 `EXPLAIN_DISABLED`，不产生业务事务。
 
 ### Teardown
@@ -526,7 +551,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 |---|---|
 | 主模型历史 | 不变；无 explain Session 事件和消息注入 |
 | 主 turn 控制流 | 不等待 explain 模型或数据库反馈流程 |
-| 主 Session 持久化 | 不包含学习数据，不产生未知外部事件 |
+| 主 Session 持久化 | 不包含学习事实；主动请求只产生 DSH command runtime 已定义的 `command/run` / `command/done` 事件 |
 | 资源 | explain 仍共享宿主进程、模型配额、网络和磁盘，可能产生间接竞争 |
 | 隐私 | 发送给辅助模型的来源素材受限；完整转录默认不落 explain 数据库 |
 
@@ -560,6 +585,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 
 - TopicKey、模型 JSON、SourceCapsule 与分页游标校验。
 - 状态机、按来源 latest-wins、来源活跃门、公平选择、工作优先级和 epoch fencing。
+- 主动请求捕获、空白来源、严格非 skip 输出、稳定结算、取消、来源/Topic 门和自主预算豁免。
 - revision 1 `sourceSummary` 生成、字段上限、Remote 剥离、来源删除后的重讲与损坏拒绝。
 - 滚动 24 小时边界、发送前持久占额、失败/重试计数、候选暂停恢复和重讲豁免。
 - 新 Explanation 与 rephrase 对 `topics.title/topicRevision` 的更新，以及旧 entry 不变。
@@ -581,6 +607,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 - 预计压力大于 50% 时先压缩并重新估算；失败和无法降压路径不发送目标请求且不标记覆盖。
 - 第二 host runtime 遇到有效租约时加载失败，过期后可接管。
 - 主 Session `deriveMessages()` 与未安装插件时相同。
+- `/explain <request>` 经真实 command runtime 成功追加 manual entry；command 生命周期可重建请求，但主模型消息不变。
 
 ### Client 与产品测试
 
@@ -595,6 +622,7 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 - 来源存在时可调用公开 Session 导航；来源删除后 active/history/audit 行保留且动作稳定降级；删除与点击竞态不产生未处理异常。
 - `settings.section` 晚声明、collapse、redeclaration 与 conversation view 同样覆盖；两类页面同时挂载仍只有一个 long-poll。
 - 首个 UI PR 同时加入 keyless Web replay/snapshot 与真实运行 GIF。
+- composer 的 slash discovery 显示 `/explain` 请求提示；真实运行从命令提交到学习视图“主动请求”卡片形成产品证据。
 
 ## 实施阶段
 
@@ -604,17 +632,17 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 | M2 P0 功能 | Observer、SourceCapsule、Scheduler、真实辅助模型、ExplainContext、双触发压缩、Topic 状态机 | PRD 行为与失败路径全部实现 |
 | M3 发布门禁 | 单元/集成、keyless snapshot、真实流程 GIF、安装与组合 smoke | 所有 P0 验收标准通过后才标记可发布 |
 | M4 内测可控性 | 设置 revision/CAS、模型目录、来源导航、诊断状态和 rc.2 产品证据 | 用户无需编辑 YAML 即可配置启用，状态和来源路径可解释，M4 验收矩阵全部通过 |
+| M5 主动学习命令 | command/composer 入口、manual 调度、稳定失败、来源标识和产品证据 | 用户可显式生成一条不占自主额度的讲解，主 Agent 历史不变 |
 
-## v6 → v7 修订说明
+## v7 → v8 修订说明
 
-| v6 | v7 |
+| v7 | v8 |
 |---|---|
-| 仅通过命令或 settings 文件编辑运行设置 | 独立「学习」设置页只编辑四个普通字段，并复用 settings 原生 revision/CAS |
-| `setEnabled()` 是唯一专用设置 Remote | 增加 configuration、modelCatalog 和原子 updateConfiguration 协议 |
-| 学习视图只显示来源短 id | 订阅公开 Session inventory，并可安全打开仍存在的非当前来源 |
-| 关闭、失败和等待的展示有限 | 明确区分关闭、失败、未配置、额度耗尽与正常等待，显示恢复时间和压力 |
-| store 只由学习 view 激活 | 设置页和学习 view 引用计数共享同一 store 与 long-poll |
-| SQLite schema 2 与模型协议 | 保持不变；M4 不迁移学习数据，不扩大持久隐私面 |
+| `/explain` 只接受 `on/off/status` | 其他非空输入成为一次主动学习请求；三个管理子命令精确保留 |
+| 调度优先级从 rephrase 开始 | manual 在未开始工作中最高，且可抢占自主生成或 idle 压缩 |
+| explanation 来源只有隐式自主 | payload 可选 `origin: 'manual'`，旧 payload 解释为自主；SQLite schema 2 不变 |
+| 自主/重讲读取 ExplainContext | 主动请求也读取相同全局基线与覆盖层，并执行 50% 压力门 |
+| 自主预算豁免只有重讲/压缩 | 用户显式主动讲解同样豁免，仍受单飞、超时与来源/Topic 门约束 |
 
 ## 架构决策记录
 
@@ -643,3 +671,6 @@ ctx.slots.inject('conversation.view', () => ctx.slots.register({
 | 2026-08-13 | M4 设置页复用 DSH settings 原生 revision/CAS，不建立第二套 revision，不整体替换 user section |
 | 2026-08-13 | 模型目录只提供建议；未列出 id 仍以 Host 精确 contextWindow 解析决定能否启用 |
 | 2026-08-13 | 来源导航只使用公开 Session inventory/open API；来源缺失保留全局学习历史并稳定降级 |
+| 2026-08-13 | `/explain <request>` 复用 DSH command runtime，不进入主 Agent；主动请求优先、预算豁免，并以 `origin: 'manual'` 投影到全局学习线程 |
+  Manual --> Ready: explanation / 稳定失败
+  Manual --> Disabled: explain off / abort

@@ -1,7 +1,7 @@
 import { basename } from 'node:path'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
-import type { SourceCapsule } from './domain.ts'
+import type { ManualExplainTarget, SourceCapsule } from './domain.ts'
 
 /** Build one bounded capsule from a completed turn, or reject an ineligible turn. */
 export function captureSourceCapsule(
@@ -64,6 +64,47 @@ export function captureSourceCapsule(
     tools: bounded.tools,
     truncated: bounded.truncated,
   }
+}
+
+/** Build one explicit request from command input and the latest eligible completed turn. */
+export function captureManualExplainTarget(
+  session: Session,
+  request: string,
+  maxSourceChars: number,
+): ManualExplainTarget {
+  const normalized = normalizeText(request)
+  if (normalized === '') throw new Error('dsh-explain: manual explanation request must not be empty')
+  const recent = latestSourceCapsule(session, maxSourceChars)
+  const bounded = boundCapsule(
+    normalized,
+    recent?.assistantText ?? '',
+    recent?.tools ?? [],
+    maxSourceChars,
+  )
+  return {
+    request: bounded.userText,
+    capsule: {
+      sourceSessionId: session.id,
+      turn: recent?.turn ?? 0,
+      endSeq: session.events.at(-1)?.seq ?? 0,
+      observedAt: Date.now(),
+      ...(session.header.cwd === undefined ? {} : { cwdLabel: basename(session.header.cwd).slice(0, 160) }),
+      userText: bounded.userText,
+      assistantText: bounded.assistantText,
+      tools: bounded.tools,
+      truncated: bounded.truncated,
+    },
+  }
+}
+
+function latestSourceCapsule(session: Session, maxSourceChars: number): SourceCapsule | undefined {
+  for (let index = session.events.length - 1; index >= 0; index -= 1) {
+    const event = session.events[index]
+    if (event?.type !== 'turn/end') continue
+    const capsule = captureSourceCapsule(session, event, maxSourceChars)
+    if (capsule !== undefined) return capsule
+  }
+  return undefined
 }
 
 function findTurnStart(events: readonly SessionEvent[], turn: number, beforeSeq: number): number | undefined {

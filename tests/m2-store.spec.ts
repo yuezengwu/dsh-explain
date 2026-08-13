@@ -258,6 +258,79 @@ describe('autonomous, rephrase, and checkpoint persistence', () => {
     expect(store.commitCheckpoint(lease, batch, 'idle', 'checkpoint-2', snapshot, generation())).toBeUndefined()
   })
 
+  it('commits a manual explanation without auto budget and preserves its origin through rephrase', () => {
+    const store = memoryStore()
+    const lease = store.acquireLease('owner', Date.now(), DAY_MS)
+    const source = capsule('manual-source', 0)
+    const committed = store.commitManualExplanation(lease, source, {
+      topicKey: 'typescript/manual-narrowing',
+      title: 'Requested narrowing lesson',
+      what: 'A literal property selects one union member.',
+      why: 'The checker can then prove which fields exist.',
+      pitfall: 'A widened string does not discriminate.',
+    }, generation())
+    expect(committed).toMatchObject({
+      ok: true,
+      entry: {
+        origin: 'manual',
+        sourceSessionId: SessionId('manual-source'),
+        sourceTurn: 0,
+        topicTitle: 'Requested narrowing lesson',
+      },
+    })
+    expect(store.autoBudget(50).used).toBe(0)
+    if (!committed.ok || committed.entry.explanationId === undefined) throw new Error('missing manual explanation')
+    expect(store.feedback({
+      requestId: RequestId('manual-rephrase'),
+      sourceSessionId: SessionId('manual-source'),
+      explanationId: committed.entry.explanationId,
+      revision: 1,
+      action: 'not-understood',
+    }).ok).toBe(true)
+    const target = store.pendingRephrases()[0]
+    expect(target).toMatchObject({
+      origin: 'manual',
+      sourceSummary: { userText: 'Why does TypeScript narrow this union?' },
+    })
+    if (target === undefined) throw new Error('missing manual rephrase target')
+    expect(store.commitRephrase(lease, target, {
+      title: 'Requested narrowing lesson, differently',
+      what: 'Think of each literal as a label.',
+      why: 'Reading the label identifies the member.',
+      pitfall: 'The labels must remain literal.',
+    }, generation())).toMatchObject({ origin: 'manual', revision: 2 })
+    expect(store.autoBudget(50).used).toBe(0)
+  })
+
+  it('lets an explicit request reopen a mastered Topic but never duplicates an active source or Topic', () => {
+    const store = memoryStore()
+    const lease = store.acquireLease('owner', Date.now(), DAY_MS)
+    const original = store.commitAutoDecision(lease, capsule('mastered-source'), decision(), generation()).entry
+    if (original?.explanationId === undefined || original.revision === undefined) throw new Error('missing original')
+    expect(store.feedback({
+      requestId: RequestId('master-before-manual'),
+      sourceSessionId: SessionId('mastered-source'),
+      explanationId: original.explanationId,
+      revision: original.revision,
+      action: 'understood',
+    }).ok).toBe(true)
+    const manual = {
+      topicKey: 'typescript/discriminated-unions',
+      title: 'Reopened by request',
+      what: 'Review the literal tag.',
+      why: 'The user explicitly asked to study it again.',
+      pitfall: 'Do not widen the tag.',
+    }
+    expect(store.commitManualExplanation(lease, capsule('manual-reopen'), manual, generation()))
+      .toMatchObject({ ok: true, entry: { topicState: 'learning', origin: 'manual' } })
+    expect(store.commitManualExplanation(lease, capsule('other-source'), manual, generation()))
+      .toEqual({ ok: false, reason: 'topic-active' })
+    expect(store.commitManualExplanation(lease, capsule('manual-reopen'), {
+      ...manual,
+      topicKey: 'typescript/other-topic',
+    }, generation())).toEqual({ ok: false, reason: 'source-active' })
+  })
+
   it('atomically drops observations when the source or Topic gate becomes stale', () => {
     const store = memoryStore()
     const lease = store.acquireLease('owner', Date.now(), DAY_MS)

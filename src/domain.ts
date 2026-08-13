@@ -15,6 +15,12 @@ export interface SourceCapsule {
   readonly truncated: boolean
 }
 
+/** One explicit learning request paired with bounded context from its source Session. */
+export interface ManualExplainTarget {
+  readonly request: string
+  readonly capsule: SourceCapsule
+}
+
 /** Fixed private summary retained only for revision-one rephrasing. */
 export interface PersistedSourceSummary {
   readonly userText: string
@@ -29,6 +35,11 @@ export interface ExplanationContent {
   readonly what: string
   readonly why: string
   readonly pitfall: string
+}
+
+/** Strict model result for an explicit learning request. */
+export interface ManualExplanation extends ExplanationContent {
+  readonly topicKey: string
 }
 
 /** One model-inferred observation accepted beside an autonomous decision. */
@@ -79,6 +90,7 @@ export interface RephraseTarget {
   readonly revision: number
   readonly feedbackOrdinal: number
   readonly sourceSummary: PersistedSourceSummary
+  readonly origin: 'autonomous' | 'manual'
   readonly revisions: readonly ({ readonly revision: number } & ExplanationContent)[]
 }
 
