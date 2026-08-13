@@ -23,6 +23,7 @@ import type {
   ExplanationContent,
   GenerationRecord,
   LeaseToken,
+  ManualExplanation,
   PersistedSourceSummary,
   RephraseTarget,
   SourceCapsule,
@@ -191,6 +192,11 @@ export interface AutoCommitResult {
   readonly committed: boolean
   readonly entry?: ThreadEntryView
 }
+
+/** Outcome of committing one explicit explanation under source and Topic gates. */
+export type ManualCommitResult =
+  | { readonly ok: true; readonly entry: ThreadEntryView }
+  | { readonly ok: false; readonly reason: 'source-active' | 'topic-active' }
 
 /** Corrupt revision-one data that prevents a source-independent rephrase. */
 export class SourceSummaryError extends Error {
@@ -493,6 +499,80 @@ export class ExplainStore {
     })
   }
 
+  /** Atomically accept one explicit explanation without consuming autonomous budget. */
+  commitManualExplanation(
+    token: LeaseToken,
+    capsule: SourceCapsule,
+    explanation: ManualExplanation,
+    generation: GenerationRecord,
+  ): ManualCommitResult {
+    return this.write(() => {
+      this.assertLease(token)
+      if (this.hasActiveSource(capsule.sourceSessionId)) return { ok: false, reason: 'source-active' }
+      const existing = this.database.prepare(`
+        SELECT t.topic_id,
+          EXISTS(SELECT 1 FROM explanations e WHERE e.topic_id = t.topic_id AND e.state = 'active') AS active
+        FROM topics t WHERE t.topic_key = ?
+      `).get(explanation.topicKey) as unknown as { topic_id: string; active: number } | undefined
+      if (existing?.active === 1) return { ok: false, reason: 'topic-active' }
+
+      const now = generation.generatedAt
+      const topicId = existing === undefined ? TopicId(randomUUID()) : TopicId(existing.topic_id)
+      if (existing === undefined) {
+        this.database.prepare(`
+          INSERT INTO topics(topic_id, topic_key, title, state, topic_revision, updated_at)
+          VALUES (?, ?, ?, 'learning', 1, ?)
+        `).run(topicId, explanation.topicKey, explanation.title, now)
+      } else {
+        this.database.prepare(`
+          UPDATE topics
+          SET title = ?, state = 'learning', topic_revision = topic_revision + 1, updated_at = ?
+          WHERE topic_id = ?
+        `).run(explanation.title, now, topicId)
+      }
+      const explanationId = ExplanationId(randomUUID())
+      this.database.prepare(`
+        INSERT INTO explanations(
+          explanation_id, topic_id, source_session_id, state, active_revision,
+          rephrase_pending, created_at, updated_at
+        ) VALUES (?, ?, ?, 'active', 1, 0, ?, ?)
+      `).run(explanationId, topicId, capsule.sourceSessionId, now, now)
+      const entryId = EntryId(randomUUID())
+      const ordinal = this.takeOrdinal()
+      this.database.prepare(`
+        INSERT INTO entries(
+          entry_id, ordinal, kind, explanation_id, topic_id, revision,
+          source_session_id, source_turn, payload_json, created_at
+        ) VALUES (?, ?, 'explanation', ?, ?, 1, ?, ?, ?, ?)
+      `).run(
+        entryId,
+        ordinal,
+        explanationId,
+        topicId,
+        capsule.sourceSessionId,
+        capsule.turn,
+        JSON.stringify({
+          title: explanation.title,
+          what: explanation.what,
+          why: explanation.why,
+          pitfall: explanation.pitfall,
+          origin: 'manual',
+          sourceSummary: sourceSummary(capsule),
+          generation,
+        }),
+        now,
+      )
+      this.database.prepare(`
+        UPDATE runtime_state
+        SET first_explain_output_at = COALESCE(first_explain_output_at, ?),
+            last_user_action_at = ?, activity_generation = activity_generation + 1
+        WHERE singleton = 1
+      `).run(now, now)
+      this.advanceStoreRevision()
+      return { ok: true, entry: this.entryById(entryId) }
+    })
+  }
+
   /** Reconstruct every persistent rephrase target in feedback order. */
   pendingRephrases(excluded: ReadonlySet<string> = new Set()): readonly RephraseTarget[] {
     const rows = this.database.prepare(`
@@ -557,7 +637,11 @@ export class ExplainStore {
         revision,
         target.sourceSessionId,
         target.sourceTurn,
-        JSON.stringify({ ...content, generation }),
+        JSON.stringify({
+          ...content,
+          ...(target.origin === 'manual' ? { origin: 'manual' } : {}),
+          generation,
+        }),
         now,
       )
       this.database.prepare(`
@@ -1167,6 +1251,7 @@ export class ExplainStore {
       revision: row.active_revision,
       feedbackOrdinal: row.feedback_ordinal,
       sourceSummary: summary,
+      origin: explanationOrigin(first.payload_json),
       revisions,
     }
   }
@@ -1330,6 +1415,8 @@ export class ExplainStore {
       topicState: row.topic_state,
       topicRevision: row.topic_revision,
       ...(row.revision === null ? {} : { revision: row.revision }),
+      ...(row.kind === 'explanation' && explanationOrigin(row.payload_json) === 'manual'
+        ? { origin: 'manual' as const } : {}),
       ...(row.source_session_id === null ? {} : { sourceSessionId: SessionId(row.source_session_id) }),
       ...(row.source_turn === null ? {} : { sourceTurn: row.source_turn }),
       payload: publicPayload,
@@ -1438,6 +1525,13 @@ function explanationContent(value: string): ExplanationContent {
     why: boundedStoredText(payload.why, 'why', 2_000),
     pitfall: boundedStoredText(payload.pitfall, 'pitfall', 2_000),
   }
+}
+
+function explanationOrigin(value: string): 'autonomous' | 'manual' {
+  const payload = parseObject(value, 'explanation entry')
+  if (payload.origin === undefined) return 'autonomous'
+  if (payload.origin === 'manual') return payload.origin
+  throw new Error('dsh-explain: explanation origin is invalid')
 }
 
 function feedbackAction(value: string): 'understood' | 'not-understood' {

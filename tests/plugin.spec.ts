@@ -10,7 +10,7 @@ import LlmService, {
   type LlmResolvedModelInfo,
   type StreamChunk,
 } from '@deepseek-ai/dsh-llm'
-import SessionStore from '@deepseek-ai/dsh-session'
+import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import Settings, { settingsNamespace, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import TokenMeterService from '@deepseek-ai/dsh-token-meter'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
@@ -45,7 +45,17 @@ class CatalogAdapter extends LlmAdapter {
   }
 
   override async * stream(_options: GenerateOptions): AsyncIterable<StreamChunk> {
-    throw new Error('not used by configuration tests')
+    const text = JSON.stringify({
+      topicKey: 'manual/discriminated-unions',
+      title: 'Discriminated unions on request',
+      what: 'A literal tag selects one union member.',
+      why: 'The checker can prove which fields exist.',
+      pitfall: 'Keep the tag literal.',
+    })
+    yield { type: 'block-start', index: 0, blockType: 'text' }
+    yield { type: 'text-delta', index: 0, text }
+    yield { type: 'block-end', index: 0, block: { type: 'text', text } }
+    yield { type: 'finish', reason: { kind: 'stop' } }
   }
 }
 
@@ -135,6 +145,46 @@ describe('dsh-explain plugin lifecycle', () => {
         },
         status: { enabled: true, routeReady: true, contextWindow: 128_000 },
       })
+      const session = Session.create(SessionId('manual-command-source'))
+      const agent = { session, ctx: new Context() } as never
+      const messagesBefore = session.deriveMessages()
+      expect(ctx.commands.list(agent)).toContainEqual({
+        name: 'explain',
+        description: 'Request a learning explanation or control the global learning thread',
+        input: { hint: '<request> | on | off | status' },
+      })
+      await expect(ctx.commands.execute(
+        agent,
+        '/explain status',
+        new AbortController().signal,
+      )).resolves.toMatchObject({ result: { kind: 'success', text: expect.stringContaining('Explain: on') } })
+      await expect(ctx.commands.execute(
+        agent,
+        '/explain',
+        new AbortController().signal,
+      )).resolves.toMatchObject({
+        result: { kind: 'error', text: 'Usage: /explain <request> | on | off | status' },
+      })
+      await expect(ctx.commands.execute(
+        agent,
+        '/explain Explain discriminated unions',
+        new AbortController().signal,
+      )).resolves.toMatchObject({
+        result: {
+          kind: 'success',
+          text: 'Explanation added to Learning: Discriminated unions on request',
+        },
+      })
+      expect(session.events.filter(event => event.type === 'command/run').at(-1))
+        .toMatchObject({ data: { name: 'explain', args: ' Explain discriminated unions' } })
+      expect(session.deriveMessages()).toEqual(messagesBefore)
+      expect(ctx.explain.threadPage({ limit: 10 }).entries[0]).toMatchObject({
+        kind: 'explanation',
+        origin: 'manual',
+        sourceSessionId: SessionId('manual-command-source'),
+        sourceTurn: 0,
+      })
+      expect(ctx.explain.status()).toMatchObject({ autoRequestsUsed: 0, activeExplanationCount: 1 })
       await expect(ctx.explain.updateConfiguration({
         expectedRevision: 0,
         enabled: false,

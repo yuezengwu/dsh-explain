@@ -21,7 +21,7 @@
   - heading "其他会话的活跃讲解 2" [level=2]
   - article:
     - heading "用 never 完成穷尽检查" [level=3]
-    - text: 来源 missing-… 回合 2
+    - text: 来源 missing-… 主动请求
     - time: {{clock}}
     - heading "是什么" [level=4]
     - paragraph: 所有联合成员处理后，剩余值应当收窄为 never。

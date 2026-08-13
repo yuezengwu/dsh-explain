@@ -1,6 +1,6 @@
 # dsh-explain 验收矩阵
 
-本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。真实模型与浏览器流程记录在私有仓库 [PR #2](https://github.com/dsh-external/dsh-explain/pull/2)；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
+本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在私有仓库 [PR #2](https://github.com/dsh-external/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
 | # | 标准 | 自动化证据 |
 |---:|---|---|
@@ -50,3 +50,15 @@ git diff --check
 | 8 | 宿主生命周期 | 两个 UI 入口均通过 `slots.inject()` 注册；`client.spec.tsx` 验证设置页/学习页共享引用计数式 store 和单一 watch 生命周期 |
 | 9 | 主工作隔离 | M4 不新增 Session 事件、projection 或 prompt 注入；P0 `deriveMessages()` 不变测试继续通过 |
 | 10 | 测试伴随 | `pnpm run typecheck`、48 个单元/集成测试、3 个 keyless assembled Web 场景、本地目录 link/pack 门禁与 PR 内真实 rc.2 模型 GIF |
+
+## M5 主动学习命令
+
+| # | 标准 | 自动化证据 |
+|---:|---|---|
+| 1 | 命令发现与兼容 | `plugin.spec.ts` 通过真实 command registry 断言 descriptor、input hint 和管理/请求共存；assembled Web snapshot 覆盖 composer slash discovery |
+| 2 | 显式讲解 | `plugin.spec.ts` 从空白来源执行真实 `/explain <request>` 并得到带 `origin: manual` 的全局 active entry；`m2-core.spec.ts` 覆盖最近合格来源和 turn 0 捕获 |
+| 3 | 严格输出与持久化 | `m2-core.spec.ts` 拒绝 skip、额外字段和非法 TopicKey；`m2-store.spec.ts` 证明 origin、私有来源摘要和重讲 revision 跨事务保留 |
+| 4 | 单飞、门与取消 | `scheduler.spec.ts` 覆盖真实 LLM service 请求、来源 busy 快速失败、在途取消和单飞；store 事务复核来源、Topic 与 lease |
+| 5 | 自主预算豁免 | `scheduler.spec.ts` 与 `m2-store.spec.ts` 断言主动生成和后续重讲不增加 `auto_request_usage` |
+| 6 | 主 Agent 隔离 | command runtime 只写标准 command 生命周期；`m2-core.spec.ts` 的 source 捕获不改变 `deriveMessages()`，assembled 产品流程验证 composer 命令不形成主模型回答 |
+| 7 | 产品证据 | `pnpm run typecheck`、`pnpm test`、`pnpm run test:web`、本地目录安装 smoke 和 PR 内真实 rc.2 模型 GIF |

@@ -139,6 +139,7 @@ export interface ThreadEntryView {
   readonly topicState: 'learning' | 'mastered'
   readonly topicRevision: number
   readonly revision?: number
+  readonly origin?: 'manual'
   readonly sourceSessionId?: SessionId
   readonly sourceTurn?: number
   readonly payload: ExplanationPayloadView | FeedbackPayloadView | ReopenPayloadView

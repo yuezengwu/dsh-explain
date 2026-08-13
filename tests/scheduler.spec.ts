@@ -32,6 +32,7 @@ class LearningAdapter extends LlmAdapter {
   delayMs = 5
   failCompaction = false
   failAutonomous = false
+  failManual = false
   readonly calls: string[] = []
   readonly efforts: (string | undefined)[] = []
 
@@ -58,12 +59,14 @@ class LearningAdapter extends LlmAdapter {
       await abortableDelay(this.delayMs, options.signal)
       const compaction = options.purpose === 'compaction'
       const rephrase = options.system?.includes('Rephrase one still-active explanation') === true
+      const manual = options.system?.includes('Fulfill one explicit learning request') === true
       const source = requestObject(options)
       const sourceId = String((source.sourceCapsule as { sourceSessionId?: unknown } | undefined)?.sourceSessionId ?? 'rephrase')
-      this.calls.push(compaction ? 'compaction' : rephrase ? 'rephrase' : `auto:${sourceId}`)
+      this.calls.push(compaction ? 'compaction' : rephrase ? 'rephrase' : manual ? `manual:${sourceId}` : `auto:${sourceId}`)
       this.efforts.push(options.reasoningEffort)
       if (compaction && this.failCompaction) throw new Error('test compaction provider failure')
-      if (!compaction && !rephrase && this.failAutonomous) throw new Error('test autonomous provider failure')
+      if (manual && this.failManual) throw new Error('test manual provider failure')
+      if (!compaction && !rephrase && !manual && this.failAutonomous) throw new Error('test autonomous provider failure')
       const response = compaction
         ? {
             dialogueProfile: [],
@@ -72,6 +75,14 @@ class LearningAdapter extends LlmAdapter {
           }
         : rephrase
         ? { title: 'Narrowing with labels', what: 'Each member has a label.', why: 'The label identifies the member.', pitfall: 'Keep labels literal.' }
+        : manual
+        ? {
+            topicKey: `manual/${sourceId}`,
+            title: `Requested topic ${sourceId}`,
+            what: 'A requested concept.',
+            why: 'It answers the explicit learning request.',
+            pitfall: 'Keep the source context bounded.',
+          }
         : {
             kind: 'explain',
             topicKey: `topic/${sourceId}`,
@@ -217,6 +228,115 @@ describe('real LLM-service scheduler integration', () => {
     schedulers.splice(schedulers.indexOf(scheduler), 1)
     stores.splice(stores.indexOf(store), 1)
     store.close()
+  })
+
+  it('runs a manual request ahead of background work without consuming autonomous budget', async () => {
+    const { store, adapter, scheduler } = await setup()
+    const result = await scheduler.requestManual({
+      request: 'Explain discriminated unions',
+      capsule: source('manual-source'),
+    }, new AbortController().signal)
+    expect(result).toMatchObject({
+      ok: true,
+      entry: {
+        origin: 'manual',
+        sourceSessionId: SessionId('manual-source'),
+        topicTitle: 'Requested topic manual-source',
+      },
+    })
+    expect(adapter.calls).toEqual(['manual:manual-source'])
+    expect(adapter.efforts).toEqual(['off'])
+    expect(store.autoBudget(50).used).toBe(0)
+
+    await expect(scheduler.requestManual({
+      request: 'Explain it again',
+      capsule: source('manual-source'),
+    }, new AbortController().signal)).resolves.toEqual({
+      ok: false,
+      error: {
+        code: 'EXPLAIN_SOURCE_BUSY',
+        message: 'This Session already has an active or pending explanation.',
+      },
+    })
+    expect(adapter.calls).toEqual(['manual:manual-source'])
+  })
+
+  it('settles a cancelled in-flight manual request without persisting a result', async () => {
+    const { store, adapter, scheduler } = await setup(SETTINGS, target => { target.delayMs = 100 })
+    const controller = new AbortController()
+    const pending = scheduler.requestManual({
+      request: 'Explain cancellation',
+      capsule: source('cancelled-manual'),
+    }, controller.signal)
+    await until(() => adapter.active === 1)
+    controller.abort(new Error('test cancellation'))
+    await expect(pending).resolves.toEqual({
+      ok: false,
+      error: { code: 'EXPLAIN_REQUEST_CANCELLED', message: 'The explanation request was cancelled.' },
+    })
+    expect(store.activeExplanationCount()).toBe(0)
+    expect(store.autoBudget(50).used).toBe(0)
+  })
+
+  it('retries dirty idle compaction after a manual request preempts it and then fails', async () => {
+    const { store, adapter, scheduler } = await setup(
+      { ...SETTINGS, idleCompactMs: 1 },
+      target => {
+        target.delayMs = 100
+        target.failManual = true
+      },
+    )
+    store.addFixtureExplanation({
+      topicKey: 'closed/preempted-idle',
+      title: 'Closed before preemption',
+      sourceSessionId: SessionId('closed-before-manual'),
+      sourceTurn: 1,
+      state: 'closed',
+      topicState: 'mastered',
+    })
+    scheduler.learningStateChanged()
+    await until(() => adapter.active === 1)
+    await expect(scheduler.requestManual({
+      request: 'Explain the failed request',
+      capsule: source('manual-failure'),
+    }, new AbortController().signal)).resolves.toEqual({
+      ok: false,
+      error: { code: 'EXPLAIN_MANUAL_FAILED', message: 'The requested explanation could not be generated.' },
+    })
+    await until(() => store.context().inferred)
+    expect(adapter.calls).toEqual(['manual:manual-failure', 'compaction'])
+  })
+
+  it('compacts pressure-causing context before a manual request and keeps its budget exempt', async () => {
+    const { store, adapter, scheduler } = await setup(
+      { ...SETTINGS, maxOutputTokens: 100, maxCompactionOutputTokens: 100 },
+      target => { target.contextWindow = 3_500 },
+    )
+    store.addFixtureExplanation({
+      topicKey: 'large/manual-closed',
+      title: 'Large closed context for manual request',
+      sourceSessionId: SessionId('old-manual-context'),
+      sourceTurn: 1,
+      state: 'closed',
+      topicState: 'mastered',
+      revisions: [{
+        title: 'Large closed context for manual request',
+        what: 'w'.repeat(600),
+        why: 'y'.repeat(600),
+        pitfall: 'p'.repeat(600),
+      }],
+    })
+    const result = await scheduler.requestManual({
+      request: 'Explain this request under context pressure',
+      capsule: {
+        ...source('manual-pressure'),
+        userText: 'u'.repeat(2_000),
+        assistantText: 'a'.repeat(2_000),
+      },
+    }, new AbortController().signal)
+    expect(result.ok).toBe(true)
+    expect(adapter.calls).toEqual(['compaction', 'manual:manual-pressure'])
+    expect(store.autoBudget(50).used).toBe(0)
   })
 
   it('parks a candidate behind its source active gate without an empty-drain spin', async () => {

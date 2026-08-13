@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ExplainRuntimeSettings } from './config.ts'
 import { compactOnce, CompactionError } from './compactor.ts'
-import type { LeaseToken, RephraseTarget, SourceCapsule } from './domain.ts'
+import type { LeaseToken, ManualExplainTarget, RephraseTarget, SourceCapsule } from './domain.ts'
 import {
   estimateAuxiliaryRequest,
   ExplainRouteError,
   renderExplainRequest,
+  renderManualExplainRequest,
   renderRephraseRequest,
   resolveExplainRoute,
   runAuxiliaryRequest,
@@ -15,6 +16,7 @@ import {
 } from './explainer.ts'
 import { CandidateQueue, type ExplainCandidate } from './queue.ts'
 import { SourceSummaryError, type ExplainStore } from './store.ts'
+import type { ThreadEntryView } from './types.ts'
 
 const LEASE_RENEW_MS = 5_000
 const LEASE_TTL_MS = 15_000
@@ -26,6 +28,32 @@ export interface SchedulerStatus {
   readonly route?: ExplainRoute
   readonly estimatedContextRatio?: number
   readonly lastError?: { readonly code: string; readonly message: string }
+}
+
+/** Stable settlement returned to the explicit `/explain <request>` command. */
+export type ManualExplainResult =
+  | { readonly ok: true; readonly entry: ThreadEntryView }
+  | {
+      readonly ok: false
+      readonly error: {
+        readonly code:
+          | 'EXPLAIN_DISABLED'
+          | 'EXPLAIN_RUNTIME_FAILED'
+          | 'EXPLAIN_SOURCE_BUSY'
+          | 'EXPLAIN_TOPIC_ACTIVE'
+          | 'EXPLAIN_REQUEST_CANCELLED'
+          | 'EXPLAIN_MANUAL_FAILED'
+          | 'EXPLAIN_COMPACTION_FAILED'
+          | 'EXPLAIN_COMPACTION_STALE'
+          | 'EXPLAIN_CONTEXT_PRESSURE_UNRESOLVED'
+        readonly message: string
+      }
+    }
+
+interface ManualJob {
+  readonly target: ManualExplainTarget
+  readonly signal: AbortSignal
+  readonly settle: (result: ManualExplainResult) => void
 }
 
 /** Single-flight owner for autonomous explanations, rephrases, and compaction. */
@@ -47,6 +75,9 @@ export class ExplainScheduler {
   private routeRefresh: Promise<void> | undefined
   private idleAttempted: string | undefined
   private readonly failedRephrases = new Set<string>()
+  private readonly manualQueue: ManualJob[] = []
+  private activeManual: ManualJob | undefined
+  private controllerKind: 'auto' | 'rephrase' | 'manual' | 'idle' | undefined
   private started = false
   private stopped = false
 
@@ -103,6 +134,55 @@ export class ExplainScheduler {
     this.kick()
   }
 
+  /** Queue one explicit request ahead of background work without consuming autonomous budget. */
+  requestManual(target: ManualExplainTarget, signal: AbortSignal): Promise<ManualExplainResult> {
+    if (signal.aborted) return Promise.resolve(manualFailure(
+      'EXPLAIN_REQUEST_CANCELLED', 'The explanation request was cancelled.',
+    ))
+    if (!this.settings.enabled) return Promise.resolve(manualFailure(
+      'EXPLAIN_DISABLED', 'Learning mode is disabled.',
+    ))
+    if (this.failed !== undefined || this.route === undefined || this.stopped) return Promise.resolve(manualFailure(
+      'EXPLAIN_RUNTIME_FAILED', 'The learning runtime is not ready.',
+    ))
+    const source = target.capsule.sourceSessionId
+    if (this.store.activeSources().has(source)
+      || this.activeManual?.target.capsule.sourceSessionId === source
+      || this.manualQueue.some(job => job.target.capsule.sourceSessionId === source)) {
+      return Promise.resolve(manualFailure(
+        'EXPLAIN_SOURCE_BUSY', 'This Session already has an active or pending explanation.',
+      ))
+    }
+    return new Promise((resolve) => {
+      let settled = false
+      const job: ManualJob = {
+        target,
+        signal,
+        settle: (result) => {
+          if (settled) return
+          settled = true
+          signal.removeEventListener('abort', onAbort)
+          resolve(result)
+        },
+      }
+      const onAbort = (): void => {
+        const index = this.manualQueue.indexOf(job)
+        if (index !== -1) {
+          this.manualQueue.splice(index, 1)
+          job.settle(manualFailure('EXPLAIN_REQUEST_CANCELLED', 'The explanation request was cancelled.'))
+          this.store.notifyRuntimeChange()
+        }
+      }
+      signal.addEventListener('abort', onAbort, { once: true })
+      this.manualQueue.push(job)
+      if (this.controllerKind === 'auto' || this.controllerKind === 'idle') {
+        this.controller?.abort(new Error('dsh-explain: explicit explanation takes priority'))
+      }
+      this.store.notifyRuntimeChange()
+      this.kick()
+    })
+  }
+
   /** Apply a resolved settings snapshot; model-semantic changes fence in-flight work. */
   async configure(next: ExplainRuntimeSettings, previous = this.settings): Promise<void> {
     if (this.stopped) return
@@ -116,13 +196,19 @@ export class ExplainScheduler {
       || previous.maxOutputTokens !== next.maxOutputTokens
       || previous.maxCompactionOutputTokens !== next.maxCompactionOutputTokens
       || previous.contextThresholdRatio !== next.contextThresholdRatio
-    if (semanticChange) this.cancelCurrent()
+    if (semanticChange) {
+      this.cancelCurrent()
+      this.settleQueuedManual(next.enabled
+        ? manualFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime changed before the explanation started.')
+        : manualFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.'))
+    }
     if (previous.maxSourceChars !== next.maxSourceChars) this.queue.clear()
     this.operationError = undefined
     if (!next.enabled) {
       this.route = undefined
       this.failed = undefined
       this.queue.clear()
+      this.settleQueuedManual(manualFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.'))
       this.clearTimers()
       this.store.notifyRuntimeChange()
       return
@@ -151,6 +237,7 @@ export class ExplainScheduler {
     if (this.stopped) return
     this.stopped = true
     this.cancelCurrent()
+    this.settleQueuedManual(manualFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime stopped.'))
     this.clearTimers()
     if (this.heartbeat !== undefined) clearInterval(this.heartbeat)
     await Promise.allSettled(this.draining === undefined ? [] : [this.draining])
@@ -199,6 +286,11 @@ export class ExplainScheduler {
 
   private async drain(): Promise<void> {
     while (!this.stopped && this.settings.enabled && this.failed === undefined) {
+      const manual = this.manualQueue.shift()
+      if (manual !== undefined) {
+        await this.runManual(manual)
+        continue
+      }
       const rephrase = this.nextRephrase()
       if (rephrase !== undefined) {
         await this.runRephrase(rephrase)
@@ -232,7 +324,7 @@ export class ExplainScheduler {
       return
     }
     const epoch = this.epoch
-    const controller = this.beginRequest()
+    const controller = this.beginRequest('auto')
     let finished = false
     try {
       let context = this.store.auxiliaryContext(this.settings.maxTopicHints)
@@ -289,10 +381,74 @@ export class ExplainScheduler {
     }
   }
 
+  private async runManual(job: ManualJob): Promise<void> {
+    if (job.signal.aborted) {
+      job.settle(manualFailure('EXPLAIN_REQUEST_CANCELLED', 'The explanation request was cancelled.'))
+      return
+    }
+    const route = this.mustRoute()
+    const epoch = this.epoch
+    const controller = this.beginRequest('manual')
+    this.activeManual = job
+    const signal = AbortSignal.any([controller.signal, job.signal])
+    let result: ManualExplainResult
+    try {
+      let context = this.store.auxiliaryContext(this.settings.maxTopicHints)
+      let request = renderManualExplainRequest(context, job.target, this.settings.maxOutputTokens)
+      ;({ context, request } = await this.relieveManualPressure(context, request, job.target, signal))
+      const generated = await runAuxiliaryRequest(this.ctx, route, request, this.settings.timeoutMs, signal)
+      if (!this.isCurrent(epoch, controller)) {
+        result = this.settings.enabled
+          ? manualFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime changed before the explanation completed.')
+          : manualFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.')
+      } else {
+        const committed = this.store.commitManualExplanation(
+          this.lease,
+          job.target.capsule,
+          generated.value,
+          generated.generation,
+        )
+        result = committed.ok
+          ? { ok: true, entry: committed.entry }
+          : committed.reason === 'source-active'
+            ? manualFailure('EXPLAIN_SOURCE_BUSY', 'This Session already has an active explanation.')
+            : manualFailure('EXPLAIN_TOPIC_ACTIVE', 'This topic already has an active explanation in the global learning thread.')
+        if (committed.ok) {
+          if (this.failedRephrases.size === 0) this.operationError = undefined
+          this.idleAttempted = undefined
+          this.scheduleIdle()
+        }
+      }
+    } catch (error) {
+      if (job.signal.aborted) {
+        result = manualFailure('EXPLAIN_REQUEST_CANCELLED', 'The explanation request was cancelled.')
+      } else if (controller.signal.aborted) {
+        result = this.settings.enabled
+          ? manualFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime changed before the explanation completed.')
+          : manualFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.')
+      } else if (error instanceof CompactionError) {
+        result = manualFailure(error.code, error.message)
+        this.operationError = { code: error.code, message: error.message }
+      } else {
+        result = manualFailure('EXPLAIN_MANUAL_FAILED', 'The requested explanation could not be generated.')
+        this.operationError = {
+          code: 'EXPLAIN_MANUAL_FAILED',
+          message: 'The requested explanation could not be generated.',
+        }
+        this.logger.warn('explicit explanation failed: %s', safeError(error).message)
+      }
+    } finally {
+      this.activeManual = undefined
+      this.endRequest(controller)
+      this.store.notifyRuntimeChange()
+    }
+    job.settle(result)
+  }
+
   private async runRephrase(target: RephraseTarget): Promise<void> {
     const route = this.mustRoute()
     const epoch = this.epoch
-    const controller = this.beginRequest()
+    const controller = this.beginRequest('rephrase')
     try {
       let context = this.store.auxiliaryContext(this.settings.maxTopicHints)
       let request = renderRephraseRequest(context, target, this.settings.maxOutputTokens)
@@ -351,16 +507,34 @@ export class ExplainScheduler {
     return { context, request }
   }
 
+  private async relieveManualPressure<T>(
+    context: ReturnType<ExplainStore['auxiliaryContext']>,
+    request: AuxiliaryRequest<T>,
+    target: ManualExplainTarget,
+    signal: AbortSignal,
+  ): Promise<{ context: ReturnType<ExplainStore['auxiliaryContext']>; request: AuxiliaryRequest<T> }> {
+    const route = this.mustRoute()
+    while (this.pressure(request, route) > this.settings.contextThresholdRatio) {
+      const compacted = await compactOnce(this.ctx, this.store, this.lease, this.settings, route, 'pressure', signal)
+      if (compacted.kind === 'noop') throw new CompactionError('EXPLAIN_CONTEXT_PRESSURE_UNRESOLVED', 'No safe content remains to compact.')
+      context = this.store.auxiliaryContext(this.settings.maxTopicHints)
+      request = renderManualExplainRequest(context, target, this.settings.maxOutputTokens) as AuxiliaryRequest<T>
+    }
+    return { context, request }
+  }
+
   private async runIdleCompaction(): Promise<void> {
     const route = this.mustRoute()
     const state = this.store.runtimeState()
     this.idleAttempted = `${state.contextGeneration}:${state.activityGeneration}`
-    const controller = this.beginRequest()
+    const controller = this.beginRequest('idle')
     try {
       await compactOnce(this.ctx, this.store, this.lease, this.settings, route, 'idle', controller.signal)
       if (this.failedRephrases.size === 0) this.operationError = undefined
     } catch (error) {
-      if (!controller.signal.aborted) {
+      if (controller.signal.aborted) {
+        this.idleAttempted = undefined
+      } else {
         this.operationError = {
           code: error instanceof CompactionError ? error.code : 'EXPLAIN_COMPACTION_FAILED',
           message: error instanceof CompactionError
@@ -409,15 +583,19 @@ export class ExplainScheduler {
     this.budgetTimer = setTimeout(() => { this.kick() }, Math.max(0, resumeAt - Date.now()))
   }
 
-  private beginRequest(): AbortController {
+  private beginRequest(kind: NonNullable<ExplainScheduler['controllerKind']>): AbortController {
     if (this.controller !== undefined) throw new Error('dsh-explain: scheduler single-flight invariant violated')
     const controller = new AbortController()
     this.controller = controller
+    this.controllerKind = kind
     return controller
   }
 
   private endRequest(controller: AbortController): void {
-    if (this.controller === controller) this.controller = undefined
+    if (this.controller === controller) {
+      this.controller = undefined
+      this.controllerKind = undefined
+    }
   }
 
   private cancelCurrent(): void {
@@ -430,7 +608,8 @@ export class ExplainScheduler {
   }
 
   private hasImmediateWork(): boolean {
-    return this.store.pendingRephrases(this.failedRephrases).length > 0
+    return this.manualQueue.length > 0
+      || this.store.pendingRephrases(this.failedRephrases).length > 0
       || (this.queue.hasExecutable(this.store.activeSources())
         && this.store.autoBudget(this.settings.maxAutoRequestsPerDay).used
         < this.settings.maxAutoRequestsPerDay)
@@ -473,6 +652,7 @@ export class ExplainScheduler {
     const code = error instanceof ExplainRouteError ? error.code
       : error instanceof CompactionError ? error.code : 'RUNTIME_FAILED'
     this.failed = { code, message: safe.message }
+    this.settleQueuedManual(manualFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime is not ready.'))
     this.store.notifyRuntimeChange()
   }
 
@@ -481,6 +661,10 @@ export class ExplainScheduler {
     if (this.idleTimer !== undefined) clearTimeout(this.idleTimer)
     this.budgetTimer = undefined
     this.idleTimer = undefined
+  }
+
+  private settleQueuedManual(result: ManualExplainResult): void {
+    for (const job of this.manualQueue.splice(0)) job.settle(result)
   }
 }
 
@@ -494,4 +678,11 @@ function safeError(error: unknown): Error {
 
 function safeCause(error: Error): Error {
   return error.cause instanceof Error ? error.cause : error
+}
+
+function manualFailure(
+  code: Extract<ManualExplainResult, { readonly ok: false }>['error']['code'],
+  message: string,
+): ManualExplainResult {
+  return { ok: false, error: { code, message } }
 }

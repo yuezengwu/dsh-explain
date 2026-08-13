@@ -29,6 +29,6 @@
 - term: 等待候选
 - definition: "0"
 - term: 最近 explain 操作
-- definition: 尚未发生
+- definition: {{clock}}
 - term: 最近压缩
 - definition: {{clock}}

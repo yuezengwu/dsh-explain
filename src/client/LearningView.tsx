@@ -346,7 +346,8 @@ function EntryMeta({ entry, current = false, t }: {
       {entry.sourceSessionId !== undefined && (
         <span>{t('entry.source')} {shortSession(entry.sourceSessionId)}{current ? ` · ${t('entry.current')}` : ''}</span>
       )}
-      {entry.sourceTurn !== undefined && <span>{t('entry.turn')} {entry.sourceTurn}</span>}
+      {entry.origin === 'manual' && <span>{t('entry.manual')}</span>}
+      {entry.sourceTurn !== undefined && entry.sourceTurn > 0 && <span>{t('entry.turn')} {entry.sourceTurn}</span>}
       <time dateTime={new Date(entry.createdAt).toISOString()}>{new Date(entry.createdAt).toLocaleString()}</time>
     </div>
   )

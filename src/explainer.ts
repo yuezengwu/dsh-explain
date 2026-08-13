@@ -18,6 +18,8 @@ import type {
   ExplainDecision,
   ExplanationContent,
   GenerationRecord,
+  ManualExplanation,
+  ManualExplainTarget,
   RephraseTarget,
   SourceCapsule,
 } from './domain.ts'
@@ -25,6 +27,8 @@ import type {
 const SYSTEM = `You are dsh-explain, a private auxiliary learning assistant. Decide whether one completed coding-work turn contains a useful teachable concept for this user, using only the supplied bounded source capsule and learning context. Write every user-visible title and explanation field in the language used by sourceCapsule.userText. Do not infer occupation, identity, health, politics, or other sensitive attributes. Return exactly one JSON object with no markdown or extra text.`
 
 const REPHRASE_SYSTEM = `You are dsh-explain. Rephrase one still-active explanation after the user said they did not understand. Preserve the topic identity, use a materially different explanation strategy, and write in the same language as the supplied prior revisions. Return exactly one JSON object with title, what, why, and pitfall. Do not return markdown or extra fields.`
+
+const MANUAL_SYSTEM = `You are dsh-explain, a private auxiliary learning assistant. Fulfill one explicit learning request using the supplied bounded source context and global learning context. Always produce a useful explanation; never skip. Write every user-visible field in the language used by manualRequest. Do not infer occupation, identity, health, politics, or other sensitive attributes. Return exactly one JSON object with topicKey, title, what, why, and pitfall, with no markdown or extra text.`
 
 const COMPACTION_SYSTEM = `You are dsh-explain's context compactor. Produce a full replacement learning-context snapshot from the previous snapshot, new structured observations, closed explanations, and authoritative statistics. Preserve the language established by the previous snapshot or, when none exists, the newest supplied learning evidence. Never infer occupation, identity, health, politics, or other sensitive attributes. Topic mastered/learning state is not yours to set. Return exactly one JSON object with dialogueProfile, knowledgeOverview, and learningTrend.`
 
@@ -142,6 +146,33 @@ export function renderRephraseRequest(
     })],
     maxTokens,
     parse: parseExplanationContent,
+  }
+}
+
+/** Build one explicit user-requested explanation that cannot return skip. */
+export function renderManualExplainRequest(
+  context: AuxiliaryContext,
+  target: ManualExplainTarget,
+  maxTokens: number,
+): AuxiliaryRequest<ManualExplanation> {
+  return {
+    system: MANUAL_SYSTEM,
+    messages: [jsonMessage({
+      task: 'Fulfill manualRequest with one explanation matching outputContract.',
+      outputContract: {
+        topicKey: 'stable/lowercase-topic-key',
+        title: 'string',
+        what: 'string',
+        why: 'string',
+        pitfall: 'string',
+      },
+      limits: { titleChars: 120, fieldChars: 2_000, topicKeyChars: 80 },
+      learningContext: context,
+      manualRequest: target.request,
+      sourceCapsule: target.capsule,
+    })],
+    maxTokens,
+    parse: parseManualExplanation,
   }
 }
 
@@ -367,6 +398,14 @@ function parseExplanationContent(text: string): ExplanationContent {
   const value = jsonObject(text, 'rephrase decision')
   exactKeys(value, ['pitfall', 'title', 'what', 'why'], 'rephrase decision')
   return parseExplanationObject(value)
+}
+
+function parseManualExplanation(text: string): ManualExplanation {
+  const value = jsonObject(text, 'manual explanation')
+  exactKeys(value, ['pitfall', 'title', 'topicKey', 'what', 'why'], 'manual explanation')
+  const topicKey = requiredText(value.topicKey, 'topicKey', 80)
+  if (!validTopicKey(topicKey)) throw new Error('dsh-explain: invalid topicKey')
+  return { topicKey, ...parseExplanationObject(value) }
 }
 
 function parseExplanationObject(value: Record<string, unknown>): ExplanationContent {
