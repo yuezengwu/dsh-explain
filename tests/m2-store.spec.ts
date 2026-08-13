@@ -9,6 +9,7 @@ import type {
   ExplainContextSnapshot,
   ExplainDecision,
   GenerationRecord,
+  ManualExplainTarget,
   SourceCapsule,
 } from '../src/domain.ts'
 import { ExplainStore, SourceSummaryError } from '../src/store.ts'
@@ -40,6 +41,13 @@ function capsule(source = 'source-a', turn = 3): SourceCapsule {
     tools: [{ name: 'read', resultPreview: 'private tool output' }, { name: 'read' }],
     truncated: false,
   }
+}
+
+function manualTarget(
+  source: SourceCapsule,
+  origin: ManualExplainTarget['origin'] = 'manual',
+): ManualExplainTarget {
+  return { origin, request: source.userText, capsule: source }
 }
 
 function generation(at = Date.now()): GenerationRecord {
@@ -262,7 +270,7 @@ describe('autonomous, rephrase, and checkpoint persistence', () => {
     const store = memoryStore()
     const lease = store.acquireLease('owner', Date.now(), DAY_MS)
     const source = capsule('manual-source', 0)
-    const committed = store.commitManualExplanation(lease, source, {
+    const committed = store.commitManualExplanation(lease, manualTarget(source), {
       topicKey: 'typescript/manual-narrowing',
       title: 'Requested narrowing lesson',
       what: 'A literal property selects one union member.',
@@ -302,6 +310,37 @@ describe('autonomous, rephrase, and checkpoint persistence', () => {
     expect(store.autoBudget(50).used).toBe(0)
   })
 
+  it.each(['selection', 'suggested'] as const)('preserves the %s origin through Remote projection and rephrase', (origin) => {
+    const store = memoryStore()
+    const lease = store.acquireLease('owner', Date.now(), DAY_MS)
+    const source = capsule(`${origin}-source`, 4)
+    const committed = store.commitManualExplanation(lease, manualTarget(source, origin), {
+      topicKey: `typescript/${origin}`,
+      title: `${origin} lesson`,
+      what: 'A selected concept.',
+      why: 'The user explicitly requested it.',
+      pitfall: 'Keep the source bounded.',
+    }, generation())
+    expect(committed).toMatchObject({ ok: true, entry: { origin, sourceTurn: 4 } })
+    if (!committed.ok || committed.entry.explanationId === undefined) throw new Error('missing explanation')
+    expect(store.feedback({
+      requestId: RequestId(`${origin}-rephrase`),
+      sourceSessionId: source.sourceSessionId,
+      explanationId: committed.entry.explanationId,
+      revision: 1,
+      action: 'not-understood',
+    }).ok).toBe(true)
+    const target = store.pendingRephrases()[0]
+    expect(target?.origin).toBe(origin)
+    if (target === undefined) throw new Error('missing rephrase target')
+    expect(store.commitRephrase(lease, target, {
+      title: `${origin} lesson again`,
+      what: 'A different framing.',
+      why: 'It addresses the feedback.',
+      pitfall: 'Do not change the source.',
+    }, generation())).toMatchObject({ origin, revision: 2 })
+  })
+
   it('lets an explicit request reopen a mastered Topic but never duplicates an active source or Topic', () => {
     const store = memoryStore()
     const lease = store.acquireLease('owner', Date.now(), DAY_MS)
@@ -321,11 +360,11 @@ describe('autonomous, rephrase, and checkpoint persistence', () => {
       why: 'The user explicitly asked to study it again.',
       pitfall: 'Do not widen the tag.',
     }
-    expect(store.commitManualExplanation(lease, capsule('manual-reopen'), manual, generation()))
+    expect(store.commitManualExplanation(lease, manualTarget(capsule('manual-reopen')), manual, generation()))
       .toMatchObject({ ok: true, entry: { topicState: 'learning', origin: 'manual' } })
-    expect(store.commitManualExplanation(lease, capsule('other-source'), manual, generation()))
+    expect(store.commitManualExplanation(lease, manualTarget(capsule('other-source')), manual, generation()))
       .toEqual({ ok: false, reason: 'topic-active' })
-    expect(store.commitManualExplanation(lease, capsule('manual-reopen'), {
+    expect(store.commitManualExplanation(lease, manualTarget(capsule('manual-reopen')), {
       ...manual,
       topicKey: 'typescript/other-topic',
     }, generation())).toEqual({ ok: false, reason: 'source-active' })

@@ -43,13 +43,19 @@ function explanation(
 
 describe('conversation learning view', () => {
   it('renders the global thread with the current source first and dispatches entity feedback', () => {
-    const current = explanation(3, 'session-current', 'active', 'Current concept')
+    const current = {
+      ...explanation(3, 'session-current', 'active', 'Current concept'),
+      origin: 'selection' as const,
+    }
     const other = {
       ...explanation(2, 'session-other', 'active', 'Other concept'),
       origin: 'manual' as const,
       sourceTurn: 0,
     }
-    const history = explanation(1, 'session-old', 'closed', 'Mastered concept')
+    const history = {
+      ...explanation(1, 'session-old', 'closed', 'Mastered concept'),
+      origin: 'suggested' as const,
+    }
     const snapshot: LearningSnapshot = {
       phase: 'ready',
       status: {
@@ -128,6 +134,8 @@ describe('conversation learning view', () => {
     expect(screen.getByRole('heading', { name: 'Current concept' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Other concept' })).toBeTruthy()
     expect(screen.getByText('主动请求')).toBeTruthy()
+    expect(screen.getByText('选中解释')).toBeTruthy()
+    expect(screen.getByText('学习建议')).toBeTruthy()
     expect(screen.queryByText('回合 0')).toBeNull()
     expect(screen.getByText('Mastered concept')).toBeTruthy()
     expect(screen.getByText('已理解基础类型收窄。')).toBeTruthy()

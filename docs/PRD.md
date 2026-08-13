@@ -1,7 +1,7 @@
 # dsh-explain PRD（P0 定稿）
 
 > 状态：**P0 定稿**（2026-08-13）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
-> 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v8 同步。
+> 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v9 同步。
 
 ## 定位
 
@@ -22,7 +22,7 @@ explain 维护一份不进入主 Agent 的全局 `ExplainContext`，用来判断
 | 候选知识点 | 来源回合结束后提交给 explain 调度器、尚未生成讲解的临时素材 |
 | `ExplainContext` | explain 私有的全局上下文快照，由受限来源观察、对话偏好、知识概况和学习进展组成，只提供给辅助 explain 模型 |
 | 压缩检查点 | 对已关闭讲解和既有 `ExplainContext` 的有界摘要；替代旧内容进入后续 explain 模型请求，但不替代 UI 历史 |
-| explain 操作 | 用户成功执行 `/explain on`、`/explain <学习请求>`、提交 ✓ / ✗ 或撤销掌握；status、仅打开、阅读或切换「学习」视图不算操作 |
+| explain 操作 | 用户成功执行 `/explain on`、普通/selection/suggested 显式学习请求、提交 ✓ / ✗ 或撤销掌握；status、仅打开、阅读或切换「学习」视图不算操作 |
 | 上下文占用 | 完整预计 explain 请求 token 加输出预留量，占所选 provider/model `contextWindow` 的比例 |
 
 用户从未操作 explain 时，30 分钟不活跃计时从第一条产生可持久数据的 explain 决策（可见讲解或只有 observation 的 skip）提交时开始。成功的 explain 操作会重置计时；模型生成、后台压缩、页面刷新和单纯阅读不会重置。
@@ -43,6 +43,7 @@ explain 维护一份不进入主 Agent 的全局 `ExplainContext`，用来判断
 |---|---|
 | 全局开关 | `/explain on`、`/explain off`、`/explain status`；默认关闭，作用于整个 `$DSH_HOME` |
 | 主动学习 | composer 输入 `/explain <学习请求>`；请求不发送给主 Agent，由 explain agent 结合全局 `ExplainContext` 和当前来源最近一个合格回合生成一条不能 skip 的讲解 |
+| 可选快捷入口（P1） | selection-chat 填写 `/explain --selection <text>`；suggested-replies 填写 `/explain --suggested <turn> <request>`；都不自动提交、不覆盖非空草稿，Advisor 只经用户显式选中进入 |
 | 自主选题 | 只观察顶层 Session 中正常完成且包含非空 assistant 输出的回合；explain 可以返回“不讲” |
 | 来源讲解槽 | 每个来源 Session 最多一个活跃讲解，可以没有；有活跃讲解时仍保留本来源最新一个候选 |
 | 全局单飞 | 全局最多一个辅助模型请求；主动请求、重讲、压缩和自主候选按明确优先级串行执行 |
@@ -104,6 +105,7 @@ P0 不从工作转录推断职业、身份、健康、政治或其他敏感属�
 | 其他活跃讲解 | 当前来源讲解之后 | 按创建顺序显示；每条最新 revision 都有独立 ✓ / ✗ |
 | 历史讲解 | 同一 Tab 内分页加载 | 原始记录不因压缩消失；已关闭项只读，已掌握项可撤销 |
 | 主动来源 | 讲解元信息 | `/explain <学习请求>` 生成的 entry 显示“主动请求”；空白 Session 发起时没有虚构 turn 编号 |
+| 选中/建议来源（P1） | 讲解元信息 | 分别显示“选中解释”和“学习建议”；无可靠坐标的 selection 不显示伪造 turn |
 | 学习概况 | 同一 Tab 内只读区 | 显示当前 `ExplainContext` 的更新时间、知识/进展摘要和推断标记 |
 | 行内讲解卡片 | 不在 P0 | 本地旁路数据没有标准 ConversationNode 推送入口 |
 | 回合尾部反馈 | 不在 P0 | `conversation.chat.turnTail` 按会话作用域渲染，无法同时表达全局历史和其他来源活跃讲解 |
@@ -118,6 +120,8 @@ P0 不自动切换或抢占 `conversation.view`。用户在当前工作 Session 
 - off 时学习视图保持可读，但反馈、撤销和其他学习状态写入禁用；重新 on 后恢复交互与各来源活跃状态。
 - `/explain status` 返回全局开关、模型路由和容量是否完整、runtime 状态、各来源活跃讲解数、候选数、最近用户操作时间、最近压缩时间与当前预计上下文占用。
 - `/explain <学习请求>` 只在 enabled 且路由可用时接受；命令由宿主记录后直接交给 explain 调度器，不形成主 Agent turn，也不进入主模型历史。空参数返回用法，`on`、`off`、`status` 保留为精确管理子命令。
+- `--selection` 以选中文本作为请求，逆序定位最新匹配消息；无可靠坐标时使用 turn 0，不把当前最新回合冒充为来源。`--suggested <turn>` 只读快捷候选对应的精确回合，不存在或不合格返回 `EXPLAIN_SOURCE_UNAVAILABLE`。
+- 两个 P1 入口只通过当前 Session 命令目录发现 Explain，只在 plain 且空草稿时填写命令；不读 SQLite、ExplainContext 或其他插件私有 API，不自动发送或新增模型调用。
 - 主动请求成功时返回新讲解标题；关闭、运行时不可用、来源繁忙、Topic 已活跃、取消、模型失败和压力无法化解均返回稳定错误码。命令完成不自动切换「学习」视图。
 - provider、model 或可解析的 `contextWindow` 缺失时，`on` 明确失败；不得隐式借用来源 Session 的模型。
 
@@ -194,7 +198,9 @@ P0 不自动切换或抢占 `conversation.view`。用户在当前工作 Session 
 18. **界面一致**：从不同来源 Session 打开的「学习」视图展示同一全局线程，并优先呈现各自来源的讲解；一个 Session 的视图选择不改变业务状态。
 19. **视图约束**：空白 Session 不显示「学习」入口；已建立 Session 切入学习视图后 composer 仍可向当前工作 Session 发送消息，且插件不通过 DOM/CSS 私有路径改变该行为。
 20. **主动学习命令**：composer 能发现 `/explain <学习请求>`；成功后全局线程新增带“主动请求”来源的活跃讲解，空白来源不显示 turn 0；请求进入 command 日志但不进入主 Agent 消息，自主额度保持不变，来源/Topic 冲突与取消返回稳定结果。
-21. **测试伴随**：单元测试、集成测试、keyless Web replay/snapshot 和真实流程 GIF 从首个 UI PR 开始，发布前全部通过。
+21. **P1 Host 协议**：selection 对 assistant/tool/user/Advisor 可见文本的来源坐标符合定位规则，重复文本取最新匹配；suggested 在草稿中固定精确 turn，之后的新回合不改变来源。成功分别持久化 `origin: selection/suggested`，重讲保留 origin；失效来源、命令用法错误和竞争返回稳定结果。
+22. **P1 可选集成**：explain 未安装时两个入口不出现；安装时只填写可编辑草稿，不覆盖既有输入、不改变 suggested sidecar/候选数量、不增加后台调用；Advisor 未被选中时绝不进入 ExplainContext。
+23. **测试伴随**：单元测试、集成测试、keyless Web replay/snapshot 和真实流程 GIF 从首个 UI PR 开始，发布前全部通过。
 
 ## 决策记录
 
@@ -218,3 +224,4 @@ P0 不自动切换或抢占 `conversation.view`。用户在当前工作 Session 
 | 2026-08-12 | 学习数据用户全局，但 `conversation.view` 入口和选中状态按 Session；空白 Session 无入口，工作 composer 保留 |
 | 2026-08-12 | P0 删除 vendored better-sidebar，保持零外部 UI 依赖 |
 | 2026-08-13 | `/explain <学习请求>` 复用第一方 command/composer，进入全局 explain 单飞队列且不占自主额度；管理子命令保持兼容 |
+| 2026-08-13 | M6 P1 可选插件只经 DSH 命令目录发现 Explain 并填写可编辑草稿；selection 逆序匹配可见文本，suggested 携带候选生成时的精确 turn 以防止来源漂移 |

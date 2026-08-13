@@ -14,7 +14,12 @@ import {
   renderManualExplainRequest,
   renderRephraseRequest,
 } from '../src/explainer.ts'
-import { captureManualExplainTarget, captureSourceCapsule } from '../src/observer.ts'
+import {
+  captureManualExplainTarget,
+  captureSelectionExplainTarget,
+  captureSourceCapsule,
+  captureSuggestedExplainTarget,
+} from '../src/observer.ts'
 import { CandidateQueue } from '../src/queue.ts'
 
 const EMPTY_CONTEXT: AuxiliaryContext = {
@@ -141,6 +146,93 @@ describe('completed-turn source observation', () => {
       capsule: { turn: 0, endSeq: 0, assistantText: '', tools: [] },
     })
   })
+
+  it('locates selected assistant, tool, and context text without guessing an unavailable source', () => {
+    const session = Session.create(SessionId('selection-source'))
+    session.append('turn/start', { turn: 1 })
+    session.append('step/start', { turn: 1, step: 1 })
+    session.append('user/message', createUserMessage({
+      source: { kind: 'user' },
+      content: [{ type: 'text', text: 'Explain the repeated marker.' }],
+    }), { surfaceOp: 'append' })
+    session.append('assistant/message', {
+      turn: 1,
+      step: 1,
+      message: createAssistantMessage({
+        source: { provider: 'test', model: 'test' },
+        content: [{ type: 'text', text: 'The repeated marker first appeared here.' }],
+      }),
+    }, { surfaceOp: 'append' })
+    session.append('step/end', { turn: 1, step: 1 })
+    session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    session.append('user/message', createUserMessage({
+      source: { kind: 'advisor' } as never,
+      content: [{ type: 'text', text: '[advisor:nit] Prefer exact checks.' }],
+    }), { surfaceOp: 'append' })
+
+    session.append('turn/start', { turn: 2 })
+    session.append('step/start', { turn: 2, step: 1 })
+    session.append('user/message', createUserMessage({
+      source: { kind: 'user' },
+      content: [{ type: 'text', text: 'What changed now?' }],
+    }), { surfaceOp: 'append' })
+    const callId = CallId('selection-call')
+    session.append('tool/call', { turn: 2, step: 1, callId, name: 'read', arguments: '{}' })
+    session.append('tool/result', {
+      turn: 2,
+      step: 1,
+      message: createToolResultMessage({
+        callId,
+        content: [{ type: 'text', text: 'Tool result selected text.' }],
+        isError: false,
+      }),
+    }, { surfaceOp: 'append' })
+    session.append('assistant/message', {
+      turn: 2,
+      step: 1,
+      message: createAssistantMessage({
+        source: { provider: 'test', model: 'test' },
+        content: [{ type: 'text', text: 'The repeated marker is newer in this answer.' }],
+      }),
+    }, { surfaceOp: 'append' })
+    session.append('step/end', { turn: 2, step: 1 })
+    session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
+
+    expect(captureSelectionExplainTarget(session, 'repeated   marker', 10_000)).toMatchObject({
+      origin: 'selection',
+      request: 'repeated marker',
+      capsule: { turn: 2, assistantText: 'The repeated marker is newer in this answer.' },
+    })
+    expect(captureSelectionExplainTarget(session, 'Tool result selected text.', 10_000))
+      .toMatchObject({ capsule: { turn: 2, tools: [{ resultPreview: 'Tool result selected text.' }] } })
+    expect(captureSelectionExplainTarget(session, '[advisor:nit] Prefer exact checks.', 10_000))
+      .toMatchObject({ capsule: { turn: 1 } })
+    expect(captureSelectionExplainTarget(session, 'text not retained in this Session', 10_000))
+      .toMatchObject({ capsule: { turn: 0, assistantText: '', tools: [] } })
+    expect(captureSuggestedExplainTarget(session, 2, 'Explain the key concept.', 10_000))
+      .toMatchObject({ origin: 'suggested', capsule: { turn: 2 } })
+    expect(captureSuggestedExplainTarget(session, 99, 'Explain the key concept.', 10_000)).toBeUndefined()
+  })
+
+  it('allows an explicit source to bind a max-tokens answer without admitting it to autonomous observation', () => {
+    const session = Session.create(SessionId('max-token-source'))
+    session.append('turn/start', { turn: 1 })
+    session.append('step/start', { turn: 1, step: 1 })
+    session.append('assistant/message', {
+      turn: 1,
+      step: 1,
+      message: createAssistantMessage({
+        source: { provider: 'test', model: 'test' },
+        content: [{ type: 'text', text: 'A partial but visible answer.' }],
+      }),
+    }, { surfaceOp: 'append' })
+    session.append('step/end', { turn: 1, step: 1 })
+    const end = session.append('turn/end', { turn: 1, reason: { kind: 'max-tokens' } })
+
+    expect(captureSourceCapsule(session, end, 10_000)).toBeUndefined()
+    expect(captureSuggestedExplainTarget(session, 1, 'Explain the partial answer.', 10_000))
+      .toMatchObject({ origin: 'suggested', capsule: { turn: 1, assistantText: 'A partial but visible answer.' } })
+  })
 })
 
 describe('latest-wins candidate queue', () => {
@@ -222,6 +314,7 @@ describe('strict auxiliary JSON parsing', () => {
       .toEqual({ title: 'T2', what: 'W2', why: 'Y2', pitfall: 'P2' })
 
     const manual = renderManualExplainRequest(EMPTY_CONTEXT, {
+      origin: 'manual',
       request: 'Explain narrowing',
       capsule: capsule('manual', 0, 1),
     }, 500)

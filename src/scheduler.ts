@@ -404,7 +404,7 @@ export class ExplainScheduler {
       } else {
         const committed = this.store.commitManualExplanation(
           this.lease,
-          job.target.capsule,
+          job.target,
           generated.value,
           generated.generation,
         )

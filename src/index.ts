@@ -11,7 +11,12 @@ import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-token-meter'
 import { resolveExplainConfig, type ExplainConfig } from './config.ts'
 import { ExplainGateway } from './gateway.ts'
-import { captureManualExplainTarget, captureSourceCapsule } from './observer.ts'
+import {
+  captureManualExplainTarget,
+  captureSelectionExplainTarget,
+  captureSourceCapsule,
+  captureSuggestedExplainTarget,
+} from './observer.ts'
 import { ExplainRuntime } from './runtime.ts'
 import { ExplainStore } from './store.ts'
 import type { ThreadEntryView } from './types.ts'
@@ -91,17 +96,62 @@ function registerExplainCommand(ctx: Context, runtime: ExplainRuntime, gateway: 
         return { kind: 'success', text: renderStatus(gateway.status()) }
       }
       if (action === '') return { kind: 'error', text: 'Usage: /explain <request> | on | off | status' }
-      const target = captureManualExplainTarget(
-        invocation.agent.session,
-        action,
-        runtime.settings().maxSourceChars,
-      )
+      const parsed = parseExplainRequest(action)
+      if (!parsed.ok) return { kind: 'error', text: `EXPLAIN_INVALID_REQUEST: ${parsed.message}` }
+      const target = parsed.origin === 'selection'
+        ? captureSelectionExplainTarget(
+            invocation.agent.session,
+            parsed.request,
+            runtime.settings().maxSourceChars,
+          )
+        : parsed.origin === 'suggested'
+          ? captureSuggestedExplainTarget(
+              invocation.agent.session,
+              parsed.turn,
+              parsed.request,
+              runtime.settings().maxSourceChars,
+            )
+          : captureManualExplainTarget(
+              invocation.agent.session,
+              parsed.request,
+              runtime.settings().maxSourceChars,
+            )
+      if (target === undefined) {
+        return {
+          kind: 'error',
+          text: 'EXPLAIN_SOURCE_UNAVAILABLE: The referenced answer is no longer available as a settled turn.',
+        }
+      }
       const result = await runtime.scheduler.requestManual(target, invocation.signal)
       return result.ok
         ? { kind: 'success', text: `Explanation added to Learning: ${explanationTitle(result.entry)}` }
         : { kind: 'error', text: `${result.error.code}: ${result.error.message}` }
     },
   })
+}
+
+type ParsedExplainRequest =
+  | { readonly ok: true; readonly origin: 'manual' | 'selection'; readonly request: string }
+  | { readonly ok: true; readonly origin: 'suggested'; readonly turn: number; readonly request: string }
+  | { readonly ok: false; readonly message: string }
+
+function parseExplainRequest(action: string): ParsedExplainRequest {
+  const selection = /^--selection(?:\s+([\s\S]*))?$/u.exec(action)
+  if (selection !== null) {
+    const request = selection[1]?.trim() ?? ''
+    return request === ''
+      ? { ok: false, message: 'Usage: /explain --selection <selected text>' }
+      : { ok: true, origin: 'selection', request }
+  }
+  if (/^--suggested(?:\s|$)/u.test(action)) {
+    const match = /^--suggested\s+([1-9][0-9]*)\s+([\s\S]+)$/u.exec(action)
+    const turn = match?.[1] === undefined ? undefined : Number(match[1])
+    const request = match?.[2]?.trim()
+    return turn === undefined || !Number.isSafeInteger(turn) || request === undefined || request === ''
+      ? { ok: false, message: 'Usage: /explain --suggested <source turn> <request>' }
+      : { ok: true, origin: 'suggested', turn, request }
+  }
+  return { ok: true, origin: 'manual', request: action }
 }
 
 function explanationTitle(entry: ThreadEntryView): string {

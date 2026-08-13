@@ -24,6 +24,7 @@ import type {
   GenerationRecord,
   LeaseToken,
   ManualExplanation,
+  ManualExplainTarget,
   PersistedSourceSummary,
   RephraseTarget,
   SourceCapsule,
@@ -502,12 +503,13 @@ export class ExplainStore {
   /** Atomically accept one explicit explanation without consuming autonomous budget. */
   commitManualExplanation(
     token: LeaseToken,
-    capsule: SourceCapsule,
+    target: ManualExplainTarget,
     explanation: ManualExplanation,
     generation: GenerationRecord,
   ): ManualCommitResult {
     return this.write(() => {
       this.assertLease(token)
+      const { capsule } = target
       if (this.hasActiveSource(capsule.sourceSessionId)) return { ok: false, reason: 'source-active' }
       const existing = this.database.prepare(`
         SELECT t.topic_id,
@@ -556,7 +558,7 @@ export class ExplainStore {
           what: explanation.what,
           why: explanation.why,
           pitfall: explanation.pitfall,
-          origin: 'manual',
+          origin: target.origin,
           sourceSummary: sourceSummary(capsule),
           generation,
         }),
@@ -639,7 +641,7 @@ export class ExplainStore {
         target.sourceTurn,
         JSON.stringify({
           ...content,
-          ...(target.origin === 'manual' ? { origin: 'manual' } : {}),
+          ...(target.origin === 'autonomous' ? {} : { origin: target.origin }),
           generation,
         }),
         now,
@@ -1415,8 +1417,8 @@ export class ExplainStore {
       topicState: row.topic_state,
       topicRevision: row.topic_revision,
       ...(row.revision === null ? {} : { revision: row.revision }),
-      ...(row.kind === 'explanation' && explanationOrigin(row.payload_json) === 'manual'
-        ? { origin: 'manual' as const } : {}),
+      ...(row.kind === 'explanation' && explanationOrigin(row.payload_json) !== 'autonomous'
+        ? { origin: explanationOrigin(row.payload_json) as ManualExplainTarget['origin'] } : {}),
       ...(row.source_session_id === null ? {} : { sourceSessionId: SessionId(row.source_session_id) }),
       ...(row.source_turn === null ? {} : { sourceTurn: row.source_turn }),
       payload: publicPayload,
@@ -1527,10 +1529,12 @@ function explanationContent(value: string): ExplanationContent {
   }
 }
 
-function explanationOrigin(value: string): 'autonomous' | 'manual' {
+function explanationOrigin(value: string): 'autonomous' | ManualExplainTarget['origin'] {
   const payload = parseObject(value, 'explanation entry')
   if (payload.origin === undefined) return 'autonomous'
-  if (payload.origin === 'manual') return payload.origin
+  if (payload.origin === 'manual' || payload.origin === 'selection' || payload.origin === 'suggested') {
+    return payload.origin
+  }
   throw new Error('dsh-explain: explanation origin is invalid')
 }
 
