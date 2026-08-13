@@ -8,19 +8,19 @@ import { WorkspaceTypertGenerator } from '@deepseek-ai/dsh-typert-generator'
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const workspace = mkdtempSync(join(tmpdir(), 'dsh-explain-typert-'))
 const packageRoot = join(workspace, 'packages', 'dsh-explain')
-const typeMetaRoot = join(workspace, 'packages', 'typert', 'type-meta')
-const dshSource = resolve(repository, 'node_modules', '@deepseek-ai', 'dsh-type-meta')
+const protocolRoot = join(workspace, 'packages', 'typert', 'protocol')
+const dshSource = resolve(repository, 'node_modules', '@deepseek-ai', 'dsh-typert-protocol')
 
 try {
   mkdirSync(packageRoot, { recursive: true })
   cpSync(join(repository, 'src'), join(packageRoot, 'src'), { recursive: true })
   rmSync(join(packageRoot, 'src', 'client'), { recursive: true, force: true })
-  mkdirSync(typeMetaRoot, { recursive: true })
-  cpSync(join(dshSource, 'src'), join(typeMetaRoot, 'src'), { recursive: true })
-  const typeMetaManifest = JSON.parse(readFileSync(join(dshSource, 'package.json'), 'utf8'))
-  typeMetaManifest.exports = { '.': './src/index.ts' }
-  writeFileSync(join(typeMetaRoot, 'package.json'), `${JSON.stringify(typeMetaManifest, null, 2)}\n`)
-  writeFileSync(join(typeMetaRoot, 'tsconfig.json'), `${JSON.stringify({
+  mkdirSync(protocolRoot, { recursive: true })
+  cpSync(join(dshSource, 'src'), join(protocolRoot, 'src'), { recursive: true })
+  const protocolManifest = JSON.parse(readFileSync(join(dshSource, 'package.json'), 'utf8'))
+  protocolManifest.exports = { '.': './src/index.ts' }
+  writeFileSync(join(protocolRoot, 'package.json'), `${JSON.stringify(protocolManifest, null, 2)}\n`)
+  writeFileSync(join(protocolRoot, 'tsconfig.json'), `${JSON.stringify({
     compilerOptions: {
       target: 'ES2024',
       module: 'ESNext',
@@ -59,7 +59,7 @@ try {
       rewriteRelativeImportExtensions: true,
       baseUrl: '.',
       paths: {
-        '@deepseek-ai/dsh-type-meta': ['../typert/type-meta/src/index.ts'],
+        '@deepseek-ai/dsh-typert-protocol': ['../typert/protocol/src/index.ts'],
       },
       useDefineForClassFields: true,
     },
@@ -75,13 +75,13 @@ try {
       skipLibCheck: true,
       baseUrl: '.',
       paths: {
-        '@deepseek-ai/dsh-type-meta': ['packages/typert/type-meta/src/index.ts'],
+        '@deepseek-ai/dsh-typert-protocol': ['packages/typert/protocol/src/index.ts'],
       },
     },
     files: [],
     references: [
       { path: './packages/dsh-explain' },
-      { path: './packages/typert/type-meta' },
+      { path: './packages/typert/protocol' },
     ],
   }, null, 2)}\n`)
   symlinkSync(join(repository, 'node_modules'), join(workspace, 'node_modules'), 'dir')

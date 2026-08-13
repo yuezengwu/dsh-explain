@@ -20,7 +20,7 @@ const [{ Context }, sessionModule, persistenceModule, replayModule] = await Prom
   load('apps/cli', '@deepseek-ai/cordis'),
   load('packages/core/session', '@deepseek-ai/dsh-session'),
   load('packages/session/session-persistence-jsonl', '@deepseek-ai/dsh-session-persistence-jsonl'),
-  load('packages/support/llm-replay', '@deepseek-ai/dsh-llm-replay'),
+  load('packages/test-support/llm-replay', '@deepseek-ai/dsh-llm-replay'),
 ])
 
 const fixture = (await readFile(fixturePath, 'utf8'))
