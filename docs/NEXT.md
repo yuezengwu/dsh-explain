@@ -42,7 +42,7 @@ revision 1 payload 的可选 `origin` 扩为 `manual | selection | suggested`；
 
 ### 3. `dsh-advisor`：显式解释建议
 
-P1 不让 explain 订阅 Advisor runtime，也不改变 Advisor 的 `inject/steer` 路由。Advisor 建议已经作为带 `source.kind = advisor` 的可见、可持久化 context 消息呈现；用户可用 `dsh-selection-chat` 选中建议正文，再走同一个 `--selection` 入口。Advisor 的 rc.6 包装兼容只把未解析的 `schemastery` peer 改为 DSH 已发布的 `@deepseek-ai/schemastery`，不改变建议行为；修复已提交到 [上游 PR #17](https://github.com/omdsh-dev/dsh-advisor/pull/17)。
+P1 不让 explain 订阅 Advisor runtime，也不改变 Advisor 的 `inject/steer` 路由。Advisor 建议已经作为带 `source.kind = advisor` 的可见、可持久化 context 消息呈现；用户可用 `dsh-selection-chat` 选中建议正文，再走同一个 `--selection` 入口。Advisor 的 rc.6 包装兼容只把未解析的 `schemastery` peer 改为 DSH 已发布的 `@deepseek-ai/schemastery`，不改变建议行为；修复已通过 [上游 PR #17](https://github.com/omdsh-dev/dsh-advisor/pull/17) 合入。
 
 该用户手势是唯一桥接授权：普通 Observer 继续只接受真实用户消息和当前 turn 的 assistant/tool 内容，Advisor 消息不会自动成为自主候选、ExplainContext observation 或 Topic 状态。`--selection` 的显式文本可以进入 Explain Agent，但不会回写或影响 Advisor，也不会被注入主 Agent。P1 不修改 `dsh-advisor` 的运行时建议行为；rc.6 仅需上文所述的包 peer 兼容修复。
 
@@ -64,7 +64,7 @@ P1 不让 explain 订阅 Advisor runtime，也不改变 Advisor 的 `inject/stee
 | M6.4 | `dsh-explain` | 更新 PRD/Architecture/README 并增加组合 fixture | **已完成**：全新 profile 唯一贡献、选区草稿、完整卸载与恢复通过 |
 | M6.5 | 四插件组合 | 真实 Advisor 建议选择、学习建议、反馈闭环与 GIF | **已完成**：真实 DSH Web/模型、SQLite 与主 Session 上完成六帧闭环 |
 
-这些仓库相互独立，不建立跨仓库 PR stack。验收始终固定精确 SHA，不跟随移动的 `main`。当前账号对 `dsh-external/dsh-selection-chat` 和 `dsh-external/dsh-suggested-replies` 只有 READ，且组织策略禁止 fork；本地提交已经完成但无法由本次工作直接推送或发 PR。Advisor 修复已在个人 fork 推送并提交上游 PR #17。Explain 仓库可正常提交、推送和合入。
+这些仓库相互独立，不建立跨仓库 PR stack。验收始终固定精确 SHA，不跟随移动的 `main`。当前账号对 `dsh-external/dsh-selection-chat` 和 `dsh-external/dsh-suggested-replies` 只有 READ，且组织策略禁止 fork；本地提交已经完成但无法由本次工作直接推送或发 PR。Advisor 修复已通过上游 PR #17 合入 `main@b714ce1`；Explain M6 已通过 PR #14 合入。两个私有 `dsh-external` 消费方是剩余的发布阻塞。
 
 ### 审查结论
 
