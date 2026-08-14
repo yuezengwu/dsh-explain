@@ -76,6 +76,7 @@
     "test": "vitest run",
     "test:web": "pnpm build && vitest run --config vitest.web.config.ts",
     "test:web:refresh": "pnpm build && DSH_SNAPSHOT=refresh vitest run --config vitest.web.config.ts",
+    "test:m6": "pnpm build && vitest run --config vitest.m6.config.ts",
     "prepare": "pnpm build"
   },
   "peerDependencies": {

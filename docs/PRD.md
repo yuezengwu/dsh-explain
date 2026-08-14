@@ -1,7 +1,7 @@
 # dsh-explain PRD（P0 定稿）
 
-> 状态：**P0 定稿**（2026-08-13）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
-> 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v9 同步。
+> 状态：**P0 定稿；M6 P1 快捷入口实现与组合验收完成**（2026-08-14）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
+> 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v10 同步。
 
 ## 定位
 
@@ -43,7 +43,7 @@ explain 维护一份不进入主 Agent 的全局 `ExplainContext`，用来判断
 |---|---|
 | 全局开关 | `/explain on`、`/explain off`、`/explain status`；默认关闭，作用于整个 `$DSH_HOME` |
 | 主动学习 | composer 输入 `/explain <学习请求>`；请求不发送给主 Agent，由 explain agent 结合全局 `ExplainContext` 和当前来源最近一个合格回合生成一条不能 skip 的讲解 |
-| 可选快捷入口（P1） | selection-chat 填写 `/explain --selection <text>`；suggested-replies 填写 `/explain --suggested <turn> <request>`；都不自动提交、不覆盖非空草稿，Advisor 只经用户显式选中进入 |
+| 可选快捷入口（P1，M6 已实现） | selection-chat 填写 `/explain --selection <text>`；suggested-replies 填写 `/explain --suggested <turn> <request>`；都不自动提交、不覆盖非空草稿，Advisor 只经用户显式选中进入 |
 | 自主选题 | 只观察顶层 Session 中正常完成且包含非空 assistant 输出的回合；explain 可以返回“不讲” |
 | 来源讲解槽 | 每个来源 Session 最多一个活跃讲解，可以没有；有活跃讲解时仍保留本来源最新一个候选 |
 | 全局单飞 | 全局最多一个辅助模型请求；主动请求、重讲、压缩和自主候选按明确优先级串行执行 |

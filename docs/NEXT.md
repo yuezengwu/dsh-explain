@@ -2,7 +2,7 @@
 
 ## M6：P1 可选插件集成
 
-> 状态：**Explain Host 协议已实现并通过自动化门禁，消费方插件待接入**（2026-08-13）。设计基线为 `dsh-explain@f66051d`、`dsh-selection-chat@878bd59`、`dsh-suggested-replies@66d5e36` 与 `dsh-advisor@068c511`。
+> 状态：**方案、对抗性审查、实现、自动化与真实模型验收完成；上游消费方发布受权限阻塞**（2026-08-14）。验收基线为 DSH `47f9438`、`dsh-explain@ed25029`、`dsh-selection-chat@90e9517`、`dsh-suggested-replies@0988019` 与 `dsh-advisor@2a3b011`。
 
 ### 目标
 
@@ -42,9 +42,9 @@ revision 1 payload 的可选 `origin` 扩为 `manual | selection | suggested`；
 
 ### 3. `dsh-advisor`：显式解释建议
 
-P1 不让 explain 订阅 Advisor runtime，也不改变 Advisor 的 `inject/steer` 路由。Advisor 建议已经作为带 `source.kind = advisor` 的可见、可持久化 context 消息呈现；用户可用 `dsh-selection-chat` 选中建议正文，再走同一个 `--selection` 入口。
+P1 不让 explain 订阅 Advisor runtime，也不改变 Advisor 的 `inject/steer` 路由。Advisor 建议已经作为带 `source.kind = advisor` 的可见、可持久化 context 消息呈现；用户可用 `dsh-selection-chat` 选中建议正文，再走同一个 `--selection` 入口。Advisor 的 rc.6 包装兼容只把未解析的 `schemastery` peer 改为 DSH 已发布的 `@deepseek-ai/schemastery`，不改变建议行为；修复已提交到 [上游 PR #17](https://github.com/omdsh-dev/dsh-advisor/pull/17)。
 
-该用户手势是唯一桥接授权：普通 Observer 继续只接受真实用户消息和当前 turn 的 assistant/tool 内容，Advisor 消息不会自动成为自主候选、ExplainContext observation 或 Topic 状态。`--selection` 的显式文本可以进入 Explain Agent，但不会回写或影响 Advisor，也不会被注入主 Agent。P1 不修改 `dsh-advisor` 代码；它只进入四插件组合验收矩阵。
+该用户手势是唯一桥接授权：普通 Observer 继续只接受真实用户消息和当前 turn 的 assistant/tool 内容，Advisor 消息不会自动成为自主候选、ExplainContext observation 或 Topic 状态。`--selection` 的显式文本可以进入 Explain Agent，但不会回写或影响 Advisor，也不会被注入主 Agent。P1 不修改 `dsh-advisor` 的运行时建议行为；rc.6 仅需上文所述的包 peer 兼容修复。
 
 ### 调度、预算与隐私
 
@@ -59,12 +59,12 @@ P1 不让 explain 订阅 Advisor runtime，也不改变 Advisor 的 `inject/stee
 | 阶段 | 仓库 | 修改 | 完成门 |
 |---|---|---|---|
 | M6.1 | `dsh-explain` | 先定义 `--selection` / `--suggested <turn>` 解析、来源定位、origin 投影和稳定失败 | **已完成**：command/主消息隔离、精确来源匹配、旧 payload 兼容和 Scheduler 测试通过 |
-| M6.2 | `dsh-selection-chat` | 命令目录发现、Explain 动作、空草稿保护和本地化 | explain 缺失时无动作；存在时只填草稿；选区/忙态/热卸载通过 |
-| M6.3 | `dsh-suggested-replies` | ready 行附件气泡、命令目录发现和草稿保护 | 不改变模型候选数/sidecar/调用数；点击只填携带精确 turn 的 `--suggested` 草稿 |
-| M6.4 | `dsh-explain` | 合入两个已发布的集成行为、更新 PRD/Architecture/README 和组合 fixture | 单插件、任意两插件、四插件组合均可启动和卸载；无私有数据耦合 |
-| M6.5 | 四插件组合 | 真实 Advisor 建议选择、学习建议、普通选择、反馈闭环与 GIF | 同一候选提交上完成真实 DSH Web、真实模型、数据库与主 Session 证据 |
+| M6.2 | `dsh-selection-chat` | 命令目录发现、Explain 动作、空草稿保护和本地化 | **已完成 `90e9517`**：36 项测试；explain 缺失时无动作，存在时只填草稿，选区/忙态/生命周期通过 |
+| M6.3 | `dsh-suggested-replies` | ready 行附件气泡、命令目录发现、草稿保护和 rc.6 短预测推理约束 | **已完成 `0988019`**：66 项测试；候选数/sidecar/预算不变，点击只填精确 turn 草稿 |
+| M6.4 | `dsh-explain` | 更新 PRD/Architecture/README 并增加组合 fixture | **已完成**：全新 profile 唯一贡献、选区草稿、完整卸载与恢复通过 |
+| M6.5 | 四插件组合 | 真实 Advisor 建议选择、学习建议、反馈闭环与 GIF | **已完成**：真实 DSH Web/模型、SQLite 与主 Session 上完成六帧闭环 |
 
-这些仓库相互独立，不建立跨仓库 PR stack。先合入 explain 的命令协议，再分别合入两个 UI 消费方，最后回到 explain 完成组合验收；消费方在协议提交合入前用精确 SHA 进行测试，不能跟随移动的 `main`。
+这些仓库相互独立，不建立跨仓库 PR stack。验收始终固定精确 SHA，不跟随移动的 `main`。当前账号对 `dsh-external/dsh-selection-chat` 和 `dsh-external/dsh-suggested-replies` 只有 READ，且组织策略禁止 fork；本地提交已经完成但无法由本次工作直接推送或发 PR。Advisor 修复已在个人 fork 推送并提交上游 PR #17。Explain 仓库可正常提交、推送和合入。
 
 ### 审查结论
 
@@ -75,6 +75,17 @@ P1 不让 explain 订阅 Advisor runtime，也不改变 Advisor 的 `inject/stee
 - **不复制权威状态机**：UI 不预判 Topic、来源槽或 Scheduler 竞争；Host 的双重 gate 决定最终结果。
 - **不让草稿制造 TOCTOU**：suggested 草稿携带候选对应的精确 turn；提交后 Host 只读该 turn，无效时明确失败。
 - **无 DSH 核心修改**：当前 `command.list`、composer input facade、`conversation.input.dock` 和 context 行可选文本已足够；P1 不增加核心 slot。
+
+### 对抗性审查补充
+
+- **异步能力发现不得回写旧 Session**：每次 `commands.list(sessionId)` 都绑定当前 Session、当前选区或组件 epoch；Session 切换、新选区、卸载和后续查询会使旧响应失效。
+- **命令目录有三个独立失效源**：`commands/change` 使所有已观察 Session 重新查询，`agent-preset/selected` 只使对应 Session 重新查询，`connection/reset` 丢弃整代结果。查询失败一律隐藏增强入口，不影响原功能。
+- **渲染时 disabled 不是写入授权**：按钮点击时必须从 `conversation.input.for(scope).state.getSnapshot()` 重新检查 `phase === 'plain'` 与空草稿，再调用一次 `setDraft()`；不能只信任 React 上一帧或工具条打开时的状态。
+- **选区规范化不能破坏代码**：只统一 CRLF、不可见空格与行内重复空白，保留换行和至多两个连续空行；Explain Host 再用同一规则归一化请求。旧原型把全部空白折成单行，不能采用。
+- **suggested 附件不是第四个候选**：附件在 UI 中与模型生成候选分离，不写 sidecar，也不改变 `suggestionCount`、`maxTokens`、`timeoutMs` 或模型调用次数。rc.6 兼容只显式关闭短预测的推理块；旧原型对三项预算默认值的调整不进入 M6。
+- **精确 turn 必须来自 ready sidecar**：附件只为当前 ready revision 的 `turn` 生成草稿；草稿创建后即固定该 turn。新回合不会改写已存在草稿，Host 也不会在来源失效时回退到最新回合。
+- **生命周期资源必须随插件卸载**：DOM、样式、计时器、命令目录监听、sidecar watch 和 Session 订阅都由插件 effect 或组件 cleanup 释放；卸载后迟到的 RPC、Remote 事件或模型结果不得恢复入口。
+- **组合成本保持显式**：Advisor 与 suggested-replies 的既有辅助调用可能在同一主回合各发生一次；Explain 快捷入口本身保持零调用，只有用户提交草稿后才产生 Explain 请求。
 
 ### 验收标准
 
@@ -89,7 +100,7 @@ P1 不让 explain 订阅 Advisor runtime，也不改变 Advisor 的 `inject/stee
 9. Advisor 未被选择时绝不进入 Explain 请求、observation 或 ExplainContext；被选择后只进入该次 command 和私有来源摘要。
 10. 主 Session `deriveMessages()` 在快捷入口提交前后保持不变；只有标准 `command/run` / `command/done` 增量。
 11. 四插件同时启用时各自单插件测试、assembled Web snapshot、组合/HMR/卸载测试和总调用计数断言通过。
-12. 用户可完成「选中 Advisor 建议 → 解释 → 学习 Tab 查看 → ✗ 重讲 → ✓ 掌握」真实模型闭环，并以私有 GIF 留证。
+12. 用户可完成「选中 Advisor 建议 → 解释 → 学习 Tab 查看 → ✗ 重讲 → ✓ 掌握」真实模型闭环，并在合入 PR 中保存 GIF 与精确提交证据。
 
 ## M5：主动学习命令
 
