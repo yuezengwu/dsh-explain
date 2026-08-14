@@ -15,9 +15,12 @@ export interface SourceCapsule {
   readonly truncated: boolean
 }
 
+/** Persisted explicit origin; `suggested` is read-only compatibility for M6 v10 rows. */
+export type ExplanationOrigin = 'manual' | 'selection' | 'answer' | 'suggested'
+
 /** One explicit learning request paired with bounded context from its source Session. */
 export interface ManualExplainTarget {
-  readonly origin: 'manual' | 'selection' | 'suggested'
+  readonly origin: Exclude<ExplanationOrigin, 'suggested'>
   readonly request: string
   readonly capsule: SourceCapsule
 }
@@ -91,7 +94,7 @@ export interface RephraseTarget {
   readonly revision: number
   readonly feedbackOrdinal: number
   readonly sourceSummary: PersistedSourceSummary
-  readonly origin: 'autonomous' | ManualExplainTarget['origin']
+  readonly origin: 'autonomous' | ExplanationOrigin
   readonly revisions: readonly ({ readonly revision: number } & ExplanationContent)[]
 }
 

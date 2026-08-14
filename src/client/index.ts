@@ -7,6 +7,12 @@ import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from 'dsh-explain/remote'
+import {
+  commitExplainDraft,
+  ExplainAnswerShortcut,
+  ExplainSelectionShortcut,
+  type ExplainShortcutInjected,
+} from './ExplainShortcuts.tsx'
 import { LearningView, type LearningViewInjected } from './LearningView.tsx'
 import {
   LearningSettingsSection,
@@ -17,12 +23,12 @@ import { en, NS, zh } from './locales.ts'
 import { LEARNING_VIEW_CSS } from './styles.ts'
 
 /** Required services: typed Remote, locale dictionaries, and conversation slots. */
-export const inject = ['remote', 'locale', 'slots', 'sessions']
+export const inject = ['remote', 'locale', 'slots', 'sessions', 'conversation']
 
 /** Mount the generated codecs and one Session-scoped view over the global store. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const unmountRemote = await ctx.remote.$mount(explainRemote)
-  const feature = ctx.inject(['remote.explain', 'locale', 'slots', 'sessions'], (scope) => {
+  const feature = ctx.inject(['remote.explain', 'locale', 'slots', 'sessions', 'conversation'], (scope) => {
     const learning = new GlobalLearningStore(scope)
     scope.effect(() => () => { learning.dispose() }, 'dsh-explain: learning store')
     scope.effect(() => scope.locale.register(NS, { zh, en }), 'dsh-explain: dictionaries')
@@ -34,6 +40,15 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       return () => { style.remove() }
     }, 'dsh-explain: learning view styles')
     const t = scope.locale.bind(NS)
+    const shortcuts = (sessionId: SessionId): ExplainShortcutInjected => ({
+      draft: (command) => {
+        const sessionScope = scope.sessions.scope(sessionId)
+        return commitExplainDraft(
+          sessionScope === undefined ? undefined : scope.conversation.input.for(sessionScope),
+          command,
+        )
+      },
+    })
     scope.slots.inject('conversation.view', () => scope.slots.register({
       name: 'conversation.view',
       id: 'dsh-explain:learning',
@@ -63,6 +78,22 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
         updateConfiguration: request => learning.updateConfiguration(request),
       }),
     }, LearningSettingsSection))
+    scope.slots.inject('conversation.input.left', () => scope.slots.register({
+      name: 'conversation.input.left',
+      id: 'dsh-explain:selection',
+      order: 25,
+      locale: NS,
+      label: () => t('shortcut.selection'),
+      inject: shortcuts,
+    }, ExplainSelectionShortcut))
+    scope.slots.inject('conversation.chat.assistant-actions', () => scope.slots.register({
+      name: 'conversation.chat.assistant-actions',
+      id: 'dsh-explain:answer',
+      order: 20,
+      locale: NS,
+      label: () => t('shortcut.answer'),
+      inject: shortcuts,
+    }, ExplainAnswerShortcut))
   })
   try {
     await feature.await()

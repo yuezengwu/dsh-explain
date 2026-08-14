@@ -109,8 +109,8 @@ export function captureSelectionExplainTarget(
   )
 }
 
-/** Pair one suggested-replies accessory with the exact settled turn that produced it. */
-export function captureSuggestedExplainTarget(
+/** Pair one Explain-owned answer shortcut with its exact settled source turn. */
+export function captureAnswerExplainTarget(
   session: Session,
   turn: number,
   request: string,
@@ -118,7 +118,7 @@ export function captureSuggestedExplainTarget(
 ): ManualExplainTarget | undefined {
   const source = sourceCapsuleForTurn(session, turn, maxSourceChars)
   if (source === undefined) return undefined
-  return buildManualTarget(session, request, maxSourceChars, 'suggested', source)
+  return buildManualTarget(session, request, maxSourceChars, 'answer', source)
 }
 
 function buildManualTarget(
@@ -238,7 +238,11 @@ function textBlocks(blocks: readonly ContentBlock[]): string[] {
 }
 
 function normalizeText(text: string): string {
-  return text.replace(/\r\n?/g, '\n').replace(/[\t ]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+  return text
+    .replace(/\r\n?/gu, '\n')
+    .replace(/[\t \u00a0\u1680\u2000-\u200b\u202f\u205f\u3000]+/gu, ' ')
+    .replace(/\n{3,}/gu, '\n\n')
+    .trim()
 }
 
 function boundCapsule(
