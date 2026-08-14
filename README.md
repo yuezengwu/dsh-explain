@@ -2,7 +2,7 @@
 
 # dsh-explain — Learning mode for DSH
 
-> ✅ **Status: the M6 Explain Host protocol is implemented and passes the automated gates. Optional consumer integrations are still in progress. The current minimum supported DSH version is `0.1.0-rc.6`.**
+> ✅ **Status: M6 implementation and four-plugin acceptance are complete on DSH `0.1.0-rc.6`. The consumer changes are ready as exact commits; publishing them upstream is pending repository write access.**
 > See the [product requirements](docs/PRD.md) and [technical architecture](docs/ARCHITECTURE.md) for the full design. The detailed design documents are currently written in Chinese.
 
 `dsh-explain` turns useful material from multiple [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) work sessions into one private, local-first learning thread. It keeps at most one active explanation per source session and continuously adapts explanations to the user's knowledge, preferences, and learning progress.
@@ -36,7 +36,7 @@
 
 - [x] Product overlap review: no direct duplicate was found; related plugins provide implementation references only.
 - [x] P0 PRD: one global thread, per-source active explanations, an autonomous-call budget, two compaction triggers, global `ExplainContext`, and automatable acceptance criteria.
-- [x] Architecture v9: the v8 manual-learning semantics plus a closed Host protocol for selections and suggested replies, exact source resolution, and persisted origin labels.
+- [x] Architecture v10: the v9 Host protocol plus public command discovery, click-time composer admission, consumer lifecycle invalidation, and four-plugin composition evidence.
 - [x] UI path: first-party `conversation.view` registration following the `ui-trajectory` view-ring pattern, with no external UI dependency.
 - [x] M1 infrastructure: standalone plugin build, local SQLite schema, entity-level CAS, pagination, long polling, and generated typed Remotes.
 - [x] M2 implementation: source observation, single-flight auxiliary scheduling, durable budgets, rephrasing, dual-trigger compaction, `ExplainContext`, and the Learning view.
@@ -45,13 +45,13 @@
 - [x] M4 configuration and diagnostics: settings UI without YAML editing, concurrent-setting convergence, source navigation and missing-source fallback, shared diagnostics store, and expanded assembled-Web snapshot.
 - [x] M5 manual learning command: `/explain <learning request>`, explicit-request scheduling, source labels, durable rephrase summaries, and stable failure results.
 - [x] M6.1 Explain Host protocol: `--selection` and `--suggested <turn>` source resolution, origin persistence, rephrase propagation, and stable failures.
-- [ ] M6 P1 optional integrations: selected text, suggested-reply learning actions, and visible Advisor suggestions enter the same learning loop through an editable `/explain` draft.
+- [x] M6 P1 implementation: selected text, suggested-reply learning actions, and visible Advisor suggestions enter the same learning loop through an editable `/explain` draft; keyless composition and a fresh real-model feedback loop pass.
 
 M1 established persistence and Host/Client RPC. M2 completed the learning loop. M3 added release gates. M4 made configuration, diagnostics, and source navigation available in the UI. M5 added user-initiated learning from the composer. M6 connects the same command protocol to optional plugin workflows. See the [acceptance matrix](docs/ACCEPTANCE.md) for automated evidence.
 
 ## Current iteration
 
-M6 integrates `dsh-selection-chat`, `dsh-suggested-replies`, and `dsh-advisor` through the public DSH command catalog and composer-write path. It does not read private data owned by those plugins or add automatic model calls. The scope, cross-repository order, design review, and acceptance criteria are recorded in [docs/NEXT.md](docs/NEXT.md).
+M6 integrates `dsh-selection-chat`, `dsh-suggested-replies`, and `dsh-advisor` through the public DSH command catalog and composer-write path. It does not read private data owned by those plugins or add automatic model calls. The implementation is validated at `dsh-selection-chat@90e9517`, `dsh-suggested-replies@0988019`, `dsh-advisor@2a3b011`, and DSH `47f9438`; the two `dsh-external` consumer repositories are read-only to this account and have forking disabled, so their local commits still require a maintainer to publish them. The scope and evidence are recorded in [docs/NEXT.md](docs/NEXT.md).
 
 ## Install
 
@@ -74,6 +74,7 @@ DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
 pnpm run test
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:m6
 pnpm run typecheck
 pnpm run build
 ```
@@ -81,6 +82,8 @@ pnpm run build
 The source checkout must match the `0.1.0-rc.6` public API surface. Compatibility layers for earlier private-preview package lines are not retained.
 
 `test:web` starts a real keyless DSH Web composition with a fresh temporary `$DSH_HOME`, a durable session fixture, and a pre-seeded Explain database. It compares the Learning and Settings ARIA output against golden snapshots and verifies native settings revisions, source navigation, and the missing-source fallback. To intentionally update the UI output, run `DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web:refresh` and review the snapshot diff.
+
+`test:m6` installs Explain, selection-chat, suggested-replies, and the exact Advisor compatibility commit into a fresh profile. It verifies one contribution per plugin, unchanged suggestion budgets, selection-to-draft behavior, and clean removal/reinstallation. By default, the two consumer repositories must be sibling directories; override them with `DSH_SELECTION_CHAT_DIR`, `DSH_SUGGESTED_REPLIES_DIR`, or `DSH_ADVISOR_DIR`.
 
 Install the development checkout directly rather than through npm:
 

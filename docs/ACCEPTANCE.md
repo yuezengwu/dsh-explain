@@ -31,6 +31,7 @@
 pnpm run typecheck
 pnpm test
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:m6
 pnpm run build
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
 git diff --check
@@ -62,3 +63,16 @@ git diff --check
 | 5 | 自主预算豁免 | `scheduler.spec.ts` 与 `m2-store.spec.ts` 断言主动生成和后续重讲不增加 `auto_request_usage` |
 | 6 | 主 Agent 隔离 | command runtime 只写标准 command 生命周期；`m2-core.spec.ts` 的 source 捕获不改变 `deriveMessages()`，assembled 产品流程验证 composer 命令不形成主模型回答 |
 | 7 | 产品证据 | `pnpm run typecheck`、`pnpm test`、`pnpm run test:web`、本地目录安装 smoke 和 PR 内真实模型 GIF |
+
+## M6 P1 可选插件集成
+
+| # | 标准 | 自动化与产品证据 |
+|---:|---|---|
+| 1 | 可选发现 | selection-chat 与 suggested-replies 单元测试覆盖 Explain 缺失/出现、查询失败及命令目录刷新；只读取当前 Session 的 command 目录 |
+| 2 | 选区草稿 | selection-chat 测试覆盖单消息选区、换行保留、空草稿保护、Session/phase 竞态与不提交；`test:m6` 在真实 DSH Web 中验证精确草稿 |
+| 3 | 建议附件 | suggested-replies 测试证明附件不进入 sidecar、不是第四个候选、固定 ready turn，并在点击时复核 composer |
+| 4 | 调用预算 | 组合配置断言 `suggestionCount = 3`、`maxTokens = 384`、`timeoutMs = 15000`；rc.6 真实模型验证 `suggestionReasoningEffort = off` 后产生正文而不扩大预算 |
+| 5 | 生命周期 | 两个消费方覆盖 `commands/change`、`agent-preset/selected`、`connection/reset`、迟到查询与卸载清理 |
+| 6 | Advisor 隔离 | Explain Host 测试拒绝 Advisor 自动观察；真实流程只在用户选择其可见 context 后生成 `origin: selection` |
+| 7 | 四插件组合 | `test:m6` 在全新 profile 安装四插件，断言每项唯一贡献、无页面错误、完整卸载后消失并可精确恢复 |
+| 8 | 真实闭环 | DSH `47f9438`、Explain `ed25029`、selection-chat `90e9517`、suggested-replies `0988019`、Advisor `2a3b011` 完成真实模型的建议附件、Advisor 鼠标选区、草稿、学习卡、✗ 重讲和 ✓ 掌握六帧 GIF |
