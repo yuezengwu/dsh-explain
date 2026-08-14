@@ -21,6 +21,7 @@ import type {
   ExplainContextSnapshot,
   ExplainDecision,
   ExplanationContent,
+  ExplanationOrigin,
   GenerationRecord,
   LeaseToken,
   ManualExplanation,
@@ -1418,7 +1419,7 @@ export class ExplainStore {
       topicRevision: row.topic_revision,
       ...(row.revision === null ? {} : { revision: row.revision }),
       ...(row.kind === 'explanation' && explanationOrigin(row.payload_json) !== 'autonomous'
-        ? { origin: explanationOrigin(row.payload_json) as ManualExplainTarget['origin'] } : {}),
+        ? { origin: explanationOrigin(row.payload_json) as ExplanationOrigin } : {}),
       ...(row.source_session_id === null ? {} : { sourceSessionId: SessionId(row.source_session_id) }),
       ...(row.source_turn === null ? {} : { sourceTurn: row.source_turn }),
       payload: publicPayload,
@@ -1529,10 +1530,15 @@ function explanationContent(value: string): ExplanationContent {
   }
 }
 
-function explanationOrigin(value: string): 'autonomous' | ManualExplainTarget['origin'] {
+function explanationOrigin(value: string): 'autonomous' | ExplanationOrigin {
   const payload = parseObject(value, 'explanation entry')
   if (payload.origin === undefined) return 'autonomous'
-  if (payload.origin === 'manual' || payload.origin === 'selection' || payload.origin === 'suggested') {
+  if (
+    payload.origin === 'manual'
+    || payload.origin === 'selection'
+    || payload.origin === 'answer'
+    || payload.origin === 'suggested'
+  ) {
     return payload.origin
   }
   throw new Error('dsh-explain: explanation origin is invalid')

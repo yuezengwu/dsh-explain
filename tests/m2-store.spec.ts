@@ -310,7 +310,7 @@ describe('autonomous, rephrase, and checkpoint persistence', () => {
     expect(store.autoBudget(50).used).toBe(0)
   })
 
-  it.each(['selection', 'suggested'] as const)('preserves the %s origin through Remote projection and rephrase', (origin) => {
+  it.each(['selection', 'answer'] as const)('preserves the %s origin through Remote projection and rephrase', (origin) => {
     const store = memoryStore()
     const lease = store.acquireLease('owner', Date.now(), DAY_MS)
     const source = capsule(`${origin}-source`, 4)
@@ -339,6 +339,50 @@ describe('autonomous, rephrase, and checkpoint persistence', () => {
       why: 'It addresses the feedback.',
       pitfall: 'Do not change the source.',
     }, generation())).toMatchObject({ origin, revision: 2 })
+  })
+
+  it('keeps an existing suggested origin readable and rephraseable', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'dsh-explain-legacy-suggested-'))
+    temporaryDirectories.push(directory)
+    const path = join(directory, 'thread.sqlite')
+    const first = new ExplainStore(path)
+    stores.push(first)
+    const lease = first.acquireLease('owner', Date.now(), DAY_MS)
+    const source = capsule('legacy-suggested-source', 2)
+    const committed = first.commitManualExplanation(lease, manualTarget(source, 'answer'), {
+      topicKey: 'typescript/legacy-suggested',
+      title: 'Legacy suggestion',
+      what: 'A concept from an earlier shortcut.',
+      why: 'Existing local history must remain usable.',
+      pitfall: 'Do not rewrite historical origin labels.',
+    }, generation())
+    if (!committed.ok || committed.entry.explanationId === undefined) throw new Error('missing explanation')
+    const explanationId = committed.entry.explanationId
+    first.close()
+    stores.splice(stores.indexOf(first), 1)
+
+    const database = new DatabaseSync(path)
+    const row = database.prepare(`
+      SELECT entry_id, payload_json FROM entries
+      WHERE explanation_id = ? AND kind = 'explanation' AND revision = 1
+    `).get(explanationId) as unknown as { entry_id: string; payload_json: string }
+    const payload = JSON.parse(row.payload_json) as Record<string, unknown>
+    payload.origin = 'suggested'
+    database.prepare('UPDATE entries SET payload_json = ? WHERE entry_id = ?')
+      .run(JSON.stringify(payload), row.entry_id)
+    database.close()
+
+    const reopened = new ExplainStore(path)
+    stores.push(reopened)
+    expect(reopened.threadPage({}).entries[0]).toMatchObject({ origin: 'suggested' })
+    expect(reopened.feedback({
+      requestId: RequestId('legacy-suggested-rephrase'),
+      sourceSessionId: source.sourceSessionId,
+      explanationId,
+      revision: 1,
+      action: 'not-understood',
+    }).ok).toBe(true)
+    expect(reopened.pendingRephrases()[0]?.origin).toBe('suggested')
   })
 
   it('lets an explicit request reopen a mastered Topic but never duplicates an active source or Topic', () => {

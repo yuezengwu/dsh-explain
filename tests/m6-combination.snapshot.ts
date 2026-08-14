@@ -3,7 +3,7 @@ import { createServer } from 'node:net'
 import { existsSync, realpathSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium, type Browser, type Page } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -129,46 +129,27 @@ async function finishOnboarding(page: Page): Promise<void> {
   await page.getByRole('button', { name: '稍后配置', exact: true }).click()
 }
 
-describe('M6 four-plugin composition', () => {
+describe('M6 Explain-owned shortcuts', () => {
   let root: string
   let dshHome: string
   let dshSource: string
   let host: ChildProcessWithoutNullStreams | undefined
   let browser: Browser | undefined
   let page: Page | undefined
-  let plugins: readonly PluginSpec[]
+  const plugin: PluginSpec = {
+    marker: '# == dsh-explain',
+    packageName: 'dsh-explain',
+    installSpec: REPOSITORY,
+  }
   const pageErrors: string[] = []
 
   beforeAll(async () => {
     dshSource = requireDirectory('DSH_SOURCE_DIR', '', 'apps/cli/src/bin.ts')
-    plugins = [
-      {
-        marker: '# == dsh-explain',
-        packageName: 'dsh-explain',
-        installSpec: REPOSITORY,
-      },
-      {
-        marker: '# == dsh-selection-chat',
-        packageName: 'dsh-selection-chat',
-        installSpec: requireDirectory('DSH_SELECTION_CHAT_DIR', resolve(REPOSITORY, '../dsh-selection-chat'), 'client.js'),
-      },
-      {
-        marker: '# == @dsh-external/dsh-suggested-replies',
-        packageName: '@dsh-external/dsh-suggested-replies',
-        installSpec: requireDirectory('DSH_SUGGESTED_REPLIES_DIR', resolve(REPOSITORY, '../dsh-suggested-replies'), 'lib/client.js'),
-      },
-      {
-        marker: '# == dsh-advisor',
-        packageName: 'dsh-advisor',
-        installSpec: process.env.DSH_ADVISOR_DIR?.trim()
-          || 'github:yuezengwu/dsh-advisor#2a3b011f0994e85882be5b9036d96d1462569328',
-      },
-    ]
     root = await mkdtemp(join(tmpdir(), 'dsh-explain-m6-combination-'))
     dshHome = join(root, 'home')
     const workspace = join(root, 'workspace')
     await mkdir(workspace, { recursive: true })
-    for (const plugin of plugins) runDsh(dshSource, dshHome, ['plugin', '--profile', 'web', 'add', plugin.installSpec])
+    runDsh(dshSource, dshHome, ['plugin', '--profile', 'web', 'add', plugin.installSpec])
     await writeFile(join(dshHome, 'profiles/web/cordis.patch.yml'), [
       '- id: directory-picker',
       '  disabled: true',
@@ -202,19 +183,20 @@ describe('M6 four-plugin composition', () => {
     if (failures.length > 1) throw new AggregateError(failures, 'M6 combination cleanup failed')
   })
 
-  it('assembles each plugin once without changing suggested-replies budgets', () => {
+  it('assembles one self-contained Explain layer without consumer plugins', () => {
     const dump = runDsh(dshSource, dshHome, ['--profile', 'web', '--dump-config'])
-    for (const plugin of plugins) expect(count(dump, plugin.marker), plugin.marker).toBe(1)
-    expect(dump).toContain('suggestionCount: 3')
-    expect(dump).toContain('maxTokens: 384')
-    expect(dump).toContain('timeoutMs: 15000')
-    expect(dump).toContain("suggestionReasoningEffort: 'off'")
+    expect(count(dump, plugin.marker), plugin.marker).toBe(1)
+    expect(dump).not.toContain('dsh-selection-chat')
+    expect(dump).not.toContain('dsh-suggested-replies')
+    expect(dump).not.toContain('dsh-advisor')
   })
 
-  it('discovers Explain from a legal selected message and only fills the draft', async () => {
+  it('drafts selection and exact-answer requests without submitting either', async () => {
     if (page === undefined) throw new Error('Web page is not initialized')
     await page.getByRole('tab', { name: '学习', exact: true }).waitFor({ timeout: 15_000 })
-    await page.getByRole('tab', { name: '选区', exact: true }).waitFor({ timeout: 15_000 })
+    const selectionAction = page.getByRole('button', { name: '解释选中文字', exact: true })
+    await selectionAction.waitFor({ timeout: 15_000 })
+    await expect.poll(() => selectionAction.getAttribute('aria-disabled')).toBe('true')
     const text = '判别字段帮助 TypeScript 确定联合成员。'
     const message = page.getByText(text, { exact: true })
     await message.waitFor({ timeout: 15_000 })
@@ -224,29 +206,31 @@ describe('M6 four-plugin composition', () => {
       range.selectNodeContents(node)
       selection?.removeAllRanges()
       selection?.addRange(range)
-      node.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+      document.dispatchEvent(new Event('selectionchange'))
     })
-    const explain = page.getByRole('button', { name: '解释', exact: true })
-    await explain.waitFor({ timeout: 15_000 })
-    await explain.click()
+    await expect.poll(() => selectionAction.getAttribute('aria-disabled')).toBeNull()
+    await selectionAction.click()
     const composer = page.getByRole('textbox', { name: '给智能体发消息' })
     await expect.poll(() => composer.inputValue()).toBe(`/explain --selection ${text}`)
+    await composer.fill('')
+    const answerAction = page.getByRole('button', { name: '学习这个回答', exact: true })
+    await answerAction.waitFor({ timeout: 15_000 })
+    await answerAction.click()
+    await expect.poll(() => composer.inputValue()).toBe('/explain --answer 1 请解释这个回答中最关键、最值得学习的概念。')
     expect(await page.getByText(text, { exact: true }).count()).toBe(1)
     expect(pageErrors).toEqual([])
   })
 
-  it('removes and restores every plugin layer cleanly after Web unload', async () => {
+  it('removes and restores the complete shortcut layer after Web unload', async () => {
     await browser?.close()
     browser = undefined
     await stopDsh(host)
     host = undefined
-    for (const plugin of [...plugins].reverse()) {
-      runDsh(dshSource, dshHome, ['plugin', '--profile', 'web', 'remove', plugin.packageName])
-    }
+    runDsh(dshSource, dshHome, ['plugin', '--profile', 'web', 'remove', plugin.packageName])
     const removed = runDsh(dshSource, dshHome, ['--profile', 'web', '--dump-config'])
-    for (const plugin of plugins) expect(removed).not.toContain(plugin.marker)
-    for (const plugin of plugins) runDsh(dshSource, dshHome, ['plugin', '--profile', 'web', 'add', plugin.installSpec])
+    expect(removed).not.toContain(plugin.marker)
+    runDsh(dshSource, dshHome, ['plugin', '--profile', 'web', 'add', plugin.installSpec])
     const restored = runDsh(dshSource, dshHome, ['--profile', 'web', '--dump-config'])
-    for (const plugin of plugins) expect(count(restored, plugin.marker), plugin.marker).toBe(1)
+    expect(count(restored, plugin.marker), plugin.marker).toBe(1)
   }, 90_000)
 })

@@ -52,6 +52,11 @@ export const LEARNING_VIEW_CSS = `
 .dsh-explain-control{display:flex;flex-direction:column;gap:6px;font:var(--dsw-font-xs-12)}
 .dsh-explain-control input,.dsh-explain-control select{box-sizing:border-box;width:100%;min-height:38px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);font:var(--dsw-font-sm-14)}
 .dsh-explain-settings-actions{grid-column:1/-1;display:flex;align-items:center;gap:12px;color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxs-12)}
+.dsh-explain-shortcut{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:6px;border:0;border-radius:28px;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer}
+.dsh-explain-shortcut:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}
+.dsh-explain-shortcut[data-unavailable]{cursor:default;opacity:.4}
+.dsh-explain-shortcut[data-unavailable]:hover{background:transparent;color:var(--dsw-alias-label-tertiary)}
+.dsh-explain-visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .dsh-explain-diagnostics{display:flex;flex-direction:column;gap:12px}
 .dsh-explain-diagnostics h3{margin:0;font:var(--dsw-font-title-3)}
 .dsh-explain-diagnostic-state{padding:10px 12px;border-radius:10px;background:var(--dsw-alias-bg-accent-subtle,var(--dsw-alias-bg-layer-2));font:var(--dsw-font-sm-14)}

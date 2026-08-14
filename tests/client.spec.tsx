@@ -54,7 +54,7 @@ describe('conversation learning view', () => {
     }
     const history = {
       ...explanation(1, 'session-old', 'closed', 'Mastered concept'),
-      origin: 'suggested' as const,
+      origin: 'answer' as const,
     }
     const snapshot: LearningSnapshot = {
       phase: 'ready',
@@ -135,7 +135,7 @@ describe('conversation learning view', () => {
     expect(screen.getByRole('heading', { name: 'Other concept' })).toBeTruthy()
     expect(screen.getByText('主动请求')).toBeTruthy()
     expect(screen.getByText('选中解释')).toBeTruthy()
-    expect(screen.getByText('学习建议')).toBeTruthy()
+    expect(screen.getByText('学习回答')).toBeTruthy()
     expect(screen.queryByText('回合 0')).toBeNull()
     expect(screen.getByText('Mastered concept')).toBeTruthy()
     expect(screen.getByText('已理解基础类型收窄。')).toBeTruthy()

@@ -54,7 +54,7 @@ class CatalogAdapter extends LlmAdapter {
       topicKey: `${origin}/discriminated-unions`,
       title: origin === 'manual'
         ? 'Discriminated unions on request'
-        : origin === 'selection' ? 'Selected text on request' : 'Suggested answer on request',
+        : origin === 'selection' ? 'Selected text on request' : 'Answer on request',
       what: 'A literal tag selects one union member.',
       why: 'The checker can prove which fields exist.',
       pitfall: 'Keep the tag literal.',
@@ -237,22 +237,22 @@ describe('dsh-explain plugin lifecycle', () => {
         sourceTurn: 1,
       })
 
-      const suggestedSession = Session.create(SessionId('suggested-command-source'))
-      appendCompletedTurn(suggestedSession, 'Suggested explanation target.')
+      const answerSession = Session.create(SessionId('answer-command-source'))
+      appendCompletedTurn(answerSession, 'Answer explanation target.')
       await expect(ctx.commands.execute(
-        { session: suggestedSession, ctx: new Context() } as never,
-        '/explain --suggested 1 请解释刚才回答中最关键、最值得学习的概念。',
+        { session: answerSession, ctx: new Context() } as never,
+        '/explain --answer 1 请解释这个回答中最关键、最值得学习的概念。',
         new AbortController().signal,
       )).resolves.toMatchObject({
-        result: { kind: 'success', text: 'Explanation added to Learning: Suggested answer on request' },
+        result: { kind: 'success', text: 'Explanation added to Learning: Answer on request' },
       })
       expect(ctx.explain.threadPage({ limit: 10 }).entries[0]).toMatchObject({
-        origin: 'suggested',
-        sourceSessionId: SessionId('suggested-command-source'),
+        origin: 'answer',
+        sourceSessionId: SessionId('answer-command-source'),
         sourceTurn: 1,
       })
       await expect(ctx.commands.execute(
-        { session: Session.create(SessionId('missing-suggested-source')), ctx: new Context() } as never,
+        { session: Session.create(SessionId('missing-answer-source')), ctx: new Context() } as never,
         '/explain --suggested 9 Explain the answer.',
         new AbortController().signal,
       )).resolves.toMatchObject({

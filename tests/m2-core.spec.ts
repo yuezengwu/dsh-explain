@@ -18,7 +18,7 @@ import {
   captureManualExplainTarget,
   captureSelectionExplainTarget,
   captureSourceCapsule,
-  captureSuggestedExplainTarget,
+  captureAnswerExplainTarget,
 } from '../src/observer.ts'
 import { CandidateQueue } from '../src/queue.ts'
 
@@ -209,9 +209,9 @@ describe('completed-turn source observation', () => {
       .toMatchObject({ capsule: { turn: 1 } })
     expect(captureSelectionExplainTarget(session, 'text not retained in this Session', 10_000))
       .toMatchObject({ capsule: { turn: 0, assistantText: '', tools: [] } })
-    expect(captureSuggestedExplainTarget(session, 2, 'Explain the key concept.', 10_000))
-      .toMatchObject({ origin: 'suggested', capsule: { turn: 2 } })
-    expect(captureSuggestedExplainTarget(session, 99, 'Explain the key concept.', 10_000)).toBeUndefined()
+    expect(captureAnswerExplainTarget(session, 2, 'Explain the key concept.', 10_000))
+      .toMatchObject({ origin: 'answer', capsule: { turn: 2 } })
+    expect(captureAnswerExplainTarget(session, 99, 'Explain the key concept.', 10_000)).toBeUndefined()
   })
 
   it('allows an explicit source to bind a max-tokens answer without admitting it to autonomous observation', () => {
@@ -230,8 +230,8 @@ describe('completed-turn source observation', () => {
     const end = session.append('turn/end', { turn: 1, reason: { kind: 'max-tokens' } })
 
     expect(captureSourceCapsule(session, end, 10_000)).toBeUndefined()
-    expect(captureSuggestedExplainTarget(session, 1, 'Explain the partial answer.', 10_000))
-      .toMatchObject({ origin: 'suggested', capsule: { turn: 1, assistantText: 'A partial but visible answer.' } })
+    expect(captureAnswerExplainTarget(session, 1, 'Explain the partial answer.', 10_000))
+      .toMatchObject({ origin: 'answer', capsule: { turn: 1, assistantText: 'A partial but visible answer.' } })
   })
 })
 

@@ -64,15 +64,16 @@ git diff --check
 | 6 | 主 Agent 隔离 | command runtime 只写标准 command 生命周期；`m2-core.spec.ts` 的 source 捕获不改变 `deriveMessages()`，assembled 产品流程验证 composer 命令不形成主模型回答 |
 | 7 | 产品证据 | `pnpm run typecheck`、`pnpm test`、`pnpm run test:web`、本地目录安装 smoke 和 PR 内真实模型 GIF |
 
-## M6 P1 可选插件集成
+## M6 P1 Explain 自有快捷入口
 
 | # | 标准 | 自动化与产品证据 |
 |---:|---|---|
-| 1 | 可选发现 | selection-chat 与 suggested-replies 单元测试覆盖 Explain 缺失/出现、查询失败及命令目录刷新；只读取当前 Session 的 command 目录 |
-| 2 | 选区草稿 | selection-chat 测试覆盖单消息选区、换行保留、空草稿保护、Session/phase 竞态与不提交；`test:m6` 在真实 DSH Web 中验证精确草稿 |
-| 3 | 建议附件 | suggested-replies 测试证明附件不进入 sidecar、不是第四个候选、固定 ready turn，并在点击时复核 composer |
-| 4 | 调用预算 | 组合配置断言 `suggestionCount = 3`、`maxTokens = 384`、`timeoutMs = 15000`；rc.6 真实模型验证 `suggestionReasoningEffort = off` 后产生正文而不扩大预算 |
-| 5 | 生命周期 | 两个消费方覆盖 `commands/change`、`agent-preset/selected`、`connection/reset`、迟到查询与卸载清理 |
-| 6 | Advisor 隔离 | Explain Host 测试拒绝 Advisor 自动观察；真实流程只在用户选择其可见 context 后生成 `origin: selection` |
-| 7 | 四插件组合 | `test:m6` 在全新 profile 安装四插件，断言每项唯一贡献、无页面错误、完整卸载后消失并可精确恢复 |
-| 8 | 真实闭环 | DSH `47f9438`、Explain `ed25029`、selection-chat `90e9517`、suggested-replies `0988019`、Advisor `2a3b011` 完成真实模型的建议附件、Advisor 鼠标选区、草稿、学习卡、✗ 重讲和 ✓ 掌握六帧 GIF |
+| 1 | 单仓库所有权 | `test:m6` 的全新 profile 只安装 Explain，并断言 selection-chat、suggested-replies 与 Advisor 均不在配置中；源码不导入它们的包或私有状态 |
+| 2 | 选区草稿 | `shortcuts.spec.tsx` 覆盖换行保留、10,000 字符上限和只写草稿；`test:m6` 在真实 DSH Web 中从可见文本生成精确 `--selection` 草稿 |
+| 3 | 精确回答草稿 | assistant action 使用稳定 message id 从当前 snapshot 定位 turn；单元测试与 `test:m6` 断言生成精确 `--answer <turn>` 草稿 |
+| 4 | 点击时准入 | `commitExplainDraft` 在每次点击重新读取 input facade，拒绝非 `plain`、非空草稿、Session 不可用和写入未生效；两个入口都不调用 `submit()` |
+| 5 | 生命周期 | 两个 additive slot 均通过 `slots.inject()` 注册；`test:m6` 在 Web 卸载后删除整个 Explain 层，再安装时每项只恢复一次 |
+| 6 | 来源兼容 | Host 对 selection 逆序定位；answer 精确读取 completed/max-tokens turn；旧 `--suggested` 输入与旧 `origin: suggested` 记录保持可读，新 UI 只生成 `answer` |
+| 7 | Advisor 隔离 | Explain 不订阅 Advisor runtime；只有用户显式选择其可见 context 后才生成 `origin: selection`，未选择内容不进入 observation 或 ExplainContext |
+| 8 | 成本与主 Agent 隔离 | 快捷入口本身零模型调用；用户提交后复用 manual Scheduler 且豁免自主额度，command 生命周期不进入主模型消息 |
+| 9 | 真实产品流程 | 从精确候选提交启动全新 DSH Web，以真实主模型生成来源回答，再验证 answer/selection 草稿、真实 Explain 讲解与反馈闭环；GIF 随合入 PR 保存 |

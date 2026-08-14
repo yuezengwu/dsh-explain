@@ -15,7 +15,7 @@ import {
   captureManualExplainTarget,
   captureSelectionExplainTarget,
   captureSourceCapsule,
-  captureSuggestedExplainTarget,
+  captureAnswerExplainTarget,
 } from './observer.ts'
 import { ExplainRuntime } from './runtime.ts'
 import { ExplainStore } from './store.ts'
@@ -104,8 +104,8 @@ function registerExplainCommand(ctx: Context, runtime: ExplainRuntime, gateway: 
             parsed.request,
             runtime.settings().maxSourceChars,
           )
-        : parsed.origin === 'suggested'
-          ? captureSuggestedExplainTarget(
+        : parsed.origin === 'answer'
+          ? captureAnswerExplainTarget(
               invocation.agent.session,
               parsed.turn,
               parsed.request,
@@ -132,7 +132,7 @@ function registerExplainCommand(ctx: Context, runtime: ExplainRuntime, gateway: 
 
 type ParsedExplainRequest =
   | { readonly ok: true; readonly origin: 'manual' | 'selection'; readonly request: string }
-  | { readonly ok: true; readonly origin: 'suggested'; readonly turn: number; readonly request: string }
+  | { readonly ok: true; readonly origin: 'answer'; readonly turn: number; readonly request: string }
   | { readonly ok: false; readonly message: string }
 
 function parseExplainRequest(action: string): ParsedExplainRequest {
@@ -143,13 +143,13 @@ function parseExplainRequest(action: string): ParsedExplainRequest {
       ? { ok: false, message: 'Usage: /explain --selection <selected text>' }
       : { ok: true, origin: 'selection', request }
   }
-  if (/^--suggested(?:\s|$)/u.test(action)) {
-    const match = /^--suggested\s+([1-9][0-9]*)\s+([\s\S]+)$/u.exec(action)
+  if (/^--(?:answer|suggested)(?:\s|$)/u.test(action)) {
+    const match = /^--(?:answer|suggested)\s+([1-9][0-9]*)\s+([\s\S]+)$/u.exec(action)
     const turn = match?.[1] === undefined ? undefined : Number(match[1])
     const request = match?.[2]?.trim()
     return turn === undefined || !Number.isSafeInteger(turn) || request === undefined || request === ''
-      ? { ok: false, message: 'Usage: /explain --suggested <source turn> <request>' }
-      : { ok: true, origin: 'suggested', turn, request }
+      ? { ok: false, message: 'Usage: /explain --answer <source turn> <request>' }
+      : { ok: true, origin: 'answer', turn, request }
   }
   return { ok: true, origin: 'manual', request: action }
 }
