@@ -1,92 +1,109 @@
-[English](README.md) | **简体中文**
+<div align="right">
+  <a href="README.md">English</a> · <strong>简体中文</strong>
+</div>
 
-# dsh-explain — DSH 学习模式插件
+<h1 align="center">dsh-explain</h1>
 
-> ✅ **状态：M6 已完全在 Explain 内实现并通过 DSH `0.1.0-rc.7` 验收；无需修改或依赖其他插件。**
-> 产品需求见 [docs/PRD.md](docs/PRD.md)；技术方案见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+<p align="center"><strong>把日常 DSH 工作变成私有、连续的学习闭环。</strong></p>
 
-**一句话定位**：把多个 DSH 工作会话中值得学习的内容汇入用户唯一的全局学习线程，为每个来源会话保留至多一个活跃讲解，并用全局学习上下文持续适配用户的知识水平和讲解偏好。
+<p align="center">
+  <img alt="DSH 0.1.0-rc.7" src="https://img.shields.io/badge/DSH-0.1.0--rc.7-4c8bf5">
+  <img alt="本地优先" src="https://img.shields.io/badge/数据-本地优先-2ea44f">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
 
-## 核心形态
+`dsh-explain` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的学习模式插件。它从已完成的工作会话中提取值得学习的概念，生成结构化讲解，汇入一条全局学习线程，并依据用户已经掌握的内容持续调整后续讲解。
 
-- 一个 `$DSH_HOME` 只有一条本地学习线程；工作会话、恢复和 fork 不复制学习状态。
-- 每个顶层来源会话可以有一个等待反馈的讲解，也可以没有；同一来源未反馈时不再生成第二条，其他来源仍可继续。
-- 用户可在任意已建立或空白工作 Session 的 composer 输入 `/explain <学习请求>`，主动要求 explain agent 生成一条讲解；管理命令 `/explain on|off|status` 保持不变。
-- 用户可选中可见文字后使用 composer 工具行中的 Explain 快捷入口，也可在任意已完成 assistant 回答上选择「学习这个回答」；两者只创建可编辑草稿，绝不自动提交。
-- 主动讲解、自主讲解、重讲和压缩共享全局调度器，任何时刻最多一个辅助模型请求；主动请求优先于后台工作，但不打断已在途的主动请求或重讲。
-- 自主判断默认最多发送 50 次/滚动 24 小时；占额跨重启保留，失败和重试计数，用户触发的主动讲解、重讲与压缩豁免。
-- explain 维护私有的全局 `ExplainContext`，汇总对话偏好、知识概况和学习进展；它只进入辅助模型，不注入主 Agent。
-- 有新的结构化观察或已关闭讲解且用户连续 30 分钟未操作 explain，或预计辅助请求占所选模型上下文 50% 以上时，自动压缩辅助模型历史；用户可见原始记录不删除。
-- 主模型不知道 explain 存在；explain 不写主 Session 日志、不注入主模型上下文、不阻塞主 turn。
-- 学习历史、来源活跃状态、压缩检查点和 `ExplainContext` 持久化到 `$DSH_HOME/dsh-explain/v1/thread.sqlite`；开关与模型设置走 `$DSH_HOME/settings.yaml`。
-- 首个讲解 entry 保存最多 2,000 字符的受限来源摘要供后续重讲；来源 Session 删除不影响重讲，摘要不向学习视图返回。
-- 学习线程使用 DSH 第一方 `conversation.view` 槽位中的「学习」Tab；普通配置与运行诊断使用第一方 `settings.section`，不引入外部 UI 宿主。
-- 「学习」是 Session-scoped 视图入口，但业务数据来自同一个全局 client store 和 typed Remote；不同工作 Session 看到同一条学习线程。
-- 设置页和学习视图复用同一个 browser store；用户可在设置中选择辅助模型、启用学习模式、调整滚动 24 小时自主额度，并查看路由、额度恢复、上下文压力和最近压缩。
-- 讲解来源仍在当前 Session inventory 时可直接打开；来源被删除后历史保持可读并显示不可用。
-- P0 不自动切换视图。空白 Session 的 Hero 阶段不显示视图 Tab；进入学习视图后，当前工作 Session 的 composer 仍然保留。
-- P0 没有外部 UI 依赖，不携带或要求安装 better-sidebar。
+主 Agent 保持不变：Explain 使用独立的模型调用、调度器、学习上下文和本地 SQLite 数据库。
 
-## 动机
+## 演示
 
-- DSH 能完成复杂工作，但用户通常只看到结果，不一定理解过程中用到的概念、取舍和常见误区。
-- 学习模式把工作会话变成学习素材来源，不要求用户先知道应该问什么。
-- 用户的学习事实和进度需要跨工作会话保持一致，因此所有内容进入一条全局线程；按来源保留的活跃讲解让用户回到相关工作时继续反馈。
+![选取 DSH 回答、创建 Explain 请求、查看学习卡并标记掌握](https://github.com/yuezengwu/dsh-explain/blob/m6-owned-shortcuts-assets/m6-owned-shortcuts-real.gif?raw=true)
 
-## 当前进展
+选中文字或点击「学习这个回答」，检查可编辑的 `/explain` 草稿，生成学习卡，再标记为已掌握。该演示使用真实 DSH Web 会话、真实 DeepSeek 主 Agent 回合和 Explain 模型回合；精确提交与录制条件保存在 [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16#user-content-real-model-gui-evidence)。
 
-- [x] 需求查重：产品目标无直接重复，相关插件可提供局部实现参考。
-- [x] PRD P0 定稿：单一学习线程、按来源活跃讲解、自主调用预算、双触发压缩、全局 ExplainContext 和可自动验证的验收标准。
-- [x] 技术架构 v11：两个快捷适配器都由 Explain 通过 DSH 第一方槽位拥有；可选插件保持不变且不被观察。
-- [x] UI 路径核验：沿用第一方 `ui-trajectory` 的 `ctx.slots.inject('conversation.view', ...)` 注册方式，无外部 UI 依赖。
-- [x] M1 基础设施：独立插件构建、本地 SQLite schema、实体级 CAS、分页/长轮询和自动生成的 typed Remote。
-- [x] M2 主实现：来源观察、辅助模型单飞调度、持久预算、重讲、双触发压缩、ExplainContext 与 `conversation.view` 学习界面。
-- [x] M2 真实 DSH Web/模型流程验收与 GIF。
-- [x] M3 发布门禁：P0 验收矩阵、无密钥 assembled Web snapshot、安装与组合 smoke。
-- [x] M4 内测可控性：无 YAML 设置页、并发设置收敛、来源跳转/缺失降级、共享诊断 store 和扩展 assembled Web snapshot。
-- [x] M5 主动学习命令：composer 中的 `/explain <学习请求>`、显式请求调度、来源标识、持久重讲摘要和稳定失败结果。
-- [x] M6.1 Explain Host 协议：`--selection` / `--answer <turn>` 来源定位、origin 持久化、重讲传播、旧 `--suggested` 输入兼容和稳定失败。
-- [x] M6 P1 实现：选中文字、精确 assistant 回答和用户显式选中的 Advisor 可见建议，经 Explain 自有可编辑草稿进入同一学习闭环。
+## 快速开始
 
-M1 建立持久层和 Host/Client RPC 基础；M2 完成学习闭环；M3 建立 P0 发布门禁；M4 让内测用户无需编辑 YAML 即可配置和诊断，并能从讲解返回仍存在的来源会话；M5 允许用户从工作 composer 主动发起一次学习；M6 增加 Explain 自有快捷入口，不修改可选插件。自动化证据见 [验收矩阵](docs/ACCEPTANCE.md)。
-
-## 当前迭代
-
-M6 由 Explain 在 `conversation.input.left` 注册选区动作，并在 `conversation.chat.assistant-actions` 注册精确回答动作。两者只使用公开的 Session input facade，点击时重新校验 composer，只写可编辑草稿；`dsh-selection-chat`、`dsh-suggested-replies` 与 `dsh-advisor` 均无需修改、安装或暴露私有状态。完整范围与证据见 [迭代记录](docs/NEXT.md)。
-
-## 安装
-
-Explain 当前适配 DSH `0.1.0-rc.7`。DSH 仍处于开发者预览阶段，本插件不支持更早的私有预览包版本线。
+Explain 当前适配 DSH `0.1.0-rc.7`。
 
 ```sh
 npx @deepseek-ai/dsh@0.1.0-rc.7 plugin --profile web add github:yuezengwu/dsh-explain
 npx @deepseek-ai/dsh@0.1.0-rc.7 web
 ```
 
-Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按错误信息把 `dsh-explain` 加入该 profile 的 `pnpm-workspace.yaml`，然后重新运行安装命令。
+启动后进入「**设置 → 学习**」，选择辅助模型的 provider 和 model，启用学习模式并保存。Explain 只观察此后完成的顶层工作回合，不补扫已有历史。
+
+Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按提示把 `dsh-explain` 加入该 profile 的 `pnpm-workspace.yaml`，然后重新执行安装命令。
+
+## 学习入口
+
+| 入口 | 行为 |
+|---|---|
+| `/explain <学习请求>` | 以当前会话的受限来源上下文主动请求一次讲解。 |
+| **解释选中文字** | 从可见选区创建可编辑的 `/explain --selection …` 草稿，绝不自动提交。 |
+| **学习这个回答** | 创建绑定到精确 assistant 完成回合的可编辑草稿。 |
+| 自主判断 | 合格工作回合结束后，Explain 可在配置额度内生成一条值得学习的讲解。 |
+
+使用 `/explain on`、`/explain off` 和 `/explain status`，无需离开输入框即可控制或检查运行状态。
+
+每张学习卡回答三个问题：
+
+- **是什么？** 用简洁语言解释核心概念。
+- **为什么重要？** 说明它在来源工作中的实际价值。
+- **常见坑是什么？** 指出需要避免的错误或误解。
+
+选择「**懂了**」关闭讲解；选择「**没懂**」请求换一种讲法。即使来源会话之后被删除，重讲仍然可用。
+
+## 多个工作会话，一条学习线程
+
+每个 `$DSH_HOME` 只有一条 Explain 学习线程。不同工作会话可以贡献学习内容，但 resume 和 fork 不会复制学习状态。
+
+- 每个来源会话至多有一条等待反馈的讲解。
+- 所有工作会话通过第一方「学习」Tab 查看同一份全局历史。
+- 一个全局调度器串行处理主动讲解、自主判断、重讲和压缩。
+- 自主判断默认额度为滚动 24 小时 50 次，并跨重启保留。
+- 私有 `ExplainContext` 记录讲解偏好、知识水平和学习进展。
+- 存在待压缩的结构化观察或已关闭讲解时，连续 30 分钟没有 Explain 操作，或下一次请求预计超过所选模型上下文窗口的 50%，都会触发辅助历史压缩。
+
+## 本地优先
+
+| 数据 | 行为 |
+|---|---|
+| 学习线程 | 持久化到 `$DSH_HOME/dsh-explain/v1/thread.sqlite`。 |
+| 开关与模型设置 | 通过 DSH settings 保存到 `$DSH_HOME/settings.yaml`。 |
+| 来源材料 | 只保留有界 capsule；重讲最多持久化 2,000 字符的受限来源摘要。 |
+| 全局学习上下文 | 只发送给 Explain 辅助模型，永不发送给主 Agent。 |
+| 主会话 | 不接收 Explain 事件、提示词或学习上下文；主回合不会被阻塞。 |
+
+Explain 只使用 DSH 第一方 `conversation.view`、composer、assistant action 和 settings 扩展点，不依赖 `better-sidebar`，也不要求修改其他插件。
+
+## 兼容性与验证
+
+- 当前兼容版本线：DSH `0.1.0-rc.7`。
+- 单元测试：64 项。
+- DSH Web 组装验收：4 个场景。
+- Explain 自有快捷入口验收：3 个 M6 场景。
+- 真实模型流程证据：[PR #16](https://github.com/yuezengwu/dsh-explain/pull/16)。
+- 完整验收矩阵：[docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)。
+
+DSH 仍处于开发者预览阶段。Explain 跟随当前公开 API 版本线，不保留更早私有预览包的兼容层。
 
 ## 本地开发
 
-默认构建使用公开的 DSH `0.1.0-rc.7` API 包。assembled Web 验收仍需要已构建的 DSH 源码 checkout；安装依赖后显式建立本地链接：
+默认安装使用已发布的 rc.7 API 包。assembled Web 测试还需要已构建的 DSH rc.7 源码 checkout：
 
 ```sh
 pnpm install
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
-pnpm run test
+pnpm run typecheck
+pnpm test
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web
 DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:m6
-pnpm run typecheck
 pnpm run build
 ```
 
-源码 checkout 必须匹配 `0.1.0-rc.7` 的公开 API；插件不保留更早私有预览版本线的兼容层。
-
-`test:web` 使用全新临时 `$DSH_HOME`、持久 Session fixture 和预置 Explain SQLite 运行无密钥的真实 DSH Web 组合，并比对学习视图与设置页 ARIA golden；它还验证 native settings revision 写入、可用来源跳转和缺失来源降级。更新有意的界面输出时运行 `DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web:refresh` 并审查 snapshot diff。
-
-`test:m6` 只把 Explain 安装到全新 profile，验证消费方插件均不存在、两个快捷入口都只生成精确可编辑草稿，以及卸载并重新安装后完整层只恢复一次。
-
-开发验收使用本地目录安装，不经过 npm：
+手工开发时直接安装当前 checkout：
 
 ```sh
 dsh plugin --profile web add /absolute/path/to/dsh-explain
@@ -94,23 +111,17 @@ dsh --profile web --dump-config
 dsh --profile web
 ```
 
-## 查重结论（2026-08-12）
+`test:web` 启动全新、无密钥的 DSH Web 组合，验证学习视图、设置、来源跳转和来源缺失降级。`test:m6` 只安装 Explain，验证两个可编辑草稿快捷入口，以及卸载、重装后的完整恢复行为。
 
-**产品目标无直接重复；以下项目只作为局部先例，不作为本项目的数据模型。**
+## 文档
 
-| 仓库 | 可复用部分 | 明确不复用的部分 |
-|---|---|---|
-| [dsh-auto-blame](https://github.com/dsh-external/dsh-auto-blame) | 回合结束后的后台模型调用、客户端反馈形态 | 外部自定义 Session 事件与 projection 不能作为本项目持久化方案 |
-| [dsh-advisor](https://github.com/omdsh-dev/dsh-advisor) | 转录增量、模型调用隔离、发射保护和配置 gateway | advisor 向主 agent 注入建议；explain 永不注入主模型 |
-| [dsh-memory](https://github.com/dsh-external/dsh-memory) | 仓库命名覆盖长期记忆方向 | 当前只有占位 README，没有可复用服务或协议 |
-| [dsh-memory-evolve](https://github.com/dsh-external/dsh-memory-evolve) | 跨会话分层记忆、低频快照与用户可见管理经验 | 未公开 Cordis memory service，且快照进入主 Agent；explain 不依赖或读取其私有文件 |
-| DSH `compact-basic` / `token-meter` / LLM model info | 容量阈值策略、固定 token 估算和精确路由 `contextWindow` | 原生 compact 只修改单个 Session surface；explain 需要自有全局 SQLite compactor |
-| DSH 第三方 memory MCP 示例 | 跨会话持久记忆的可选互操作参考 | 模型主动工具调用和外部 provider 不适合作为 P0 自动 ExplainContext |
-| DSH `ui-trajectory` | `conversation.view` 视图注册、Session 头部 Tab 和 active-only 渲染先例 | trajectory 的 Session 事件视图模型；学习事实仍使用插件自有 SQLite 与 Remote |
-| [DSH-better-sidebar](https://github.com/dsh-external/DSH-better-sidebar) | 侧边工作台交互参考 | P0 不需要边工作边查看，因此不引入其服务、源码副本或依赖树 |
-| [official-plugins-port](https://github.com/dsh-external/official-plugins-port) 的 `claude/learning-output-style` 与 `claude/explanatory-output-style` | 学习与解释类提示词参考 | 纯 system prompt 无法提供独立调度、持久历史和反馈闭环 |
-| [dsh-edu](https://github.com/dsh-external/dsh-edu) | 后续知识沉淀格式 | P0 不做课程、测验、卡片或复习系统 |
+| 文档 | 内容 |
+|---|---|
+| [产品需求](docs/PRD.md) | 用户模型、范围、策略和验收标准。 |
+| [技术架构](docs/ARCHITECTURE.md) | 持久化、调度、RPC、UI 集成和失败行为。 |
+| [验收矩阵](docs/ACCEPTANCE.md) | 自动化与真实流程证据。 |
+| [迭代计划](docs/NEXT.md) | 当前后续工作与顺序。 |
 
 ## 许可证
 
-本项目使用 [MIT License](LICENSE)。
+[MIT](LICENSE)
