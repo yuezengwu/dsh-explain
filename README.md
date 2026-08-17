@@ -2,7 +2,7 @@
 
 # dsh-explain — Learning mode for DSH
 
-> ✅ **Status: M6 is implemented entirely in Explain and passes its DSH `0.1.0-rc.6` acceptance gates. No other plugin requires a patch or runtime dependency.**
+> ✅ **Status: M6 is implemented entirely in Explain and passes its DSH `0.1.0-rc.7` acceptance gates. No other plugin requires a patch or runtime dependency.**
 > See the [product requirements](docs/PRD.md) and [technical architecture](docs/ARCHITECTURE.md) for the full design. The detailed design documents are currently written in Chinese.
 
 `dsh-explain` turns useful material from multiple [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) work sessions into one private, local-first learning thread. It keeps at most one active explanation per source session and continuously adapts explanations to the user's knowledge, preferences, and learning progress.
@@ -56,18 +56,18 @@ M6 registers an Explain selection action in `conversation.input.left` and an exa
 
 ## Install
 
-Explain currently targets DSH `0.1.0-rc.6`. DSH is a developer preview, so older private-preview package lines are not supported.
+Explain currently targets DSH `0.1.0-rc.7`. DSH is a developer preview, so older private-preview package lines are not supported.
 
 ```sh
-npx @deepseek-ai/dsh@0.1.0-rc.6 plugin --profile web add github:yuezengwu/dsh-explain
-npx @deepseek-ai/dsh@0.1.0-rc.6 web
+npx @deepseek-ai/dsh@0.1.0-rc.7 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.0-rc.7 web
 ```
 
 Git-hosted plugins build during installation. If pnpm asks for build approval, add the printed `dsh-explain` entry to the profile's `pnpm-workspace.yaml` and repeat the install command.
 
 ## Local development
 
-The default build uses the public DSH `0.1.0-rc.6` API packages. A built DSH source checkout is required for assembled-Web acceptance; link it explicitly after installing dependencies:
+The default build uses the public DSH `0.1.0-rc.7` API packages. A built DSH source checkout is required for assembled-Web acceptance; link it explicitly after installing dependencies:
 
 ```sh
 pnpm install
@@ -80,7 +80,7 @@ pnpm run typecheck
 pnpm run build
 ```
 
-The source checkout must match the `0.1.0-rc.6` public API surface. Compatibility layers for earlier private-preview package lines are not retained.
+The source checkout must match the `0.1.0-rc.7` public API surface. Compatibility layers for earlier private-preview package lines are not retained.
 
 `test:web` starts a real keyless DSH Web composition with a fresh temporary `$DSH_HOME`, a durable session fixture, and a pre-seeded Explain database. It compares the Learning and Settings ARIA output against golden snapshots and verifies native settings revisions, source navigation, and the missing-source fallback. To intentionally update the UI output, run `DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web:refresh` and review the snapshot diff.
 
