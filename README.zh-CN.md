@@ -7,7 +7,7 @@
 <p align="center"><strong>把日常 DSH 工作变成私有、连续的学习闭环。</strong></p>
 
 <p align="center">
-  <img alt="DSH 0.1.0-rc.7" src="https://img.shields.io/badge/DSH-0.1.0--rc.7-4c8bf5">
+  <img alt="DSH 0.1.0-rc.8" src="https://img.shields.io/badge/DSH-0.1.0--rc.8-4c8bf5">
   <img alt="本地优先" src="https://img.shields.io/badge/数据-本地优先-2ea44f">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
@@ -24,11 +24,11 @@
 
 ## 快速开始
 
-Explain 当前适配 DSH `0.1.0-rc.7`。
+Explain 当前适配 DSH `0.1.0-rc.8`。
 
 ```sh
-npx @deepseek-ai/dsh@0.1.0-rc.7 plugin --profile web add github:yuezengwu/dsh-explain
-npx @deepseek-ai/dsh@0.1.0-rc.7 web
+npx @deepseek-ai/dsh@0.1.0-rc.8 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.0-rc.8 web
 ```
 
 启动后进入「**设置 → 学习**」，选择辅助模型的 provider 和 model，启用学习模式并保存。Explain 只观察此后完成的顶层工作回合，不补扫已有历史。
@@ -79,7 +79,7 @@ Explain 只使用 DSH 第一方 `conversation.view`、composer、assistant actio
 
 ## 兼容性与验证
 
-- 当前兼容版本线：DSH `0.1.0-rc.7`。
+- 当前兼容版本线：DSH `0.1.0-rc.8`。
 - 单元测试：64 项。
 - DSH Web 组装验收：4 个场景。
 - Explain 自有快捷入口验收：3 个 M6 场景。
@@ -90,7 +90,7 @@ DSH 仍处于开发者预览阶段。Explain 跟随当前公开 API 版本线，
 
 ## 本地开发
 
-默认安装使用已发布的 rc.7 API 包。assembled Web 测试还需要已构建的 DSH rc.7 源码 checkout：
+默认安装使用已发布的 rc.8 API 包。assembled Web 测试还需要已构建的 DSH rc.8 源码 checkout：
 
 ```sh
 pnpm install

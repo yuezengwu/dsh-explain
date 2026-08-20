@@ -476,7 +476,7 @@ interface FeedbackRequest {
 | `explain.modelCatalog()` | 当前 provider 与建议模型目录；目录只提供选择建议 |
 | `explain.updateConfiguration(request)` | expected-revision CAS 合并 UI 四字段；开启或切换已启用路由前验证精确容量 |
 
-Remote 走 DSH `TypertRemoteService` 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。DSH 0.1.0-rc.7 的生成客户端把传输结果封装为 `RemoteResult<T>`；browser store 先解封传输结果，再处理方法自身的业务结果，传输失败进入现有可见错误状态。
+Remote 走 DSH `TypertRemoteService` 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。DSH 0.1.0-rc.8 的生成客户端把传输结果封装为 `RemoteResult<T>`；browser store 先解封传输结果，再处理方法自身的业务结果，传输失败进入现有可见错误状态。
 
 browser 的插件级 `learning-store`：
 

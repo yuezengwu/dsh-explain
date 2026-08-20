@@ -181,12 +181,22 @@ describe('dsh-explain plugin lifecycle', () => {
       })
       await expect(ctx.commands.execute(
         agent,
+        '/explain Explain the attached image',
+        [{ mediaType: 'image/png', data: '' }],
+        new AbortController().signal,
+      )).resolves.toMatchObject({
+        result: { kind: 'error', text: '/explain does not accept image attachments' },
+      })
+      await expect(ctx.commands.execute(
+        agent,
         '/explain status',
+        [],
         new AbortController().signal,
       )).resolves.toMatchObject({ result: { kind: 'success', text: expect.stringContaining('Explain: on') } })
       await expect(ctx.commands.execute(
         agent,
         '/explain',
+        [],
         new AbortController().signal,
       )).resolves.toMatchObject({
         result: { kind: 'error', text: 'Usage: /explain <request> | on | off | status' },
@@ -194,6 +204,7 @@ describe('dsh-explain plugin lifecycle', () => {
       await expect(ctx.commands.execute(
         agent,
         '/explain Explain discriminated unions',
+        [],
         new AbortController().signal,
       )).resolves.toMatchObject({
         result: {
@@ -214,6 +225,7 @@ describe('dsh-explain plugin lifecycle', () => {
       await expect(ctx.commands.execute(
         agent,
         '/explain --selection',
+        [],
         new AbortController().signal,
       )).resolves.toMatchObject({
         result: {
@@ -227,6 +239,7 @@ describe('dsh-explain plugin lifecycle', () => {
       await expect(ctx.commands.execute(
         { session: selectionSession, ctx: new Context() } as never,
         '/explain --selection Selected explanation target.',
+        [],
         new AbortController().signal,
       )).resolves.toMatchObject({
         result: { kind: 'success', text: 'Explanation added to Learning: Selected text on request' },
@@ -242,6 +255,7 @@ describe('dsh-explain plugin lifecycle', () => {
       await expect(ctx.commands.execute(
         { session: answerSession, ctx: new Context() } as never,
         '/explain --answer 1 请解释这个回答中最关键、最值得学习的概念。',
+        [],
         new AbortController().signal,
       )).resolves.toMatchObject({
         result: { kind: 'success', text: 'Explanation added to Learning: Answer on request' },
@@ -254,6 +268,7 @@ describe('dsh-explain plugin lifecycle', () => {
       await expect(ctx.commands.execute(
         { session: Session.create(SessionId('missing-answer-source')), ctx: new Context() } as never,
         '/explain --suggested 9 Explain the answer.',
+        [],
         new AbortController().signal,
       )).resolves.toMatchObject({
         result: {

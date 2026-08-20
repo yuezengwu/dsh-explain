@@ -121,7 +121,7 @@ function cordisProblem(sourceRoot) {
 }
 
 function reactIdentity(sourceRoot) {
-  const reactRequire = createRequire(join(sourceRoot, 'packages', 'client', 'web-react', 'package.json'))
+  const reactRequire = createRequire(join(sourceRoot, 'apps', 'web', 'package.json'))
   const domRequire = createRequire(join(sourceRoot, 'packages', 'client', 'ui-primitives', 'package.json'))
   return new Map([
     ['react', dirname(reactRequire.resolve('react/package.json'))],

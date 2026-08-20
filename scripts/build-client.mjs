@@ -18,7 +18,6 @@ const platformModules = [
   '@deepseek-ai/dsh-client-ui-settings/client',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-web-react',
 ]
 
 if (!existsSync(resolve(repository, 'lib', 'typert.remote-client.js'))) {
