@@ -7,7 +7,7 @@
 <p align="center"><strong>Turn everyday DSH work into a private, continuous learning loop.</strong></p>
 
 <p align="center">
-  <img alt="DSH 0.1.0-rc.7" src="https://img.shields.io/badge/DSH-0.1.0--rc.7-4c8bf5">
+  <img alt="DSH 0.1.0-rc.8" src="https://img.shields.io/badge/DSH-0.1.0--rc.8-4c8bf5">
   <img alt="Local first" src="https://img.shields.io/badge/data-local--first-2ea44f">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
@@ -24,11 +24,11 @@ Select text or choose **Learn from this answer**, review the editable `/explain`
 
 ## Quick start
 
-Explain currently targets DSH `0.1.0-rc.7`.
+Explain currently targets DSH `0.1.0-rc.8`.
 
 ```sh
-npx @deepseek-ai/dsh@0.1.0-rc.7 plugin --profile web add github:yuezengwu/dsh-explain
-npx @deepseek-ai/dsh@0.1.0-rc.7 web
+npx @deepseek-ai/dsh@0.1.0-rc.8 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.0-rc.8 web
 ```
 
 Then open **Settings → Learning**, select an auxiliary provider and model, enable learning mode, and save. Explain observes only future completed top-level turns; it does not scan existing history.
@@ -79,7 +79,7 @@ Explain uses first-party DSH `conversation.view`, composer, assistant-action, an
 
 ## Compatibility and verification
 
-- Current compatibility line: DSH `0.1.0-rc.7`.
+- Current compatibility line: DSH `0.1.0-rc.8`.
 - Unit suite: 64 tests.
 - Assembled DSH Web acceptance: 4 scenarios.
 - Explain-owned shortcut acceptance: 3 M6 scenarios.
@@ -90,7 +90,7 @@ DSH is still a developer preview. Explain follows the current public API line an
 
 ## Local development
 
-The default install uses the published rc.7 API packages. Assembled-Web tests also need a built DSH rc.7 source checkout:
+The default install uses the published rc.8 API packages. Assembled-Web tests also need a built DSH rc.8 source checkout:
 
 ```sh
 pnpm install
