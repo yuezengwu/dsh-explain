@@ -8,6 +8,8 @@
 
 <p align="center">
   <img alt="DSH 0.1.1-rc.2" src="https://img.shields.io/badge/DSH-0.1.1--rc.2-4c8bf5">
+  <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="本地优先" src="https://img.shields.io/badge/数据-本地优先-2ea44f">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
