@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible dsh-explain problem using synthetic data.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting a bug. Remove credentials, real Session content, private learning data, and absolute user paths before submitting.
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Include dsh-explain, DSH, Node.js, and operating-system versions.
+      placeholder: dsh-explain 0.2.0; DSH 0.1.1-rc.2; Node 24; macOS 15
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: List exact steps using synthetic data.
+      placeholder: "1. Install…\n2. Open…\n3. Observe…"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Paste only the smallest useful output after removing secrets, Session text, private paths, and learning data.
+      render: text
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed credentials, real Session content, private learning data, and absolute user paths.
+          required: true
+        - label: This is not a security vulnerability; vulnerabilities are reported privately under SECURITY.md.
+          required: true
