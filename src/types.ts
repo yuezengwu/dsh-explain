@@ -187,6 +187,52 @@ export interface ExplainContextView {
   readonly inferred: boolean
 }
 
+/** Portable, privacy-bounded learning backup. The format is import-ready but v0.2 only exports it. */
+export interface ExplainDataExportV1 {
+  readonly format: 'dsh-explain-backup'
+  readonly version: 1
+  readonly exportedAt: number
+  readonly databaseSchemaVersion: number
+  readonly storeRevision: number
+  readonly data: {
+    readonly entries: readonly ThreadEntryView[]
+    readonly context: ExplainContextView
+  }
+}
+
+/** Destructive clear request guarded by both an explicit phrase and store revision CAS. */
+export interface ClearLearningDataRequest {
+  readonly expectedStoreRevision: number
+  readonly confirmation: string
+}
+
+/** Counts removed by one atomic learning-data clear. */
+export interface ClearedLearningDataCounts {
+  readonly entries: number
+  readonly topics: number
+  readonly explanations: number
+  readonly observations: number
+  readonly checkpoints: number
+}
+
+/** Successful clear receipt, including the intentionally retained autonomous-request usage. */
+export interface ClearLearningDataValue {
+  readonly cleared: ClearedLearningDataCounts
+  readonly preservedAutoRequests: number
+  readonly storeRevision: number
+}
+
+/** Stable clear failure returned without a partial database mutation. */
+export interface ClearLearningDataFailure {
+  readonly code: 'CLEAR_CONFIRMATION_REQUIRED' | 'STORE_STALE' | 'CLEAR_IN_PROGRESS' | 'CLEAR_FAILED'
+  readonly message: string
+}
+
+/** Clear result with the authoritative post-operation status on success. */
+export type ClearLearningDataResult =
+  | { readonly ok: true; readonly value: ClearLearningDataValue; readonly status: ExplainStatusView }
+  | { readonly ok: false; readonly error: ClearLearningDataFailure }
+
 /** Long-poll request from one previously observed view cursor. */
 export interface WatchRequest {
   readonly after: ViewCursor

@@ -396,6 +396,48 @@ describe('keyless assembled DSH Web learning view', () => {
     expect(pageErrors).toEqual([])
   })
 
+  it('downloads the v1 backup and clears learning data through the real settings page', async () => {
+    if (page === undefined) throw new Error('web page is not initialized')
+    await page.getByRole('button', { name: '设置', exact: true }).click()
+    const settingsDialog = page.getByRole('dialog', { name: '设置', exact: true })
+    await settingsDialog.waitFor({ timeout: 15_000 })
+    await settingsDialog.getByRole('button', { name: '学习', exact: true }).click()
+    const settings = page.getByTestId('dsh-explain-settings-section')
+    await settings.waitFor({ timeout: 15_000 })
+
+    const downloadReady = page.waitForEvent('download')
+    await settings.getByRole('button', { name: '导出 JSON' }).click()
+    const download = await downloadReady
+    expect(download.suggestedFilename()).toBe('dsh-explain-backup-v1.json')
+    const downloadPath = await download.path()
+    if (downloadPath === null) throw new Error('learning backup download has no local path')
+    const backupJson = await readFile(downloadPath, 'utf8')
+    expect(JSON.parse(backupJson)).toMatchObject({
+      format: 'dsh-explain-backup',
+      version: 1,
+      data: { entries: [{ ordinal: 1 }, { ordinal: 2 }] },
+    })
+    expect(backupJson).not.toContain('sourceSummary')
+    expect(backupJson).not.toContain(sourceWorkspace)
+
+    const clearButton = settings.getByRole('button', { name: '清除所有学习数据' })
+    expect(await clearButton.isDisabled()).toBe(true)
+    await settings.getByRole('textbox', { name: '输入 CLEAR 以确认' }).fill('CLEAR')
+    expect(await clearButton.isEnabled()).toBe(true)
+    await clearButton.click()
+    await settings.getByText('已清除学习数据。删除的学习记录数： 2', { exact: true })
+      .waitFor({ timeout: 15_000 })
+    expect(await settings.getByRole('spinbutton', { name: '每 24 小时自主请求上限' }).inputValue()).toBe('12')
+    await settings.getByText('设置 revision 1', { exact: true }).waitFor({ timeout: 15_000 })
+    await settingsDialog.getByRole('button', { name: '关闭', exact: true }).click()
+
+    const view = page.getByTestId('dsh-explain-learning-view')
+    await view.getByText('还没有讲解。完成工作回合后，explain 会在值得讲解时记录到这里。', { exact: true })
+      .waitFor({ timeout: 15_000 })
+    expect(await view.getByRole('heading', { name: '用判别字段安全缩小联合类型' }).count()).toBe(0)
+    expect(pageErrors).toEqual([])
+  })
+
   it('keeps the fixture inventory closed', async () => {
     expect((await readdir(SNAPSHOT_DIRECTORY)).sort()).toEqual([
       'session.jsonl', 'settings.expected.md', 'ui.expected.md',

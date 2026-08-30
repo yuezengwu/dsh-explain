@@ -1,7 +1,7 @@
-# dsh-explain 技术架构 v11
+# dsh-explain 技术架构 v12
 
-> 状态：**v11 M6 Explain 自有快捷入口实现与验收完成**（2026-08-14）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
-> v11 把选区和精确回答适配器全部收回 Explain，通过 DSH 第一方 additive slots 写可编辑草稿；其他插件不修改、不依赖且不暴露私有状态。SQLite schema 不变，旧 suggested 输入与数据保持读取兼容。
+> 状态：**v12 M7 本地数据治理实现与验收完成**（2026-08-30）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
+> v12 增加版本化脱敏导出和并发隔离的原子清除。SQLite schema 仍为 2；设置、运行租约和滚动自主额度不会因清除而重置。
 
 ## 架构结论
 
@@ -94,6 +94,14 @@ src/
 v6 不包含 `events.ts`、Session projection、ConversationNodeDefinition 或 turnTail 组件。
 
 ## 本地存储
+
+### 导出与清除边界
+
+`exportData()` 只组装 typed Remote 已允许浏览器读取的 `ThreadEntryView` 与 `ExplainContextView`。导出信封固定为 `format: dsh-explain-backup`、`version: 1`，同时记录导出时间、SQLite schema version 与 store revision。它不读取或序列化 revision-one 私有 `sourceSummary`、完整 Session 转录、credentials、工具原始参数/结果或绝对路径；v0.2 只承诺导出，不提供未经验证的导入路径。
+
+`clearLearningData()` 需要精确确认词 `CLEAR` 与页面所见 `expectedStoreRevision`。Runtime 串行化清除；Scheduler 先进入 resetting 状态、提升 epoch、abort 当前模型调用、结算手动队列、清空 timers/candidates，并等待既有 drain 完全退出。只有在生产者静默后，Store 才执行一次 `BEGIN IMMEDIATE` 事务和 revision CAS；在途迟到结果不能重新落库。
+
+事务删除 entries、explanations、topics、mutation requests、observations、checkpoints 与 coverage，并复位由这些内容派生的 runtime clocks。它故意不删除 `auto_request_usage` 与 `runtime_lease`，也不触碰 DSH settings namespace，因此清除不能绕过调用上限、抢占运行租约或改变 provider/model/enabled 配置。事务失败会整体回滚；stale revision 不发生任何写入。
 
 ### 路径与配置
 

@@ -1,7 +1,7 @@
 # dsh-explain PRD（P0 定稿）
 
-> 状态：**P0 定稿；M6 P1 快捷入口实现与组合验收完成**（2026-08-14）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
-> 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v11 同步。
+> 状态：**P0 定稿；M7 v0.2 本地数据治理实现与验收完成**（2026-08-30）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
+> 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v12 同步。
 
 ## 定位
 
@@ -57,6 +57,7 @@ explain 维护一份不进入主 Agent 的全局 `ExplainContext`，用来判断
 | ✗ 没懂 | 保持同一 `ExplanationId`、`TopicId` 和来源 Session，生成 `revision + 1` |
 | 撤销掌握 | 已掌握状态提供「撤销」操作；撤销不自动生成讲解，只允许未来再次命中该 Topic |
 | 本地持久化 | 学习历史、反馈、Topic 状态、来源活跃状态、压缩检查点、`ExplainContext` 和全局顺序写入 `$DSH_HOME/dsh-explain/v1/thread.sqlite` |
+| 数据管理（M7） | 设置页导出版本化、脱敏的 `dsh-explain-backup-v1.json`；输入 `CLEAR` 并通过 store revision CAS 后原子清除学习内容，同时保留 settings、运行租约和滚动自主额度计数 |
 | UI 依赖 | 只使用 DSH 第一方 `conversation.view`、`conversation.input.left` 和 `conversation.chat.assistant-actions` 槽位；P0/P1 不引入外部 UI 插件 |
 
 ## 交互与调度流程

@@ -65,6 +65,12 @@ Every `$DSH_HOME` owns exactly one Explain learning thread. Individual work sess
 - A private `ExplainContext` tracks explanation preferences, knowledge level, and learning progress.
 - When structured observations or closed explanations are pending, auxiliary history compacts after 30 minutes without an Explain action, or before a request would exceed 50% of the selected model's context window.
 
+## Own your learning data
+
+Open **Settings → Learning → Data management** to download `dsh-explain-backup-v1.json`. The versioned backup contains learning cards, Topic state, and the public `ExplainContext` projection; it excludes full source sessions, private source summaries, credentials, and absolute host paths.
+
+The same page can clear all learned content after you type `CLEAR`. Explain first cancels and fences in-flight generation, then removes the learning thread and context in one SQLite transaction. Auxiliary-model settings, the enabled state, and the current rolling 24-hour autonomous-usage count are deliberately preserved.
+
 ## Local-first by design
 
 | Data | Behavior |
@@ -80,8 +86,8 @@ Explain uses first-party DSH `conversation.view`, composer, assistant-action, an
 ## Compatibility and verification
 
 - Current compatibility line: DSH `0.1.1-rc.2`.
-- Unit suite: 64 tests.
-- Assembled DSH Web acceptance: 4 scenarios.
+- Unit suite: 67 tests.
+- Assembled DSH Web acceptance: 5 scenarios.
 - Explain-owned shortcut acceptance: 3 M6 scenarios.
 - Real-model workflow evidence: [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16).
 - Detailed acceptance matrix: [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).

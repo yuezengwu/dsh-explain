@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { afterEach, describe, expect, it } from 'vitest'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { RequestId } from '../src/brands.ts'
+import type { SourceCapsule } from '../src/domain.ts'
 import { ExplainStore } from '../src/store.ts'
 
 const stores: ExplainStore[] = []
@@ -47,6 +48,20 @@ function fixture(store: ExplainStore, source = 'session-a', topic = 'typescript/
   const latest = page.entries.find(entry => entry.explanationId === explanationId && entry.revision === 2)
   if (latest === undefined) throw new Error('fixture explanation is missing')
   return { explanationId, latest }
+}
+
+function capsule(source = 'budget-source'): SourceCapsule {
+  return {
+    sourceSessionId: SessionId(source),
+    turn: 1,
+    endSeq: 2,
+    observedAt: Date.now(),
+    cwdLabel: '/Users/private/repository',
+    userText: 'private user transcript',
+    assistantText: 'private assistant transcript',
+    tools: [{ name: 'read', resultPreview: 'private result' }],
+    truncated: false,
+  }
 }
 
 describe('ExplainStore schema and projections', () => {
@@ -94,6 +109,52 @@ describe('ExplainStore schema and projections', () => {
       pitfall: 'First pitfall',
     })
     expect(older.entries[0]?.topicTitle).toBe('Narrowing precisely')
+  })
+
+  it('exports a versioned public projection without private summaries or host paths', () => {
+    const store = memoryStore()
+    fixture(store)
+    const backup = store.exportData(1_800_000_000_000)
+    expect(backup).toMatchObject({
+      format: 'dsh-explain-backup',
+      version: 1,
+      exportedAt: 1_800_000_000_000,
+      databaseSchemaVersion: 2,
+      storeRevision: 1,
+      data: { entries: [{ ordinal: 1 }, { ordinal: 2 }], context: { inferred: false } },
+    })
+    const json = JSON.stringify(backup)
+    expect(json).not.toContain('private-source')
+    expect(json).not.toContain('sourceSummary')
+    expect(json).not.toContain('/Users/')
+    expect(json).not.toContain('private user transcript')
+  })
+
+  it('atomically clears learning rows while preserving budget usage and the runtime lease', () => {
+    const store = memoryStore()
+    fixture(store)
+    const now = Date.now()
+    const lease = store.acquireLease('clear-owner', now, 60_000)
+    expect(store.reserveAutoRequest(lease, capsule(), 'test', 'model', 1, 10, now)).toMatchObject({ ok: true })
+    const revision = store.storeRevision()
+    const result = store.clearLearningData(revision)
+    expect(result).toEqual({
+      ok: true,
+      cleared: { entries: 2, topics: 1, explanations: 1, observations: 0, checkpoints: 0 },
+      preservedAutoRequests: 1,
+      storeRevision: revision + 1,
+    })
+    expect(store.threadPage({ limit: 10 })).toMatchObject({ entries: [], hasMore: false })
+    expect(store.context()).toMatchObject({
+      inferred: false,
+      stats: { learningTopics: 0, masteredTopics: 0, activeExplanations: 0 },
+    })
+    expect(store.autoRequestsUsed(now + 1)).toBe(1)
+    expect(store.renewLease(lease, now + 1, 60_000)).toBe(true)
+
+    const afterClear = store.storeRevision()
+    expect(store.clearLearningData(revision)).toEqual({ ok: false, actualStoreRevision: afterClear })
+    expect(store.storeRevision()).toBe(afterClear)
   })
 
   it('enforces one active explanation per source without retaining a partial write', () => {

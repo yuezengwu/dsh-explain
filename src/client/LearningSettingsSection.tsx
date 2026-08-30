@@ -16,6 +16,8 @@ export interface LearningSettingsInjected {
   activate: () => () => void
   refresh: () => Promise<void>
   updateConfiguration: (request: UpdateConfigurationRequest) => Promise<void>
+  exportData: () => Promise<boolean>
+  clearLearningData: (expectedStoreRevision: number, confirmation: string) => Promise<boolean>
 }
 
 type LearningSettingsProps = InjectFace<LearningSettingsInjected> & PropsLocale<'explain'>
@@ -30,11 +32,12 @@ interface SettingsDraft {
 
 /** Settings page for ordinary learning-mode controls and runtime diagnostics. */
 export function LearningSettingsSection({
-  useLearning, activate, refresh, updateConfiguration, t,
+  useLearning, activate, refresh, updateConfiguration, exportData, clearLearningData, t,
 }: LearningSettingsProps) {
   useEffect(() => activate(), [activate])
   const snapshot = useLearning(value => value)
   const [draft, setDraft] = useState<SettingsDraft | undefined>(undefined)
+  const [clearConfirmation, setClearConfirmation] = useState('')
   useEffect(() => {
     if (snapshot.configuration === undefined) return
     setDraft(draftOf(snapshot.configuration))
@@ -58,6 +61,12 @@ export function LearningSettingsSection({
       ...(draft.model.trim() === '' ? {} : { model: draft.model.trim() }),
       maxAutoRequestsPerDay: limit,
     })
+  }
+
+  const clear = async (): Promise<void> => {
+    const revision = snapshot.status?.storeRevision
+    if (revision === undefined || clearConfirmation !== 'CLEAR') return
+    if (await clearLearningData(revision, clearConfirmation)) setClearConfirmation('')
   }
 
   return (
@@ -144,6 +153,64 @@ export function LearningSettingsSection({
             </div>
           </form>
         )}
+
+      <section className="dsh-explain-data-management">
+        <div>
+          <h3>{t('settings.dataTitle')}</h3>
+          <p>{t('settings.dataIntro')}</p>
+        </div>
+        {snapshot.dataOperationError !== undefined && (
+          <div className="dsh-explain-error" role="alert">{snapshot.dataOperationError}</div>
+        )}
+        {snapshot.dataOperationNotice?.kind === 'exported' && (
+          <div className="dsh-explain-notice" role="status">{t('settings.exported')}</div>
+        )}
+        {snapshot.dataOperationNotice?.kind === 'cleared' && (
+          <div className="dsh-explain-notice" role="status">
+            {t('settings.cleared')} {snapshot.dataOperationNotice.cleared.entries}
+          </div>
+        )}
+        <div className="dsh-explain-data-export">
+          <div>
+            <strong>{t('settings.exportTitle')}</strong>
+            <small>{t('settings.exportHelp')}</small>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={snapshot.dataOperationPending !== undefined}
+            onClick={() => { void exportData() }}
+          >
+            {snapshot.dataOperationPending === 'export' ? t('action.exporting') : t('action.export')}
+          </Button>
+        </div>
+        <div className="dsh-explain-danger-zone">
+          <div>
+            <strong>{t('settings.clearTitle')}</strong>
+            <p>{t('settings.clearHelp')}</p>
+            <small>{t('settings.clearPreserved')}</small>
+          </div>
+          <label className="dsh-explain-control">
+            <span>{t('settings.clearConfirm')}</span>
+            <input
+              value={clearConfirmation}
+              placeholder="CLEAR"
+              autoComplete="off"
+              spellCheck={false}
+              onChange={event => { setClearConfirmation(event.currentTarget.value) }}
+            />
+          </label>
+          <button
+            type="button"
+            className="dsh-explain-danger-button"
+            disabled={snapshot.dataOperationPending !== undefined
+              || snapshot.status === undefined || clearConfirmation !== 'CLEAR'}
+            onClick={() => { void clear() }}
+          >
+            {snapshot.dataOperationPending === 'clear' ? t('action.clearing') : t('action.clear')}
+          </button>
+        </div>
+      </section>
 
       <Diagnostics status={snapshot.status} t={t} />
     </div>

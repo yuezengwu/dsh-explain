@@ -116,6 +116,8 @@ describe('dsh-explain plugin lifecycle', () => {
         { method: 'updateConfiguration', invocation: { kind: 'direct' } },
         { method: 'threadPage', invocation: { kind: 'direct' } },
         { method: 'context', invocation: { kind: 'direct' } },
+        { method: 'exportData', invocation: { kind: 'direct' } },
+        { method: 'clearLearningData', invocation: { kind: 'direct' } },
         { method: 'watch', invocation: { kind: 'direct' } },
         { method: 'feedback', invocation: { kind: 'direct' } },
         { method: 'reopenTopic', invocation: { kind: 'direct' } },
@@ -302,6 +304,43 @@ describe('dsh-explain plugin lifecycle', () => {
         maxAutoRequestsPerDay: 0,
       })).resolves.toMatchObject({ ok: false, error: { code: 'INVALID_SETTINGS' } })
       expect(ctx.explain.configuration()).toMatchObject({ revision: 3, maxAutoRequestsPerDay: 25 })
+
+      const backup = ctx.explain.exportData()
+      expect(backup).toMatchObject({
+        format: 'dsh-explain-backup',
+        version: 1,
+        data: { entries: [{ ordinal: 1 }, { ordinal: 2 }, { ordinal: 3 }] },
+      })
+      expect(JSON.stringify(backup)).not.toContain('sourceSummary')
+      const storeRevision = ctx.explain.status().storeRevision
+      await expect(ctx.explain.clearLearningData({
+        expectedStoreRevision: storeRevision,
+        confirmation: 'clear',
+      })).resolves.toMatchObject({ ok: false, error: { code: 'CLEAR_CONFIRMATION_REQUIRED' } })
+      await expect(ctx.explain.clearLearningData({
+        expectedStoreRevision: storeRevision - 1,
+        confirmation: 'CLEAR',
+      })).resolves.toMatchObject({ ok: false, error: { code: 'STORE_STALE' } })
+      await expect(ctx.explain.clearLearningData({
+        expectedStoreRevision: storeRevision,
+        confirmation: 'CLEAR',
+      })).resolves.toMatchObject({
+        ok: true,
+        value: {
+          cleared: { entries: 3, topics: 3, explanations: 3 },
+          preservedAutoRequests: 0,
+          storeRevision: storeRevision + 1,
+        },
+        status: { activeExplanationCount: 0, autoRequestsUsed: 0 },
+      })
+      expect(ctx.explain.threadPage({ limit: 10 }).entries).toEqual([])
+      expect(ctx.explain.configuration()).toMatchObject({
+        revision: 3,
+        enabled: true,
+        provider: 'learning-provider',
+        model: 'learning-model',
+        maxAutoRequestsPerDay: 25,
+      })
     } finally {
       await fiber.dispose()
       await commands.dispose()

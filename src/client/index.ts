@@ -76,6 +76,10 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
         activate: () => learning.mountSettings(),
         refresh: () => learning.refresh(),
         updateConfiguration: request => learning.updateConfiguration(request),
+        exportData: () => learning.exportData(),
+        clearLearningData: (expectedStoreRevision, confirmation) => learning.clearLearningData(
+          expectedStoreRevision, confirmation,
+        ),
       }),
     }, LearningSettingsSection))
     scope.slots.inject('conversation.input.left', () => scope.slots.register({
