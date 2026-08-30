@@ -14,6 +14,17 @@
 - text: 失败与重试计入额度；用户显式重讲和压缩不计入。
 - button "保存设置"
 - text: 设置 revision 1
+- heading "数据管理" [level=3]
+- paragraph: 导出或清除本机保存的学习记录。清除前建议先下载备份。
+- strong: 导出学习数据
+- text: 下载版本化 JSON，包含学习卡片、Topic 状态和 ExplainContext；不包含完整会话、凭证或绝对路径。
+- button "导出 JSON"
+- strong: 清除本机学习数据
+- paragraph: 永久删除所有学习卡片、Topic 状态和 ExplainContext。进行中的讲解会被取消。
+- text: 辅助模型设置、启用状态和当前 24 小时自主额度计数会保留。 输入 CLEAR 以确认
+- textbox "输入 CLEAR 以确认":
+  - /placeholder: CLEAR
+- button "清除所有学习数据" [disabled]
 - heading "运行诊断" [level=3]
 - text: 学习模式已关闭
 - term: 辅助模型路由

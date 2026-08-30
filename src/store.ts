@@ -34,7 +34,9 @@ import type {
   TopicHint,
 } from './domain.ts'
 import type {
+  ClearedLearningDataCounts,
   DialoguePreferenceView,
+  ExplainDataExportV1,
   ExplainContextStats,
   ExplainContextView,
   ExplainMutationFailure,
@@ -194,6 +196,16 @@ export interface AutoCommitResult {
   readonly committed: boolean
   readonly entry?: ThreadEntryView
 }
+
+/** Internal CAS outcome used while the scheduler owns the destructive-operation fence. */
+export type StoreClearLearningDataResult =
+  | {
+      readonly ok: true
+      readonly cleared: ClearedLearningDataCounts
+      readonly preservedAutoRequests: number
+      readonly storeRevision: number
+    }
+  | { readonly ok: false; readonly actualStoreRevision: number }
 
 /** Outcome of committing one explicit explanation under source and Topic gates. */
 export type ManualCommitResult =
@@ -798,6 +810,74 @@ export class ExplainStore {
       hasMore: rows.length > limit,
       storeRevision: this.storeRevision(),
     }
+  }
+
+  /** Export every browser-visible learning projection without private source summaries or host paths. */
+  exportData(exportedAt = Date.now()): ExplainDataExportV1 {
+    const rows = this.database.prepare(`
+      SELECT e.entry_id, e.ordinal, e.kind, e.explanation_id,
+             x.state AS explanation_state, e.topic_id,
+             t.topic_key, t.title AS topic_title, t.state AS topic_state,
+             t.topic_revision, e.revision, e.source_session_id, e.source_turn,
+             e.payload_json, e.created_at
+      FROM entries e
+      JOIN topics t ON t.topic_id = e.topic_id
+      LEFT JOIN explanations x ON x.explanation_id = e.explanation_id
+      ORDER BY e.ordinal ASC
+    `).all() as unknown as EntryRow[]
+    return {
+      format: 'dsh-explain-backup',
+      version: 1,
+      exportedAt,
+      databaseSchemaVersion: SCHEMA_VERSION,
+      storeRevision: this.storeRevision(),
+      data: {
+        entries: rows.map(row => this.entryView(row)),
+        context: this.context(),
+      },
+    }
+  }
+
+  /** Atomically clear learned content while preserving settings, request usage, and the live runtime lease. */
+  clearLearningData(expectedStoreRevision: number): StoreClearLearningDataResult {
+    if (!Number.isInteger(expectedStoreRevision) || expectedStoreRevision < 0) {
+      throw new RangeError('dsh-explain: expected store revision must be a non-negative integer')
+    }
+    return this.write(() => {
+      const actualStoreRevision = this.storeRevision()
+      if (actualStoreRevision !== expectedStoreRevision) return { ok: false as const, actualStoreRevision }
+      const cleared: ClearedLearningDataCounts = {
+        entries: this.count('SELECT COUNT(*) AS count FROM entries'),
+        topics: this.count('SELECT COUNT(*) AS count FROM topics'),
+        explanations: this.count('SELECT COUNT(*) AS count FROM explanations'),
+        observations: this.count('SELECT COUNT(*) AS count FROM context_observations'),
+        checkpoints: this.count('SELECT COUNT(*) AS count FROM context_checkpoints'),
+      }
+      this.database.exec(`
+        DELETE FROM mutation_requests;
+        DELETE FROM context_coverage;
+        DELETE FROM observation_coverage;
+        DELETE FROM context_checkpoints;
+        DELETE FROM context_observations;
+        DELETE FROM entries;
+        DELETE FROM explanations;
+        DELETE FROM topics;
+        UPDATE runtime_state SET
+          first_explain_output_at = NULL,
+          last_user_action_at = NULL,
+          activity_generation = 0,
+          last_compacted_at = NULL,
+          context_generation = 0
+        WHERE singleton = 1;
+        UPDATE meta SET next_ordinal = 1, store_revision = store_revision + 1 WHERE singleton = 1;
+      `)
+      return {
+        ok: true as const,
+        cleared,
+        preservedAutoRequests: this.autoRequestsUsed(),
+        storeRevision: this.storeRevision(),
+      }
+    })
   }
 
   /** Read the latest model checkpoint plus database-authoritative statistics. */

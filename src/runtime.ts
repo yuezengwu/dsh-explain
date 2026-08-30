@@ -14,6 +14,9 @@ import { ExplainRouteError, resolveExplainRoute } from './explainer.ts'
 import { ExplainScheduler } from './scheduler.ts'
 import type { ExplainStore } from './store.ts'
 import type {
+  ClearLearningDataFailure,
+  ClearLearningDataRequest,
+  ClearLearningDataValue,
   ExplainConfigurationView,
   ExplainModelCatalogView,
   SetEnabledResult,
@@ -30,6 +33,7 @@ export class ExplainRuntime {
   private readonly scope: SettingsScope<ExplainRuntimeSettings>
   private current: ExplainRuntimeSettings
   private synchronizeTail: Promise<void> = Promise.resolve()
+  private clearing = false
 
   constructor(
     private readonly ctx: Context,
@@ -148,6 +152,63 @@ export class ExplainRuntime {
     await this.scope.update({ enabled })
     await this.synchronize()
     return undefined
+  }
+
+  /** Validate the destructive phrase and serialize the scheduler-owned database reset. */
+  async clearLearningData(
+    request: ClearLearningDataRequest,
+  ): Promise<{ readonly ok: true; readonly value: ClearLearningDataValue } | {
+    readonly ok: false; readonly error: ClearLearningDataFailure
+  }> {
+    if (request.confirmation !== 'CLEAR') {
+      return {
+        ok: false,
+        error: {
+          code: 'CLEAR_CONFIRMATION_REQUIRED',
+          message: 'Type CLEAR exactly to confirm deletion of all learning data.',
+        },
+      }
+    }
+    if (!Number.isInteger(request.expectedStoreRevision) || request.expectedStoreRevision < 0) {
+      return {
+        ok: false,
+        error: { code: 'STORE_STALE', message: 'Learning data changed; refresh before clearing it.' },
+      }
+    }
+    if (this.clearing) {
+      return {
+        ok: false,
+        error: { code: 'CLEAR_IN_PROGRESS', message: 'Learning data is already being cleared.' },
+      }
+    }
+    this.clearing = true
+    try {
+      const result = await this.scheduler.resetLearningData(request.expectedStoreRevision)
+      if (!result.ok) {
+        return {
+          ok: false,
+          error: {
+            code: 'STORE_STALE',
+            message: `Learning data changed since this page loaded (expected revision ${request.expectedStoreRevision}, now ${result.actualStoreRevision}).`,
+          },
+        }
+      }
+      return {
+        ok: true,
+        value: {
+          cleared: result.cleared,
+          preservedAutoRequests: result.preservedAutoRequests,
+          storeRevision: result.storeRevision,
+        },
+      }
+    } catch {
+      return {
+        ok: false,
+        error: { code: 'CLEAR_FAILED', message: 'Learning data could not be cleared.' },
+      }
+    } finally {
+      this.clearing = false
+    }
   }
 
   /** Stop all scheduler work and release the runtime lease. */

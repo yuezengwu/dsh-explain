@@ -15,7 +15,11 @@ import {
   type ExplainRoute,
 } from './explainer.ts'
 import { CandidateQueue, type ExplainCandidate } from './queue.ts'
-import { SourceSummaryError, type ExplainStore } from './store.ts'
+import {
+  SourceSummaryError,
+  type ExplainStore,
+  type StoreClearLearningDataResult,
+} from './store.ts'
 import type { ThreadEntryView } from './types.ts'
 
 const LEASE_RENEW_MS = 5_000
@@ -80,6 +84,7 @@ export class ExplainScheduler {
   private controllerKind: 'auto' | 'rephrase' | 'manual' | 'idle' | undefined
   private started = false
   private stopped = false
+  private resetting = false
 
   constructor(
     private readonly ctx: Context,
@@ -116,7 +121,8 @@ export class ExplainScheduler {
 
   /** Admit a deferred candidate only while its captured runtime generation is still current. */
   acceptsGeneration(generation: number): boolean {
-    return generation === this.epoch && this.settings.enabled && this.failed === undefined && !this.stopped
+    return generation === this.epoch && this.settings.enabled && this.failed === undefined
+      && !this.stopped && !this.resetting
   }
 
   /** Re-resolve the configured route after an adapter registration or disposal. */
@@ -127,7 +133,7 @@ export class ExplainScheduler {
 
   /** Accept one already-bounded turn without blocking its session event dispatch. */
   enqueue(capsule: SourceCapsule): void {
-    if (!this.settings.enabled || this.failed !== undefined || this.stopped) return
+    if (!this.settings.enabled || this.failed !== undefined || this.stopped || this.resetting) return
     const evicted = this.queue.push(capsule, this.settings.maxPendingCandidates)
     if (evicted !== undefined) this.logger.debug('evicted oldest autonomous candidate from %s', evicted.capsule.sourceSessionId)
     this.store.notifyRuntimeChange()
@@ -142,7 +148,7 @@ export class ExplainScheduler {
     if (!this.settings.enabled) return Promise.resolve(manualFailure(
       'EXPLAIN_DISABLED', 'Learning mode is disabled.',
     ))
-    if (this.failed !== undefined || this.route === undefined || this.stopped) return Promise.resolve(manualFailure(
+    if (this.failed !== undefined || this.route === undefined || this.stopped || this.resetting) return Promise.resolve(manualFailure(
       'EXPLAIN_RUNTIME_FAILED', 'The learning runtime is not ready.',
     ))
     const source = target.capsule.sourceSessionId
@@ -232,6 +238,36 @@ export class ExplainScheduler {
     this.kick()
   }
 
+  /** Fence and drain every in-flight producer before one atomic store clear, then resume normally. */
+  async resetLearningData(expectedStoreRevision: number): Promise<StoreClearLearningDataResult> {
+    const actualStoreRevision = this.store.storeRevision()
+    if (actualStoreRevision !== expectedStoreRevision) return { ok: false, actualStoreRevision }
+    if (this.resetting) return { ok: false, actualStoreRevision }
+    this.resetting = true
+    this.cancelCurrent()
+    this.settleQueuedManual(manualFailure(
+      'EXPLAIN_RUNTIME_FAILED', 'Learning data was cleared before the explanation started.',
+    ))
+    this.clearTimers()
+    this.queue.clear()
+    const draining = this.draining
+    try {
+      if (draining !== undefined) await Promise.allSettled([draining])
+      // An aborted candidate may defer itself in its finally block; clear once more after quiescence.
+      this.queue.clear()
+      this.failedRephrases.clear()
+      this.operationError = undefined
+      this.estimatedContextRatio = undefined
+      this.idleAttempted = undefined
+      return this.store.clearLearningData(expectedStoreRevision)
+    } finally {
+      this.resetting = false
+      this.store.notifyRuntimeChange()
+      this.scheduleIdle()
+      this.kick()
+    }
+  }
+
   /** Stop timers, abort the one request, release the lease, and await quiescence. */
   async dispose(): Promise<void> {
     if (this.stopped) return
@@ -276,16 +312,18 @@ export class ExplainScheduler {
   }
 
   private kick(): void {
-    if (this.draining !== undefined || this.stopped || !this.settings.enabled || this.failed !== undefined) return
+    if (this.draining !== undefined || this.stopped || this.resetting
+      || !this.settings.enabled || this.failed !== undefined) return
     const task = this.drain().finally(() => {
       if (this.draining === task) this.draining = undefined
-      if (!this.stopped && this.settings.enabled && this.failed === undefined && this.hasImmediateWork()) this.kick()
+      if (!this.stopped && !this.resetting && this.settings.enabled
+        && this.failed === undefined && this.hasImmediateWork()) this.kick()
     })
     this.draining = task
   }
 
   private async drain(): Promise<void> {
-    while (!this.stopped && this.settings.enabled && this.failed === undefined) {
+    while (!this.stopped && !this.resetting && this.settings.enabled && this.failed === undefined) {
       const manual = this.manualQueue.shift()
       if (manual !== undefined) {
         await this.runManual(manual)
@@ -373,7 +411,7 @@ export class ExplainScheduler {
           error instanceof CompactionError ? safeCause(error).message : safeError(error).message)
       }
     } finally {
-      if (!finished && controller.signal.aborted && this.settings.enabled && !this.stopped) {
+      if (!finished && controller.signal.aborted && this.settings.enabled && !this.stopped && !this.resetting) {
         this.queue.defer(candidate)
       }
       this.endRequest(controller)
@@ -569,7 +607,7 @@ export class ExplainScheduler {
   private scheduleIdle(): void {
     if (this.idleTimer !== undefined) clearTimeout(this.idleTimer)
     this.idleTimer = undefined
-    if (!this.settings.enabled || this.store.compactionBatch() === undefined) return
+    if (!this.settings.enabled || this.resetting || this.store.compactionBatch() === undefined) return
     const state = this.store.runtimeState()
     const baseline = state.lastUserActionAt ?? state.firstExplainOutputAt
     if (baseline === undefined) return
@@ -604,7 +642,8 @@ export class ExplainScheduler {
   }
 
   private isCurrent(epoch: number, controller: AbortController): boolean {
-    return !controller.signal.aborted && epoch === this.epoch && this.settings.enabled && !this.stopped
+    return !controller.signal.aborted && epoch === this.epoch && this.settings.enabled
+      && !this.stopped && !this.resetting
   }
 
   private hasImmediateWork(): boolean {

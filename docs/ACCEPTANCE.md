@@ -77,3 +77,16 @@ git diff --check
 | 7 | Advisor 隔离 | Explain 不订阅 Advisor runtime；只有用户显式选择其可见 context 后才生成 `origin: selection`，未选择内容不进入 observation 或 ExplainContext |
 | 8 | 成本与主 Agent 隔离 | 快捷入口本身零模型调用；用户提交后复用 manual Scheduler 且豁免自主额度，command 生命周期不进入主模型消息 |
 | 9 | 真实产品流程 | 从精确候选提交启动全新 DSH Web，以真实主模型生成来源回答，再验证 answer/selection 草稿、真实 Explain 讲解与反馈闭环；GIF 随合入 PR 保存 |
+
+## M7 v0.2 本地数据治理
+
+| # | 标准 | 自动化证据 |
+|---:|---|---|
+| 1 | 导出版本稳定 | `store.spec.ts` 断言 format/version、schema/store revision、entries 顺序和 ExplainContext 投影 |
+| 2 | 导出隐私边界 | `store.spec.ts` 断言 JSON 不含 private source、`sourceSummary`、完整 transcript 或绝对宿主路径 |
+| 3 | 清除原子性 | `store.spec.ts` 覆盖清除计数、revision 递增、空线程/Context、stale CAS revision-neutral 与运行租约延续 |
+| 4 | 成本上限不可绕过 | `store.spec.ts` 与 `scheduler.spec.ts` 断言清除前已占用的滚动 24 小时自主额度在清除后保留 |
+| 5 | 在途隔离与恢复 | `scheduler.spec.ts` 在真实 LLM adapter in-flight 时执行清除，迟到结果不落库，队列清空且后续候选正常生成 |
+| 6 | 设置保留 | `plugin.spec.ts` 经 typed Remote 清除后 provider/model/enabled、settings revision 与预算上限保持不变 |
+| 7 | 显式破坏性确认 | Host 要求精确 `CLEAR`；设置页未输入前禁用按钮，`client.spec.tsx` 验证 revision 与确认词一起提交 |
+| 8 | 测试伴随 | `pnpm run typecheck`、67 个单元/集成测试、assembled Web、M6 源码组合测试和生产构建 |

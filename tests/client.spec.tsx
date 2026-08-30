@@ -107,6 +107,9 @@ describe('conversation learning view', () => {
       pendingEntryIds: [],
       configurationPending: false,
       configurationError: undefined,
+      dataOperationPending: undefined,
+      dataOperationError: undefined,
+      dataOperationNotice: undefined,
       navigationError: undefined,
       error: undefined,
     }
@@ -187,6 +190,9 @@ describe('conversation learning view', () => {
       pendingEntryIds: [],
       configurationPending: false,
       configurationError: undefined,
+      dataOperationPending: undefined,
+      dataOperationError: undefined,
+      dataOperationNotice: undefined,
       navigationError: undefined,
       error: undefined,
     }
@@ -419,15 +425,22 @@ describe('learning settings section', () => {
       pendingEntryIds: [],
       configurationPending: false,
       configurationError: undefined,
+      dataOperationPending: undefined,
+      dataOperationError: undefined,
+      dataOperationNotice: undefined,
       navigationError: undefined,
       error: undefined,
     }
     const updateConfiguration = vi.fn().mockResolvedValue(undefined)
+    const exportData = vi.fn().mockResolvedValue(true)
+    const clearLearningData = vi.fn().mockResolvedValue(true)
     const props = {
       useLearning: learningHook(createSnapshotStore(snapshot)),
       activate: () => () => {},
       refresh: vi.fn().mockResolvedValue(undefined),
       updateConfiguration,
+      exportData,
+      clearLearningData,
       t: (key: keyof typeof zh) => zh[key],
     } as unknown as ComponentProps<typeof LearningSettingsSection>
 
@@ -443,6 +456,14 @@ describe('learning settings section', () => {
       model: 'deepseek-chat',
       maxAutoRequestsPerDay: 50,
     })
+    fireEvent.click(screen.getByRole('button', { name: '导出 JSON' }))
+    expect(exportData).toHaveBeenCalledOnce()
+    const clearButton = screen.getByRole('button', { name: '清除所有学习数据' })
+    expect((clearButton as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('输入 CLEAR 以确认'), { target: { value: 'CLEAR' } })
+    expect((clearButton as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(clearButton)
+    expect(clearLearningData).toHaveBeenCalledWith(7, 'CLEAR')
   })
 
   it('uses one diagnostic precedence for failure and exhausted budget', () => {

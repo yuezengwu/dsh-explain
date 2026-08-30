@@ -417,6 +417,32 @@ describe('real LLM-service scheduler integration', () => {
     expect(scheduler.status()).toMatchObject({ state: 'disabled', pendingCandidates: 0 })
   })
 
+  it('fences in-flight work before clearing and resumes without resetting autonomous usage', async () => {
+    const { store, adapter, scheduler } = await setup(SETTINGS, target => { target.delayMs = 100 })
+    store.addFixtureExplanation({
+      topicKey: 'existing/clear-target',
+      title: 'Existing learning data',
+      sourceSessionId: SessionId('existing-clear-source'),
+      sourceTurn: 1,
+    })
+    scheduler.enqueue(source('cleared-in-flight'))
+    await until(() => adapter.active === 1)
+    const result = await scheduler.resetLearningData(store.storeRevision())
+    expect(result).toMatchObject({
+      ok: true,
+      cleared: { entries: 1, topics: 1, explanations: 1 },
+      preservedAutoRequests: 1,
+    })
+    expect(store.threadPage({ limit: 10 }).entries).toEqual([])
+    expect(store.autoBudget(50).used).toBe(1)
+    expect(scheduler.status()).toMatchObject({ state: 'ready', pendingCandidates: 0 })
+
+    scheduler.enqueue(source('after-clear'))
+    await until(() => store.activeExplanationCount() === 1)
+    expect(adapter.calls).toEqual(['auto:after-clear'])
+    expect(store.autoBudget(50).used).toBe(2)
+  })
+
   it('surfaces a terminal autonomous failure after exhausting its retry attempts', async () => {
     const { store, adapter, scheduler } = await setup(SETTINGS, target => { target.failAutonomous = true })
     scheduler.enqueue(source('provider-failure'))

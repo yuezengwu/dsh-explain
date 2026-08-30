@@ -7,6 +7,8 @@ import {
   type SnapshotStore,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
+  ClearLearningDataValue,
+  ExplainDataExportV1,
   ExplainConfigurationView,
   ExplainContextView,
   ExplainModelCatalogView,
@@ -34,6 +36,12 @@ export interface LearningSnapshot {
   readonly pendingEntryIds: readonly string[]
   readonly configurationPending: boolean
   readonly configurationError: string | undefined
+  readonly dataOperationPending: 'export' | 'clear' | undefined
+  readonly dataOperationError: string | undefined
+  readonly dataOperationNotice:
+    | { readonly kind: 'exported' }
+    | ({ readonly kind: 'cleared' } & ClearLearningDataValue)
+    | undefined
   readonly navigationError: 'SOURCE_UNAVAILABLE' | 'SOURCE_OPEN_FAILED' | undefined
   readonly error: string | undefined
 }
@@ -51,6 +59,9 @@ const INITIAL: LearningSnapshot = {
   pendingEntryIds: [],
   configurationPending: false,
   configurationError: undefined,
+  dataOperationPending: undefined,
+  dataOperationError: undefined,
+  dataOperationNotice: undefined,
   navigationError: undefined,
   error: undefined,
 }
@@ -216,6 +227,80 @@ export class GlobalLearningStore {
     }
   }
 
+  /** Download the complete public learning projection as one stable v1 JSON file. */
+  async exportData(): Promise<boolean> {
+    const before = this.store.getSnapshot()
+    if (before.dataOperationPending !== undefined) return false
+    this.store.set({
+      ...before,
+      dataOperationPending: 'export',
+      dataOperationError: undefined,
+      dataOperationNotice: undefined,
+    })
+    try {
+      const backup = unwrapRemote(await this.ctx.remote.explain.exportData())
+      downloadExplainBackup(backup)
+      const current = this.store.getSnapshot()
+      this.store.set({ ...current, dataOperationNotice: { kind: 'exported' } })
+      return true
+    } catch (error) {
+      const current = this.store.getSnapshot()
+      this.store.set({
+        ...current,
+        dataOperationError: messageOf(error, 'Learning data could not be exported.'),
+      })
+      return false
+    } finally {
+      const current = this.store.getSnapshot()
+      this.store.set({ ...current, dataOperationPending: undefined })
+    }
+  }
+
+  /** Clear all learned content behind explicit confirmation and the currently rendered revision. */
+  async clearLearningData(expectedStoreRevision: number, confirmation: string): Promise<boolean> {
+    const before = this.store.getSnapshot()
+    if (before.dataOperationPending !== undefined) return false
+    this.store.set({
+      ...before,
+      dataOperationPending: 'clear',
+      dataOperationError: undefined,
+      dataOperationNotice: undefined,
+    })
+    try {
+      const result = unwrapRemote(await this.ctx.remote.explain.clearLearningData({
+        expectedStoreRevision,
+        confirmation,
+      }))
+      if (!result.ok) {
+        const current = this.store.getSnapshot()
+        this.store.set({
+          ...current,
+          dataOperationError: `${result.error.code}: ${result.error.message}`,
+        })
+        if (result.error.code === 'STORE_STALE') await this.refreshAfterCurrent()
+        return false
+      }
+      const current = this.store.getSnapshot()
+      this.store.set({
+        ...current,
+        status: result.status,
+        dataOperationNotice: { kind: 'cleared', ...result.value },
+      })
+      await this.refreshAfterCurrent()
+      return true
+    } catch (error) {
+      const current = this.store.getSnapshot()
+      this.store.set({
+        ...current,
+        dataOperationError: messageOf(error, 'Learning data could not be cleared.'),
+      })
+      return false
+    } finally {
+      const current = this.store.getSnapshot()
+      this.store.set({ ...current, dataOperationPending: undefined })
+    }
+  }
+
   /** Open one still-visible source Session without trusting stale render state. */
   openSource(sourceSessionId: SessionId): boolean {
     try {
@@ -262,6 +347,9 @@ export class GlobalLearningStore {
         pendingEntryIds: [...this.pendingEntries],
         configurationPending: this.store.getSnapshot().configurationPending,
         configurationError: this.store.getSnapshot().configurationError,
+        dataOperationPending: this.store.getSnapshot().dataOperationPending,
+        dataOperationError: this.store.getSnapshot().dataOperationError,
+        dataOperationNotice: this.store.getSnapshot().dataOperationNotice,
         navigationError: this.store.getSnapshot().navigationError,
         error: undefined,
       })
@@ -385,6 +473,23 @@ export class GlobalLearningStore {
   ): void {
     const current = this.store.getSnapshot()
     this.store.set({ ...current, navigationError })
+  }
+}
+
+/** Browser download helper kept separate so the privacy-bounded payload can be tested directly. */
+export function downloadExplainBackup(backup: ExplainDataExportV1): void {
+  const blob = new Blob([`${JSON.stringify(backup, undefined, 2)}\n`], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'dsh-explain-backup-v1.json'
+  anchor.hidden = true
+  document.body.append(anchor)
+  try {
+    anchor.click()
+  } finally {
+    anchor.remove()
+    URL.revokeObjectURL(url)
   }
 }
 

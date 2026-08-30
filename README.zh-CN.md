@@ -65,6 +65,12 @@ Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按�
 - 私有 `ExplainContext` 记录讲解偏好、知识水平和学习进展。
 - 存在待压缩的结构化观察或已关闭讲解时，连续 30 分钟没有 Explain 操作，或下一次请求预计超过所选模型上下文窗口的 50%，都会触发辅助历史压缩。
 
+## 掌控自己的学习数据
+
+进入「**设置 → 学习 → 数据管理**」即可下载 `dsh-explain-backup-v1.json`。版本化备份包含学习卡片、Topic 状态和公开的 `ExplainContext` 投影，不包含完整来源会话、私有来源摘要、凭证或宿主绝对路径。
+
+同一页面也可在输入 `CLEAR` 后清除全部学习内容。Explain 会先取消并隔离进行中的生成，再通过一个 SQLite 事务删除学习线程和上下文。辅助模型设置、启用状态和当前滚动 24 小时自主额度计数会被明确保留。
+
 ## 本地优先
 
 | 数据 | 行为 |
@@ -80,8 +86,8 @@ Explain 只使用 DSH 第一方 `conversation.view`、composer、assistant actio
 ## 兼容性与验证
 
 - 当前兼容版本线：DSH `0.1.1-rc.2`。
-- 单元测试：64 项。
-- DSH Web 组装验收：4 个场景。
+- 单元测试：67 项。
+- DSH Web 组装验收：5 个场景。
 - Explain 自有快捷入口验收：3 个 M6 场景。
 - 真实模型流程证据：[PR #16](https://github.com/yuezengwu/dsh-explain/pull/16)。
 - 完整验收矩阵：[docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)。

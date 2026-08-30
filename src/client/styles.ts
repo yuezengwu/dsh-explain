@@ -52,6 +52,20 @@ export const LEARNING_VIEW_CSS = `
 .dsh-explain-control{display:flex;flex-direction:column;gap:6px;font:var(--dsw-font-xs-12)}
 .dsh-explain-control input,.dsh-explain-control select{box-sizing:border-box;width:100%;min-height:38px;padding:8px 10px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-1);font:var(--dsw-font-sm-14)}
 .dsh-explain-settings-actions{grid-column:1/-1;display:flex;align-items:center;gap:12px;color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxs-12)}
+.dsh-explain-data-management{display:flex;flex-direction:column;gap:12px}
+.dsh-explain-data-management h3{margin:0;font:var(--dsw-font-title-3)}
+.dsh-explain-data-management>div>p{margin:4px 0 0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-12);line-height:1.5}
+.dsh-explain-notice{padding:10px 12px;border:1px solid var(--dsw-alias-border-success,var(--dsw-alias-border-l2));border-radius:10px;background:var(--dsw-alias-bg-layer-2);font:var(--dsw-font-xs-12)}
+.dsh-explain-data-export{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-2)}
+.dsh-explain-data-export>div{display:flex;flex-direction:column;gap:4px}
+.dsh-explain-data-export strong,.dsh-explain-danger-zone strong{font:var(--dsw-font-sm-14)}
+.dsh-explain-data-export small,.dsh-explain-danger-zone small{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxs-12);line-height:1.45}
+.dsh-explain-danger-zone{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.55fr) auto;align-items:end;gap:14px;padding:14px;border:1px solid var(--dsw-alias-border-danger,var(--dsw-alias-border-l2));border-radius:12px;background:var(--dsw-alias-bg-layer-2)}
+.dsh-explain-danger-zone>div:first-child{align-self:center}
+.dsh-explain-danger-zone p{margin:4px 0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-12);line-height:1.45}
+.dsh-explain-danger-button{min-height:34px;padding:7px 12px;border:1px solid var(--dsw-alias-border-danger,var(--dsw-alias-border-l2));border-radius:8px;color:var(--dsw-alias-label-danger,var(--dsw-alias-label-primary));background:transparent;font:var(--dsw-font-xs-12);cursor:pointer}
+.dsh-explain-danger-button:hover:not(:disabled){background:var(--dsw-alias-bg-danger-subtle,var(--dsw-alias-bg-layer-3))}
+.dsh-explain-danger-button:disabled{cursor:not-allowed;opacity:.45}
 .dsh-explain-shortcut{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:6px;border:0;border-radius:28px;background:transparent;color:var(--dsw-alias-label-tertiary);cursor:pointer}
 .dsh-explain-shortcut:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}
 .dsh-explain-shortcut[data-unavailable]{cursor:default;opacity:.4}
@@ -65,5 +79,5 @@ export const LEARNING_VIEW_CSS = `
 .dsh-explain-diagnostics dl>div{min-width:0;padding:10px 12px;background:var(--dsw-alias-bg-layer-2)}
 .dsh-explain-diagnostics dt{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxs-12)}
 .dsh-explain-diagnostics dd{margin:3px 0 0;overflow-wrap:anywhere;font:var(--dsw-font-sm-14)}
-@media (max-width:720px){.dsh-explain-root{padding:16px 12px calc(var(--dsh-composer-height,152px) + 24px)}.dsh-explain-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-explain-context{grid-template-columns:1fr}.dsh-explain-context-wide{grid-column:auto}.dsh-explain-card-header{flex-direction:column}.dsh-explain-history-row{align-items:flex-start;flex-direction:column}.dsh-explain-history-actions{justify-content:flex-start}.dsh-explain-settings-form,.dsh-explain-diagnostics dl{grid-template-columns:1fr}.dsh-explain-settings-heading{flex-direction:column}}
+@media (max-width:720px){.dsh-explain-root{padding:16px 12px calc(var(--dsh-composer-height,152px) + 24px)}.dsh-explain-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-explain-context{grid-template-columns:1fr}.dsh-explain-context-wide{grid-column:auto}.dsh-explain-card-header{flex-direction:column}.dsh-explain-history-row{align-items:flex-start;flex-direction:column}.dsh-explain-history-actions{justify-content:flex-start}.dsh-explain-settings-form,.dsh-explain-diagnostics dl,.dsh-explain-danger-zone{grid-template-columns:1fr}.dsh-explain-settings-heading,.dsh-explain-data-export{align-items:flex-start;flex-direction:column}}
 `

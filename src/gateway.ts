@@ -3,6 +3,9 @@ import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { ExplainRuntime } from './runtime.ts'
 import type { ExplainStore } from './store.ts'
 import type {
+  ClearLearningDataRequest,
+  ClearLearningDataResult,
+  ExplainDataExportV1,
   ExplainContextView,
   ExplainConfigurationView,
   ExplainModelCatalogView,
@@ -100,6 +103,21 @@ export class ExplainGateway extends TypertRemoteService {
   @Remote
   context(): ExplainContextView {
     return this.store.context()
+  }
+
+  /** Export the complete public learning projection as a versioned, privacy-bounded backup. */
+  @Remote
+  exportData(): ExplainDataExportV1 {
+    return this.store.exportData()
+  }
+
+  /** Fence producers and atomically clear learned content while retaining settings and usage counters. */
+  @Remote
+  async clearLearningData(request: ClearLearningDataRequest): Promise<ClearLearningDataResult> {
+    const result = await this.runtime.clearLearningData(request)
+    return result.ok
+      ? { ok: true, value: result.value, status: this.status() }
+      : result
   }
 
   /** Wait for a view revision change or the ordinary long-poll timeout. */
