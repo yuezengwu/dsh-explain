@@ -97,7 +97,13 @@ v6 不包含 `events.ts`、Session projection、ConversationNodeDefinition 或 t
 
 ### 导出与清除边界
 
-`exportData()` 只组装 typed Remote 已允许浏览器读取的 `ThreadEntryView` 与 `ExplainContextView`。导出信封固定为 `format: dsh-explain-backup`、`version: 1`，同时记录导出时间、SQLite schema version 与 store revision。它不读取或序列化 revision-one 私有 `sourceSummary`、完整 Session 转录、credentials、工具原始参数/结果或绝对路径；v0.2 只承诺导出，不提供未经验证的导入路径。
+`exportData()` 只组装 typed Remote 已允许浏览器读取的 `ThreadEntryView`、`ExplainContextView` 与公开复习投影。导出信封固定为 `format: dsh-explain-backup`、`version: 2`，同时记录导出时间、SQLite schema version 与 store revision。它不读取或序列化 revision-one 私有 `sourceSummary`、完整 Session 转录、credentials、工具原始参数/结果或绝对路径；v0.3 只承诺导出，不提供未经验证的导入路径。
+
+### 复习持久化与排期
+
+SQLite schema v3 增加 `review_state`、`review_batches`、`review_attempts` 与复习幂等请求表。v2 启动时在单一事务中原位迁移，既有 mastered Topic 立即到期；新 mastered Topic 的首次到期时间为次日。题目在模型评估前持久化，因此刷新或重启不会改变一轮内容。
+
+复习评估进入 Scheduler 的显式队列，与其他辅助模型工作维持全局单飞但不写 `auto_request_usage`。模型只决定 `mastered | partial | forgotten` 与反馈；Host 根据固定的 1/3/7/14/30/60 天序列计算下一到期时间，避免让模型控制排期。答题结果不反向改写 Topic 的 mastered 状态，记忆强度是独立投影。
 
 `clearLearningData()` 需要精确确认词 `CLEAR` 与页面所见 `expectedStoreRevision`。Runtime 串行化清除；Scheduler 先进入 resetting 状态、提升 epoch、abort 当前模型调用、结算手动队列、清空 timers/candidates，并等待既有 drain 完全退出。只有在生产者静默后，Store 才执行一次 `BEGIN IMMEDIATE` 事务和 revision CAS；在途迟到结果不能重新落库。
 

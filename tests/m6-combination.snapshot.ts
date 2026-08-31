@@ -126,7 +126,8 @@ async function seedSession(dshSource: string, dshHome: string, workspace: string
 async function finishOnboarding(page: Page): Promise<void> {
   await page.getByRole('button', { name: '继续', exact: true }).click()
   await page.locator('[class*="onboardingStage"]').waitFor({ state: 'detached', timeout: 15_000 })
-  await page.getByRole('button', { name: '稍后配置', exact: true }).click()
+  const configureLater = page.getByRole('button', { name: '稍后配置', exact: true })
+  if (await configureLater.count() > 0) await configureLater.click()
 }
 
 describe('M6 Explain-owned shortcuts', () => {

@@ -9,6 +9,7 @@ import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-token-meter'
+import { RequestId } from './brands.ts'
 import { resolveExplainConfig, type ExplainConfig } from './config.ts'
 import { ExplainGateway } from './gateway.ts'
 import {
@@ -58,6 +59,7 @@ export async function apply(ctx: Context, config: ExplainConfig): Promise<void> 
 
   const gateway = new ExplainGateway(ctx, store, runtime)
   registerExplainCommand(ctx, runtime, gateway)
+  registerReviewCommand(ctx, gateway)
 
   const seenTurnEnds = new WeakMap<Session, number>()
   const logger = ctx.logger('dsh-explain')
@@ -80,6 +82,24 @@ export async function apply(ctx: Context, config: ExplainConfig): Promise<void> 
       }
     })
   }, { global: true })
+}
+
+function registerReviewCommand(ctx: Context, gateway: ExplainGateway): void {
+  ctx.commands.register({
+    name: 'review',
+    description: 'Start or resume today\'s local learning review',
+    handler: (): CommandResult => {
+      const result = gateway.startReview({ requestId: RequestId(`command:${crypto.randomUUID()}`) })
+      if (!result.ok) return { kind: 'error', text: `${result.error.code}: ${result.error.message}` }
+      const current = result.dashboard.current
+      return current === undefined
+        ? { kind: 'success', text: 'No review question is pending.' }
+        : {
+            kind: 'success',
+            text: `Review ready (${current.position}/${current.total}): ${current.topicTitle}. Open Learning to answer it.`,
+          }
+    },
+  })
 }
 
 function registerExplainCommand(ctx: Context, runtime: ExplainRuntime, gateway: ExplainGateway): void {

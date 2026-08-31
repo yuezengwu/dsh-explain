@@ -60,13 +60,15 @@ class LearningAdapter extends LlmAdapter {
       const compaction = options.purpose === 'compaction'
       const rephrase = options.system?.includes('Rephrase one still-active explanation') === true
       const manual = options.system?.includes('Fulfill one explicit learning request') === true
+      const review = options.system?.includes('private review evaluator') === true
       const source = requestObject(options)
       const sourceId = String((source.sourceCapsule as { sourceSessionId?: unknown } | undefined)?.sourceSessionId ?? 'rephrase')
-      this.calls.push(compaction ? 'compaction' : rephrase ? 'rephrase' : manual ? `manual:${sourceId}` : `auto:${sourceId}`)
+      this.calls.push(compaction ? 'compaction' : rephrase ? 'rephrase' : manual ? `manual:${sourceId}`
+        : review ? 'review' : `auto:${sourceId}`)
       this.efforts.push(options.reasoningEffort)
       if (compaction && this.failCompaction) throw new Error('test compaction provider failure')
       if (manual && this.failManual) throw new Error('test manual provider failure')
-      if (!compaction && !rephrase && !manual && this.failAutonomous) throw new Error('test autonomous provider failure')
+      if (!compaction && !rephrase && !manual && !review && this.failAutonomous) throw new Error('test autonomous provider failure')
       const response = compaction
         ? {
             dialogueProfile: [],
@@ -83,6 +85,8 @@ class LearningAdapter extends LlmAdapter {
             why: 'It answers the explicit learning request.',
             pitfall: 'Keep the source context bounded.',
           }
+        : review
+        ? { result: 'mastered', feedback: 'The answer captures the core idea.' }
         : {
             kind: 'explain',
             topicKey: `topic/${sourceId}`,
@@ -261,6 +265,33 @@ describe('real LLM-service scheduler integration', () => {
       },
     })
     expect(adapter.calls).toEqual(['manual:manual-source'])
+  })
+
+  it('evaluates one due review through the same global single flight without consuming auto budget', async () => {
+    const { store, adapter, scheduler } = await setup()
+    store.addFixtureExplanation({
+      topicKey: 'review/scheduler',
+      title: 'Scheduler review',
+      sourceSessionId: SessionId('review-source'),
+      sourceTurn: 4,
+      state: 'closed',
+      topicState: 'mastered',
+    })
+    const started = store.startReview({ requestId: RequestId('review-start') }, Date.now() + 10)
+    const current = started.dashboard.current
+    if (current === undefined) throw new Error('missing review question')
+    const result = await scheduler.requestReviewAnswer({
+      requestId: RequestId('review-answer'),
+      reviewId: current.reviewId,
+      answer: 'The scheduler ensures model work is serialized.',
+    }, new AbortController().signal)
+    expect(result).toMatchObject({
+      ok: true,
+      attempt: { result: 'mastered', feedback: 'The answer captures the core idea.' },
+    })
+    expect(adapter.calls).toEqual(['review'])
+    expect(adapter.maxActive).toBe(1)
+    expect(store.autoBudget(50).used).toBe(0)
   })
 
   it('settles a cancelled in-flight manual request without persisting a result', async () => {

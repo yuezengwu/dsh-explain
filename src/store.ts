@@ -10,6 +10,8 @@ import {
   ExplanationId,
   ObservationId,
   RequestId,
+  ReviewBatchId,
+  ReviewId,
   TopicId,
 } from './brands.ts'
 import type {
@@ -28,6 +30,8 @@ import type {
   ManualExplainTarget,
   PersistedSourceSummary,
   RephraseTarget,
+  ReviewEvaluation,
+  ReviewEvaluationTarget,
   SourceCapsule,
   StoredCheckpoint,
   StoredContextObservation,
@@ -36,7 +40,7 @@ import type {
 import type {
   ClearedLearningDataCounts,
   DialoguePreferenceView,
-  ExplainDataExportV1,
+  ExplainDataExportV2,
   ExplainContextStats,
   ExplainContextView,
   ExplainMutationFailure,
@@ -44,13 +48,20 @@ import type {
   FeedbackRequest,
   ReopenTopicRequest,
   ReopenTopicResult,
+  ReviewAttemptView,
+  ReviewDashboardView,
+  ReviewQuestionKind,
+  ReviewQuestionView,
+  ReviewResult,
+  StartReviewRequest,
+  SubmitReviewAnswerRequest,
   ThreadEntryView,
   ThreadPageRequest,
   ThreadPageResult,
   ViewCursor,
   WatchResult,
 } from './types.ts'
-import { CREATE_SCHEMA_SQL, SCHEMA_VERSION } from './schema.ts'
+import { CREATE_SCHEMA_SQL, MIGRATE_V2_TO_V3_SQL, SCHEMA_VERSION } from './schema.ts'
 
 const DAY_MS = 24 * 60 * 60 * 1_000
 const DEFAULT_PAGE_LIMIT = 30
@@ -179,6 +190,50 @@ interface RephraseRow extends ExplanationContextRow {
   source_turn: number
   feedback_ordinal: number
 }
+
+interface ReviewSourceRow {
+  topic_id: string
+  topic_title: string
+  explanation_id: string
+  active_revision: number
+  source_session_id: string
+  source_turn: number
+  payload_json: string
+}
+
+interface ReviewAttemptRow {
+  review_id: string
+  batch_id: string
+  position: number
+  total: number
+  topic_id: string
+  topic_title: string
+  question_kind: ReviewQuestionKind
+  question: string
+  source_session_id: string
+  source_turn: number
+  answer: string | null
+  result: ReviewResult | null
+  feedback: string | null
+  created_at: number
+  completed_at: number | null
+  next_review_at: number | null
+}
+
+interface ReviewStateRow {
+  stage: number
+  streak: number
+}
+
+interface ReviewRequestRow {
+  fingerprint: string
+  review_id: string
+}
+
+export type PrepareReviewAnswerResult =
+  | { readonly ok: true; readonly kind: 'evaluate'; readonly target: ReviewEvaluationTarget }
+  | { readonly ok: true; readonly kind: 'replay'; readonly attempt: ReviewAttemptView }
+  | { readonly ok: false; readonly code: 'REQUEST_ID_CONFLICT' | 'REVIEW_STALE'; readonly message: string }
 
 /** Rolling autonomous-request budget state. */
 export interface AutoBudgetStatus {
@@ -539,6 +594,7 @@ export class ExplainStore {
           VALUES (?, ?, ?, 'learning', 1, ?)
         `).run(topicId, explanation.topicKey, explanation.title, now)
       } else {
+        this.cancelActiveReviewForTopic(topicId, now)
         this.database.prepare(`
           UPDATE topics
           SET title = ?, state = 'learning', topic_revision = topic_revision + 1, updated_at = ?
@@ -813,7 +869,7 @@ export class ExplainStore {
   }
 
   /** Export every browser-visible learning projection without private source summaries or host paths. */
-  exportData(exportedAt = Date.now()): ExplainDataExportV1 {
+  exportData(exportedAt = Date.now()): ExplainDataExportV2 {
     const rows = this.database.prepare(`
       SELECT e.entry_id, e.ordinal, e.kind, e.explanation_id,
              x.state AS explanation_state, e.topic_id,
@@ -827,15 +883,212 @@ export class ExplainStore {
     `).all() as unknown as EntryRow[]
     return {
       format: 'dsh-explain-backup',
-      version: 1,
+      version: 2,
       exportedAt,
       databaseSchemaVersion: SCHEMA_VERSION,
       storeRevision: this.storeRevision(),
       data: {
         entries: rows.map(row => this.entryView(row)),
         context: this.context(),
+        review: {
+          dashboard: this.reviewDashboard(exportedAt),
+          attempts: this.reviewAttempts(),
+        },
       },
     }
+  }
+
+  /** Read due counts, the durable active question, and recent outcomes. */
+  reviewDashboard(now = Date.now()): ReviewDashboardView {
+    const current = this.currentReviewQuestion()
+    const nextDue = this.database.prepare(`
+      SELECT MIN(rs.next_review_at) AS value
+      FROM review_state rs JOIN topics t ON t.topic_id = rs.topic_id
+      WHERE t.state = 'mastered' AND rs.next_review_at > ?
+    `).get(now) as unknown as { value: number | null }
+    const start = new Date(now)
+    start.setHours(0, 0, 0, 0)
+    return {
+      dueCount: this.count(`
+        SELECT COUNT(*) AS count FROM review_state rs
+        JOIN topics t ON t.topic_id = rs.topic_id
+        WHERE t.state = 'mastered' AND rs.next_review_at <= ?
+      `, now),
+      weakCount: this.count(`
+        SELECT COUNT(*) AS count FROM review_state rs
+        JOIN topics t ON t.topic_id = rs.topic_id
+        WHERE t.state = 'mastered' AND rs.last_result IN ('partial', 'forgotten')
+      `),
+      newCount: this.count(`
+        SELECT COUNT(*) AS count FROM review_state rs
+        JOIN topics t ON t.topic_id = rs.topic_id
+        WHERE t.state = 'mastered' AND rs.last_reviewed_at IS NULL
+      `),
+      completedCount: this.count(`
+        SELECT COUNT(*) AS count FROM review_attempts
+        WHERE completed_at >= ? AND completed_at <= ?
+      `, start.getTime(), now),
+      ...(nextDue.value === null ? {} : { nextDueAt: nextDue.value }),
+      ...(current === undefined ? {} : { current }),
+      recent: this.reviewAttempts(8),
+    }
+  }
+
+  /** Start or resume a durable round with at most three currently due mastered topics. */
+  startReview(request: StartReviewRequest, now = Date.now()): {
+    readonly created: boolean
+    readonly dashboard: ReviewDashboardView
+  } {
+    assertRequestId(request.requestId)
+    return this.write(() => {
+      if (this.currentReviewQuestion() !== undefined) {
+        return { created: false, dashboard: this.reviewDashboard(now) }
+      }
+      this.discardOrphanedActiveReview(now)
+      const due = this.database.prepare(`
+        SELECT t.topic_id
+        FROM review_state rs JOIN topics t ON t.topic_id = rs.topic_id
+        WHERE t.state = 'mastered' AND rs.next_review_at <= ?
+        ORDER BY rs.next_review_at ASC, t.updated_at ASC, t.topic_id ASC
+        LIMIT 3
+      `).all(now) as unknown as { topic_id: string }[]
+      if (due.length === 0) return { created: false, dashboard: this.reviewDashboard(now) }
+      const batchId = ReviewBatchId(randomUUID())
+      this.database.prepare(`
+        INSERT INTO review_batches(batch_id, state, created_at) VALUES (?, 'active', ?)
+      `).run(batchId, now)
+      const kinds: readonly ReviewQuestionKind[] = ['recall', 'application', 'distinction']
+      for (const [index, item] of due.entries()) {
+        const source = this.reviewSource(item.topic_id)
+        const kind = kinds[index]!
+        this.database.prepare(`
+          INSERT INTO review_attempts(
+            review_id, batch_id, position, topic_id, explanation_id, explanation_revision,
+            question_kind, question, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          ReviewId(randomUUID()), batchId, index + 1, source.topic_id, source.explanation_id,
+          source.active_revision, kind, reviewQuestion(kind, source.topic_title), now,
+        )
+      }
+      this.advanceStoreRevision()
+      return { created: true, dashboard: this.reviewDashboard(now) }
+    })
+  }
+
+  /** Validate an exact answer and reconstruct the private explanation rubric. */
+  prepareReviewAnswer(request: SubmitReviewAnswerRequest): PrepareReviewAnswerResult {
+    assertRequestId(request.requestId)
+    const answer = request.answer.trim()
+    const fingerprint = reviewFingerprint(request.reviewId, answer)
+    const replay = this.database.prepare(`
+      SELECT fingerprint, review_id FROM review_mutation_requests WHERE request_id = ?
+    `).get(request.requestId) as unknown as ReviewRequestRow | undefined
+    if (replay !== undefined) {
+      if (replay.fingerprint !== fingerprint) {
+        return { ok: false, code: 'REQUEST_ID_CONFLICT', message: 'The request id already belongs to a different review answer.' }
+      }
+      const attempt = this.reviewAttemptById(ReviewId(replay.review_id))
+      if (attempt === undefined || attempt.answer === undefined) {
+        throw new Error('dsh-explain: committed review replay is missing')
+      }
+      return { ok: true, kind: 'replay', attempt }
+    }
+    const row = this.database.prepare(`
+      SELECT ra.review_id, ra.question, ra.question_kind, ra.position,
+             t.title AS topic_title, e.payload_json
+      FROM review_attempts ra
+      JOIN review_batches rb ON rb.batch_id = ra.batch_id
+      JOIN topics t ON t.topic_id = ra.topic_id
+      JOIN entries e ON e.explanation_id = ra.explanation_id
+        AND e.kind = 'explanation' AND e.revision = ra.explanation_revision
+      WHERE ra.review_id = ? AND ra.answer IS NULL AND rb.state = 'active'
+        AND t.state = 'mastered'
+        AND ra.position = (SELECT MIN(p.position) FROM review_attempts p
+          WHERE p.batch_id = ra.batch_id AND p.answer IS NULL)
+      LIMIT 1
+    `).get(request.reviewId) as unknown as {
+      review_id: string
+      question: string
+      question_kind: ReviewQuestionKind
+      topic_title: string
+      payload_json: string
+    } | undefined
+    if (row === undefined) {
+      return { ok: false, code: 'REVIEW_STALE', message: 'This review question is no longer active.' }
+    }
+    return {
+      ok: true,
+      kind: 'evaluate',
+      target: {
+        reviewId: ReviewId(row.review_id),
+        question: row.question,
+        kind: row.question_kind,
+        answer,
+        topicTitle: row.topic_title,
+        explanation: explanationContent(row.payload_json),
+      },
+    }
+  }
+
+  /** Commit one successful semantic evaluation and its deterministic next due date. */
+  commitReviewAnswer(
+    request: SubmitReviewAnswerRequest,
+    evaluation: ReviewEvaluation,
+    generation: GenerationRecord,
+    now = Date.now(),
+  ): { readonly ok: true; readonly attempt: ReviewAttemptView; readonly dashboard: ReviewDashboardView }
+    | { readonly ok: false; readonly code: 'REQUEST_ID_CONFLICT' | 'REVIEW_STALE'; readonly message: string } {
+    return this.write(() => {
+      const prepared = this.prepareReviewAnswer(request)
+      if (!prepared.ok) return prepared
+      if (prepared.kind === 'replay') {
+        return { ok: true as const, attempt: prepared.attempt, dashboard: this.reviewDashboard(now) }
+      }
+      const state = this.database.prepare(`
+        SELECT rs.stage, rs.streak FROM review_attempts ra
+        JOIN review_state rs ON rs.topic_id = ra.topic_id WHERE ra.review_id = ?
+      `).get(request.reviewId) as unknown as ReviewStateRow | undefined
+      if (state === undefined) {
+        return { ok: false as const, code: 'REVIEW_STALE' as const, message: 'This review schedule no longer exists.' }
+      }
+      const next = nextReviewState(state, evaluation.result, now)
+      const answer = request.answer.trim()
+      const updated = this.database.prepare(`
+        UPDATE review_attempts SET answer = ?, result = ?, feedback = ?, generation_json = ?,
+          completed_at = ?, next_review_at = ?
+        WHERE review_id = ? AND answer IS NULL
+      `).run(answer, evaluation.result, evaluation.feedback, JSON.stringify(generation), now, next.nextReviewAt, request.reviewId)
+      if (updated.changes !== 1) {
+        return { ok: false as const, code: 'REVIEW_STALE' as const, message: 'This review question is no longer active.' }
+      }
+      this.database.prepare(`
+        UPDATE review_state SET stage = ?, streak = ?, next_review_at = ?, last_reviewed_at = ?,
+          last_result = ?, updated_at = ?
+        WHERE topic_id = (SELECT topic_id FROM review_attempts WHERE review_id = ?)
+      `).run(next.stage, next.streak, next.nextReviewAt, now, evaluation.result, now, request.reviewId)
+      this.database.prepare(`
+        INSERT INTO review_mutation_requests(request_id, fingerprint, review_id, created_at)
+        VALUES (?, ?, ?, ?)
+      `).run(request.requestId, reviewFingerprint(request.reviewId, answer), request.reviewId, now)
+      this.database.prepare(`
+        UPDATE review_batches SET state = 'completed', completed_at = ?
+        WHERE batch_id = (SELECT batch_id FROM review_attempts WHERE review_id = ?)
+          AND NOT EXISTS (
+            SELECT 1 FROM review_attempts pending
+            WHERE pending.batch_id = review_batches.batch_id AND pending.answer IS NULL
+          )
+      `).run(now, request.reviewId)
+      this.database.prepare(`
+        UPDATE runtime_state
+        SET activity_generation = activity_generation + 1, last_user_action_at = ?
+        WHERE singleton = 1
+      `).run(now)
+      this.advanceStoreRevision()
+      const attempt = this.reviewAttemptById(request.reviewId)
+      if (attempt === undefined || attempt.answer === undefined) throw new Error('dsh-explain: committed review is missing')
+      return { ok: true as const, attempt, dashboard: this.reviewDashboard(now) }
+    })
   }
 
   /** Atomically clear learned content while preserving settings, request usage, and the live runtime lease. */
@@ -852,8 +1105,13 @@ export class ExplainStore {
         explanations: this.count('SELECT COUNT(*) AS count FROM explanations'),
         observations: this.count('SELECT COUNT(*) AS count FROM context_observations'),
         checkpoints: this.count('SELECT COUNT(*) AS count FROM context_checkpoints'),
+        reviewAttempts: this.count('SELECT COUNT(*) AS count FROM review_attempts'),
       }
       this.database.exec(`
+        DELETE FROM review_mutation_requests;
+        DELETE FROM review_attempts;
+        DELETE FROM review_batches;
+        DELETE FROM review_state;
         DELETE FROM mutation_requests;
         DELETE FROM context_coverage;
         DELETE FROM observation_coverage;
@@ -1027,6 +1285,13 @@ export class ExplainStore {
           UPDATE topics SET state = 'mastered', topic_revision = topic_revision + 1, updated_at = ?
           WHERE topic_id = ?
         `).run(now, target.topic_id)
+        this.database.prepare(`
+          INSERT INTO review_state(topic_id, stage, streak, next_review_at, updated_at)
+          VALUES (?, 0, 0, ?, ?)
+          ON CONFLICT(topic_id) DO UPDATE SET stage = 0, streak = 0,
+            next_review_at = excluded.next_review_at, last_reviewed_at = NULL,
+            last_result = NULL, updated_at = excluded.updated_at
+        `).run(target.topic_id, now + DAY_MS, now)
         this.database.exec(`
           UPDATE runtime_state
           SET activity_generation = activity_generation + 1,
@@ -1090,6 +1355,7 @@ export class ExplainStore {
         UPDATE topics SET state = 'learning', topic_revision = topic_revision + 1, updated_at = ?
         WHERE topic_id = ? AND state = 'mastered' AND topic_revision = ?
       `).run(now, request.topicId, request.expectedTopicRevision)
+      this.cancelActiveReviewForTopic(request.topicId, now)
       this.database.prepare(`
         INSERT INTO entries(entry_id, ordinal, kind, topic_id, payload_json, created_at)
         VALUES (?, ?, 'topic-reopen', ?, ?, ?)
@@ -1127,6 +1393,12 @@ export class ExplainStore {
         INSERT INTO topics(topic_id, topic_key, title, state, topic_revision, updated_at)
         VALUES (?, ?, ?, ?, 1, ?)
       `).run(topicId, input.topicKey, latest.title, input.topicState ?? 'learning', now)
+      if (input.topicState === 'mastered') {
+        this.database.prepare(`
+          INSERT INTO review_state(topic_id, stage, streak, next_review_at, updated_at)
+          VALUES (?, 0, 0, ?, ?)
+        `).run(topicId, now, now)
+      }
       this.database.prepare(`
         INSERT INTO explanations(
           explanation_id, topic_id, source_session_id, state, active_revision, created_at, updated_at
@@ -1354,7 +1626,18 @@ export class ExplainStore {
       }
       return
     }
-    const meta = this.meta()
+    let meta = this.meta()
+    if (meta.schema_version === 2) {
+      this.database.exec('BEGIN IMMEDIATE')
+      try {
+        this.database.exec(MIGRATE_V2_TO_V3_SQL)
+        this.database.exec('COMMIT')
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
+      meta = this.meta()
+    }
     if (meta.schema_version !== SCHEMA_VERSION) {
       throw new Error(`dsh-explain: unsupported schema version ${meta.schema_version}; expected ${SCHEMA_VERSION}`)
     }
@@ -1431,6 +1714,72 @@ export class ExplainStore {
     const row = this.entryRow('e.entry_id = ?', entryId)
     if (row === undefined) throw new Error(`dsh-explain: committed entry ${entryId} is missing`)
     return this.entryView(row)
+  }
+
+  private reviewSource(topicId: string): ReviewSourceRow {
+    const row = this.database.prepare(`
+      SELECT t.topic_id, t.title AS topic_title, x.explanation_id, x.active_revision,
+             x.source_session_id, e.source_turn, e.payload_json
+      FROM topics t
+      JOIN explanations x ON x.topic_id = t.topic_id AND x.state = 'closed'
+      JOIN entries e ON e.explanation_id = x.explanation_id AND e.kind = 'explanation'
+        AND e.revision = x.active_revision
+      WHERE t.topic_id = ?
+      ORDER BY x.updated_at DESC, x.explanation_id DESC
+      LIMIT 1
+    `).get(topicId) as unknown as ReviewSourceRow | undefined
+    if (row === undefined) throw new Error('dsh-explain: due topic has no closed explanation source')
+    return row
+  }
+
+  private cancelActiveReviewForTopic(topicId: TopicId, now: number): void {
+    const row = this.database.prepare(`
+      SELECT rb.batch_id FROM review_batches rb
+      JOIN review_attempts ra ON ra.batch_id = rb.batch_id
+      WHERE rb.state = 'active' AND ra.topic_id = ? AND ra.answer IS NULL
+      LIMIT 1
+    `).get(topicId) as unknown as { batch_id: string } | undefined
+    if (row === undefined) return
+    this.database.prepare(`DELETE FROM review_attempts WHERE batch_id = ? AND answer IS NULL`).run(row.batch_id)
+    this.database.prepare(`
+      UPDATE review_batches SET state = 'completed', completed_at = ? WHERE batch_id = ? AND state = 'active'
+    `).run(now, row.batch_id)
+  }
+
+  private discardOrphanedActiveReview(now: number): void {
+    const row = this.database.prepare(`
+      SELECT batch_id FROM review_batches WHERE state = 'active' LIMIT 1
+    `).get() as unknown as { batch_id: string } | undefined
+    if (row === undefined) return
+    this.database.prepare(`DELETE FROM review_attempts WHERE batch_id = ? AND answer IS NULL`).run(row.batch_id)
+    this.database.prepare(`
+      UPDATE review_batches SET state = 'completed', completed_at = ? WHERE batch_id = ?
+    `).run(now, row.batch_id)
+  }
+
+  private currentReviewQuestion(): ReviewQuestionView | undefined {
+    const row = this.database.prepare(`${reviewAttemptSelect()}
+      WHERE rb.state = 'active' AND ra.answer IS NULL
+      ORDER BY ra.position ASC LIMIT 1
+    `).get() as unknown as ReviewAttemptRow | undefined
+    return row === undefined ? undefined : reviewQuestionView(row)
+  }
+
+  private reviewAttemptById(reviewId: ReviewId): ReviewAttemptView | undefined {
+    const row = this.database.prepare(`${reviewAttemptSelect()}
+      WHERE ra.review_id = ? AND ra.answer IS NOT NULL
+      LIMIT 1
+    `).get(reviewId) as unknown as ReviewAttemptRow | undefined
+    return row === undefined ? undefined : reviewAttemptView(row)
+  }
+
+  private reviewAttempts(limit?: number): readonly ReviewAttemptView[] {
+    const rows = this.database.prepare(`${reviewAttemptSelect()}
+      WHERE ra.answer IS NOT NULL
+      ORDER BY ra.completed_at DESC, ra.review_id DESC
+      ${limit === undefined ? '' : 'LIMIT ?'}
+    `).all(...(limit === undefined ? [] : [limit])) as unknown as ReviewAttemptRow[]
+    return rows.map(reviewAttemptView)
   }
 
   private requestReplay(requestId: RequestId): RequestReplayRow | undefined {
@@ -1711,6 +2060,86 @@ function feedbackFingerprint(request: FeedbackRequest): string {
 
 function reopenFingerprint(request: ReopenTopicRequest): string {
   return JSON.stringify(['topic-reopen', request.topicId, request.expectedTopicRevision])
+}
+
+function reviewFingerprint(reviewId: string, answer: string): string {
+  return JSON.stringify(['review-answer', reviewId, answer])
+}
+
+function reviewQuestion(kind: ReviewQuestionKind, title: string): string {
+  const chinese = /\p{Script=Han}/u.test(title)
+  if (chinese) {
+    if (kind === 'recall') return `请用自己的话解释“${title}”：它是什么，为什么重要？`
+    if (kind === 'application') return `假设你在实际工作中遇到“${title}”，你会如何应用它？请说明理由。`
+    return `“${title}”最容易和什么混淆或踩什么坑？你会如何区分或避免？`
+  }
+  if (kind === 'recall') return `Explain “${title}” in your own words: what is it, and why does it matter?`
+  if (kind === 'application') return `How would you apply “${title}” in a concrete work scenario, and why?`
+  return `What is “${title}” easiest to confuse or misuse, and how would you distinguish or avoid it?`
+}
+
+function nextReviewState(
+  current: ReviewStateRow,
+  result: ReviewResult,
+  now: number,
+): { readonly stage: number; readonly streak: number; readonly nextReviewAt: number } {
+  if (result === 'mastered') {
+    const stage = Math.min(5, current.stage + 1)
+    const intervals = [DAY_MS, 3 * DAY_MS, 7 * DAY_MS, 14 * DAY_MS, 30 * DAY_MS, 60 * DAY_MS]
+    return { stage, streak: current.streak + 1, nextReviewAt: now + intervals[stage]! }
+  }
+  if (result === 'partial') {
+    return { stage: Math.max(0, current.stage - 1), streak: 0, nextReviewAt: now + DAY_MS }
+  }
+  return { stage: 0, streak: 0, nextReviewAt: now + DAY_MS }
+}
+
+function reviewAttemptSelect(): string {
+  return `
+    SELECT ra.review_id, ra.batch_id, ra.position,
+           (SELECT COUNT(*) FROM review_attempts total WHERE total.batch_id = ra.batch_id) AS total,
+           ra.topic_id, t.title AS topic_title, ra.question_kind, ra.question,
+           x.source_session_id, e.source_turn, ra.answer, ra.result, ra.feedback,
+           ra.created_at, ra.completed_at, ra.next_review_at
+    FROM review_attempts ra
+    JOIN review_batches rb ON rb.batch_id = ra.batch_id
+    JOIN topics t ON t.topic_id = ra.topic_id
+    JOIN explanations x ON x.explanation_id = ra.explanation_id
+    JOIN entries e ON e.explanation_id = ra.explanation_id AND e.kind = 'explanation'
+      AND e.revision = ra.explanation_revision
+  `
+}
+
+function reviewQuestionView(row: ReviewAttemptRow): ReviewQuestionView {
+  return {
+    reviewId: ReviewId(row.review_id),
+    batchId: ReviewBatchId(row.batch_id),
+    position: row.position,
+    total: row.total,
+    topicId: TopicId(row.topic_id),
+    topicTitle: row.topic_title,
+    kind: row.question_kind,
+    question: row.question,
+    sourceSessionId: SessionId(row.source_session_id),
+    sourceTurn: row.source_turn,
+    createdAt: row.created_at,
+  }
+}
+
+function reviewAttemptView(row: ReviewAttemptRow): ReviewAttemptView {
+  if (row.answer === null || row.result === null || row.feedback === null
+    || row.completed_at === null || row.next_review_at === null) {
+    throw new Error(`dsh-explain: completed review ${row.review_id} is incomplete`)
+  }
+  const { total: _total, ...question } = reviewQuestionView(row)
+  return {
+    ...question,
+    answer: row.answer,
+    result: row.result,
+    feedback: row.feedback,
+    completedAt: row.completed_at,
+    nextReviewAt: row.next_review_at,
+  }
 }
 
 function parseObject(value: string, label: string): Record<string, unknown> {

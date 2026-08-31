@@ -1,6 +1,8 @@
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { TokenUsage } from '@deepseek-ai/dsh-llm'
 import type { CheckpointId, ExplanationId, ObservationId, TopicId } from './brands.ts'
+import type { ReviewId } from './brands.ts'
+import type { ReviewQuestionKind } from './types.ts'
 
 /** Bounded, ephemeral source material from one completed top-level turn. */
 export interface SourceCapsule {
@@ -76,6 +78,22 @@ export interface GenerationRecord {
   readonly model: string
   readonly generatedAt: number
   readonly usage?: TokenUsage
+}
+
+/** Strict semantic assessment of one review answer. */
+export interface ReviewEvaluation {
+  readonly result: 'mastered' | 'partial' | 'forgotten'
+  readonly feedback: string
+}
+
+/** Private, bounded rubric reconstructed for one exact pending review answer. */
+export interface ReviewEvaluationTarget {
+  readonly reviewId: ReviewId
+  readonly question: string
+  readonly kind: ReviewQuestionKind
+  readonly answer: string
+  readonly topicTitle: string
+  readonly explanation: ExplanationContent
 }
 
 /** Lease fencing identity held by one host runtime. */

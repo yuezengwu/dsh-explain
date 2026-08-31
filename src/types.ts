@@ -1,7 +1,11 @@
 import type { SessionId } from '@deepseek-ai/dsh-session'
-import type { EntryId, ExplanationId, ObservationId, RequestId, TopicId } from './brands.ts'
+import type {
+  EntryId, ExplanationId, ObservationId, RequestId, ReviewBatchId, ReviewId, TopicId,
+} from './brands.ts'
 
-export type { EntryId, ExplanationId, ObservationId, RequestId, TopicId } from './brands.ts'
+export type {
+  EntryId, ExplanationId, ObservationId, RequestId, ReviewBatchId, ReviewId, TopicId,
+} from './brands.ts'
 
 /** Monotonic process-local cursor used by long-polling clients. */
 export interface ViewCursor {
@@ -200,6 +204,91 @@ export interface ExplainDataExportV1 {
   }
 }
 
+export type ReviewQuestionKind = 'recall' | 'application' | 'distinction'
+export type ReviewResult = 'mastered' | 'partial' | 'forgotten'
+
+/** One unanswered question in the durable active review round. */
+export interface ReviewQuestionView {
+  readonly reviewId: ReviewId
+  readonly batchId: ReviewBatchId
+  readonly position: number
+  readonly total: number
+  readonly topicId: TopicId
+  readonly topicTitle: string
+  readonly kind: ReviewQuestionKind
+  readonly question: string
+  readonly sourceSessionId: SessionId
+  readonly sourceTurn: number
+  readonly createdAt: number
+}
+
+/** One completed answer with its schedule transition. */
+export interface ReviewAttemptView extends Omit<ReviewQuestionView, 'total'> {
+  readonly answer: string
+  readonly result: ReviewResult
+  readonly feedback: string
+  readonly completedAt: number
+  readonly nextReviewAt: number
+}
+
+/** Read-only today-review projection used by the global Learning view. */
+export interface ReviewDashboardView {
+  readonly dueCount: number
+  readonly weakCount: number
+  readonly newCount: number
+  readonly completedCount: number
+  readonly nextDueAt?: number
+  readonly current?: ReviewQuestionView
+  readonly recent: readonly ReviewAttemptView[]
+}
+
+/** Start or resume one durable review round of up to three due concepts. */
+export interface StartReviewRequest { readonly requestId: RequestId }
+export type StartReviewResult =
+  | { readonly ok: true; readonly dashboard: ReviewDashboardView }
+  | { readonly ok: false; readonly error: ReviewFailure }
+
+/** Evaluate one exact pending question. */
+export interface SubmitReviewAnswerRequest {
+  readonly requestId: RequestId
+  readonly reviewId: ReviewId
+  readonly answer: string
+}
+
+export interface ReviewFailure {
+  readonly code:
+    | 'EXPLAIN_DISABLED'
+    | 'EXPLAIN_RUNTIME_FAILED'
+    | 'REVIEW_NOT_DUE'
+    | 'REVIEW_STALE'
+    | 'REVIEW_ANSWER_INVALID'
+    | 'REVIEW_REQUEST_CANCELLED'
+    | 'REVIEW_EVALUATION_FAILED'
+    | 'REQUEST_ID_CONFLICT'
+  readonly message: string
+}
+
+export type SubmitReviewAnswerResult =
+  | { readonly ok: true; readonly dashboard: ReviewDashboardView; readonly attempt: ReviewAttemptView }
+  | { readonly ok: false; readonly error: ReviewFailure }
+
+/** Portable v2 backup adds review schedules and answer history while retaining public-only fields. */
+export interface ExplainDataExportV2 {
+  readonly format: 'dsh-explain-backup'
+  readonly version: 2
+  readonly exportedAt: number
+  readonly databaseSchemaVersion: number
+  readonly storeRevision: number
+  readonly data: {
+    readonly entries: readonly ThreadEntryView[]
+    readonly context: ExplainContextView
+    readonly review: {
+      readonly dashboard: ReviewDashboardView
+      readonly attempts: readonly ReviewAttemptView[]
+    }
+  }
+}
+
 /** Destructive clear request guarded by both an explicit phrase and store revision CAS. */
 export interface ClearLearningDataRequest {
   readonly expectedStoreRevision: number
@@ -213,6 +302,7 @@ export interface ClearedLearningDataCounts {
   readonly explanations: number
   readonly observations: number
   readonly checkpoints: number
+  readonly reviewAttempts: number
 }
 
 /** Successful clear receipt, including the intentionally retained autonomous-request usage. */

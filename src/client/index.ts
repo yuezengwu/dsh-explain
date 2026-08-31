@@ -62,6 +62,8 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
         refresh: () => learning.refresh(),
         feedback: (entry, action) => learning.feedback(entry, action),
         reopen: entry => learning.reopen(entry),
+        startReview: () => learning.startReview(),
+        submitReviewAnswer: (reviewId, answer) => learning.submitReviewAnswer(reviewId, answer),
         openSource: sourceSessionId => learning.openSource(sourceSessionId),
       }),
     }, LearningView))

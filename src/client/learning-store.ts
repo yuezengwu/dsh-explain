@@ -8,11 +8,13 @@ import {
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
   ClearLearningDataValue,
-  ExplainDataExportV1,
+  ExplainDataExportV2,
   ExplainConfigurationView,
   ExplainContextView,
   ExplainModelCatalogView,
   ExplainStatusView,
+  ReviewDashboardView,
+  ReviewId,
   ThreadEntryView,
   UpdateConfigurationRequest,
 } from 'dsh-explain/types'
@@ -31,9 +33,12 @@ export interface LearningSnapshot {
   readonly modelCatalogPhase: 'idle' | 'loading' | 'ready' | 'error'
   readonly modelCatalogError: string | undefined
   readonly context: ExplainContextView | undefined
+  readonly review?: ReviewDashboardView | undefined
   readonly entries: readonly ThreadEntryView[]
   readonly hasMore: boolean
   readonly pendingEntryIds: readonly string[]
+  readonly reviewPending?: boolean | undefined
+  readonly reviewError?: string | undefined
   readonly configurationPending: boolean
   readonly configurationError: string | undefined
   readonly dataOperationPending: 'export' | 'clear' | undefined
@@ -54,9 +59,12 @@ const INITIAL: LearningSnapshot = {
   modelCatalogPhase: 'idle',
   modelCatalogError: undefined,
   context: undefined,
+  review: undefined,
   entries: [],
   hasMore: false,
   pendingEntryIds: [],
+  reviewPending: false,
+  reviewError: undefined,
   configurationPending: false,
   configurationError: undefined,
   dataOperationPending: undefined,
@@ -175,6 +183,57 @@ export class GlobalLearningStore {
       topicId: entry.topicId,
       expectedTopicRevision: entry.topicRevision,
     })))
+  }
+
+  /** Start or resume today's durable review round. */
+  async startReview(): Promise<void> {
+    const before = this.store.getSnapshot()
+    if (before.reviewPending) return
+    this.store.set({ ...before, reviewPending: true, reviewError: undefined })
+    try {
+      const result = unwrapRemote(await this.ctx.remote.explain.startReview({ requestId: requestId() }))
+      if (!result.ok) {
+        const current = this.store.getSnapshot()
+        this.store.set({ ...current, reviewError: `${result.error.code}: ${result.error.message}` })
+        return
+      }
+      const current = this.store.getSnapshot()
+      this.store.set({ ...current, review: result.dashboard, reviewError: undefined })
+      await this.refreshAfterCurrent()
+    } catch (error) {
+      const current = this.store.getSnapshot()
+      this.store.set({ ...current, reviewError: messageOf(error, 'Review could not be started.') })
+    } finally {
+      const current = this.store.getSnapshot()
+      this.store.set({ ...current, reviewPending: false })
+    }
+  }
+
+  /** Submit one answer against the exact pending review identity. */
+  async submitReviewAnswer(reviewId: ReviewId, answer: string): Promise<void> {
+    const before = this.store.getSnapshot()
+    if (before.reviewPending) return
+    this.store.set({ ...before, reviewPending: true, reviewError: undefined })
+    try {
+      const controller = new AbortController()
+      const result = unwrapRemote(await this.ctx.remote.explain.submitReviewAnswer({
+        requestId: requestId(), reviewId, answer,
+      }, controller.signal))
+      if (!result.ok) {
+        const current = this.store.getSnapshot()
+        this.store.set({ ...current, reviewError: `${result.error.code}: ${result.error.message}` })
+        return
+      }
+      const current = this.store.getSnapshot()
+      this.store.set({ ...current, review: result.dashboard, reviewError: undefined })
+      await this.refreshAfterCurrent()
+    } catch (error) {
+      const current = this.store.getSnapshot()
+      this.store.set({ ...current, reviewError: messageOf(error, 'Review answer could not be evaluated.') })
+    } finally {
+      const current = this.store.getSnapshot()
+      this.store.set({ ...current, reviewPending: false })
+    }
   }
 
   /** Load or refresh advisory model choices without blocking the learning thread. */
@@ -321,15 +380,17 @@ export class GlobalLearningStore {
   private async refreshNow(): Promise<void> {
     try {
       const desired = Math.max(PAGE_SIZE, this.store.getSnapshot().entries.length)
-      const [statusResult, configurationResult, contextResult, initialPages] = await Promise.all([
+      const [statusResult, configurationResult, contextResult, reviewResult, initialPages] = await Promise.all([
         this.ctx.remote.explain.status(),
         this.ctx.remote.explain.configuration(),
         this.ctx.remote.explain.context(),
+        this.ctx.remote.explain.reviewDashboard(),
         this.readPages(desired),
       ])
       const status = unwrapRemote(statusResult)
       const configuration = unwrapRemote(configurationResult)
       const context = unwrapRemote(contextResult)
+      const review = unwrapRemote(reviewResult)
       let pages = initialPages
       while (pages.hasMore && pages.entries.length < this.store.getSnapshot().entries.length) {
         pages = await this.readPages(this.store.getSnapshot().entries.length)
@@ -342,9 +403,12 @@ export class GlobalLearningStore {
         modelCatalogPhase: this.store.getSnapshot().modelCatalogPhase,
         modelCatalogError: this.store.getSnapshot().modelCatalogError,
         context,
+        review,
         entries: pages.entries,
         hasMore: pages.hasMore,
         pendingEntryIds: [...this.pendingEntries],
+        reviewPending: this.store.getSnapshot().reviewPending,
+        reviewError: this.store.getSnapshot().reviewError,
         configurationPending: this.store.getSnapshot().configurationPending,
         configurationError: this.store.getSnapshot().configurationError,
         dataOperationPending: this.store.getSnapshot().dataOperationPending,
@@ -477,12 +541,12 @@ export class GlobalLearningStore {
 }
 
 /** Browser download helper kept separate so the privacy-bounded payload can be tested directly. */
-export function downloadExplainBackup(backup: ExplainDataExportV1): void {
+export function downloadExplainBackup(backup: ExplainDataExportV2): void {
   const blob = new Blob([`${JSON.stringify(backup, undefined, 2)}\n`], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = 'dsh-explain-backup-v1.json'
+  anchor.download = 'dsh-explain-backup-v2.json'
   anchor.hidden = true
   document.body.append(anchor)
   try {

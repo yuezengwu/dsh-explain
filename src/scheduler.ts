@@ -2,13 +2,16 @@ import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ExplainRuntimeSettings } from './config.ts'
 import { compactOnce, CompactionError } from './compactor.ts'
-import type { LeaseToken, ManualExplainTarget, RephraseTarget, SourceCapsule } from './domain.ts'
+import type {
+  LeaseToken, ManualExplainTarget, RephraseTarget, ReviewEvaluationTarget, SourceCapsule,
+} from './domain.ts'
 import {
   estimateAuxiliaryRequest,
   ExplainRouteError,
   renderExplainRequest,
   renderManualExplainRequest,
   renderRephraseRequest,
+  renderReviewEvaluationRequest,
   resolveExplainRoute,
   runAuxiliaryRequest,
   type AuxiliaryRequest,
@@ -20,7 +23,7 @@ import {
   type ExplainStore,
   type StoreClearLearningDataResult,
 } from './store.ts'
-import type { ThreadEntryView } from './types.ts'
+import type { SubmitReviewAnswerRequest, SubmitReviewAnswerResult, ThreadEntryView } from './types.ts'
 
 const LEASE_RENEW_MS = 5_000
 const LEASE_TTL_MS = 15_000
@@ -60,6 +63,13 @@ interface ManualJob {
   readonly settle: (result: ManualExplainResult) => void
 }
 
+interface ReviewJob {
+  readonly request: SubmitReviewAnswerRequest
+  readonly target: ReviewEvaluationTarget
+  readonly signal: AbortSignal
+  readonly settle: (result: SubmitReviewAnswerResult) => void
+}
+
 /** Single-flight owner for autonomous explanations, rephrases, and compaction. */
 export class ExplainScheduler {
   private settings: ExplainRuntimeSettings
@@ -81,7 +91,9 @@ export class ExplainScheduler {
   private readonly failedRephrases = new Set<string>()
   private readonly manualQueue: ManualJob[] = []
   private activeManual: ManualJob | undefined
-  private controllerKind: 'auto' | 'rephrase' | 'manual' | 'idle' | undefined
+  private readonly reviewQueue: ReviewJob[] = []
+  private activeReview: ReviewJob | undefined
+  private controllerKind: 'auto' | 'rephrase' | 'manual' | 'review' | 'idle' | undefined
   private started = false
   private stopped = false
   private resetting = false
@@ -189,6 +201,69 @@ export class ExplainScheduler {
     })
   }
 
+  /** Queue one explicit review evaluation ahead of autonomous and maintenance work. */
+  requestReviewAnswer(
+    request: SubmitReviewAnswerRequest,
+    signal: AbortSignal,
+  ): Promise<SubmitReviewAnswerResult> {
+    const answer = request.answer.trim()
+    if (signal.aborted) return Promise.resolve(reviewFailure(
+      'REVIEW_REQUEST_CANCELLED', 'The review request was cancelled.',
+    ))
+    if (answer === '' || answer.length > 4_000) return Promise.resolve(reviewFailure(
+      'REVIEW_ANSWER_INVALID', 'The review answer must contain 1 to 4,000 characters.',
+    ))
+    if (!this.settings.enabled) return Promise.resolve(reviewFailure(
+      'EXPLAIN_DISABLED', 'Learning mode is disabled.',
+    ))
+    if (this.failed !== undefined || this.route === undefined || this.stopped || this.resetting) {
+      return Promise.resolve(reviewFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime is not ready.'))
+    }
+    if (this.activeReview?.request.reviewId === request.reviewId
+      || this.reviewQueue.some(job => job.request.reviewId === request.reviewId)) {
+      return Promise.resolve(reviewFailure('REVIEW_STALE', 'This review question is already being evaluated.'))
+    }
+    const prepared = this.store.prepareReviewAnswer({ ...request, answer })
+    if (!prepared.ok) return Promise.resolve(reviewFailure(prepared.code, prepared.message))
+    if (prepared.kind === 'replay') {
+      return Promise.resolve({
+        ok: true,
+        attempt: prepared.attempt,
+        dashboard: this.store.reviewDashboard(),
+      })
+    }
+    return new Promise((resolve) => {
+      let settled = false
+      const normalized = { ...request, answer }
+      const job: ReviewJob = {
+        request: normalized,
+        target: prepared.target,
+        signal,
+        settle: (result) => {
+          if (settled) return
+          settled = true
+          signal.removeEventListener('abort', onAbort)
+          resolve(result)
+        },
+      }
+      const onAbort = (): void => {
+        const index = this.reviewQueue.indexOf(job)
+        if (index !== -1) {
+          this.reviewQueue.splice(index, 1)
+          job.settle(reviewFailure('REVIEW_REQUEST_CANCELLED', 'The review request was cancelled.'))
+          this.store.notifyRuntimeChange()
+        }
+      }
+      signal.addEventListener('abort', onAbort, { once: true })
+      this.reviewQueue.push(job)
+      if (this.controllerKind === 'auto' || this.controllerKind === 'idle') {
+        this.controller?.abort(new Error('dsh-explain: explicit review takes priority'))
+      }
+      this.store.notifyRuntimeChange()
+      this.kick()
+    })
+  }
+
   /** Apply a resolved settings snapshot; model-semantic changes fence in-flight work. */
   async configure(next: ExplainRuntimeSettings, previous = this.settings): Promise<void> {
     if (this.stopped) return
@@ -207,6 +282,9 @@ export class ExplainScheduler {
       this.settleQueuedManual(next.enabled
         ? manualFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime changed before the explanation started.')
         : manualFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.'))
+      this.settleQueuedReview(next.enabled
+        ? reviewFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime changed before the review started.')
+        : reviewFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.'))
     }
     if (previous.maxSourceChars !== next.maxSourceChars) this.queue.clear()
     this.operationError = undefined
@@ -215,6 +293,7 @@ export class ExplainScheduler {
       this.failed = undefined
       this.queue.clear()
       this.settleQueuedManual(manualFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.'))
+      this.settleQueuedReview(reviewFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.'))
       this.clearTimers()
       this.store.notifyRuntimeChange()
       return
@@ -248,6 +327,9 @@ export class ExplainScheduler {
     this.settleQueuedManual(manualFailure(
       'EXPLAIN_RUNTIME_FAILED', 'Learning data was cleared before the explanation started.',
     ))
+    this.settleQueuedReview(reviewFailure(
+      'EXPLAIN_RUNTIME_FAILED', 'Learning data was cleared before the review started.',
+    ))
     this.clearTimers()
     this.queue.clear()
     const draining = this.draining
@@ -274,6 +356,7 @@ export class ExplainScheduler {
     this.stopped = true
     this.cancelCurrent()
     this.settleQueuedManual(manualFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime stopped.'))
+    this.settleQueuedReview(reviewFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime stopped.'))
     this.clearTimers()
     if (this.heartbeat !== undefined) clearInterval(this.heartbeat)
     await Promise.allSettled(this.draining === undefined ? [] : [this.draining])
@@ -327,6 +410,11 @@ export class ExplainScheduler {
       const manual = this.manualQueue.shift()
       if (manual !== undefined) {
         await this.runManual(manual)
+        continue
+      }
+      const review = this.reviewQueue.shift()
+      if (review !== undefined) {
+        await this.runReview(review)
         continue
       }
       const rephrase = this.nextRephrase()
@@ -477,6 +565,57 @@ export class ExplainScheduler {
       }
     } finally {
       this.activeManual = undefined
+      this.endRequest(controller)
+      this.store.notifyRuntimeChange()
+    }
+    job.settle(result)
+  }
+
+  private async runReview(job: ReviewJob): Promise<void> {
+    if (job.signal.aborted) {
+      job.settle(reviewFailure('REVIEW_REQUEST_CANCELLED', 'The review request was cancelled.'))
+      return
+    }
+    const route = this.mustRoute()
+    const epoch = this.epoch
+    const controller = this.beginRequest('review')
+    this.activeReview = job
+    const signal = AbortSignal.any([controller.signal, job.signal])
+    let result: SubmitReviewAnswerResult
+    try {
+      const request = renderReviewEvaluationRequest(
+        job.target,
+        Math.min(1_000, this.settings.maxOutputTokens),
+      )
+      const generated = await runAuxiliaryRequest(this.ctx, route, request, this.settings.timeoutMs, signal)
+      if (!this.isCurrent(epoch, controller)) {
+        result = this.settings.enabled
+          ? reviewFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime changed before the review completed.')
+          : reviewFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.')
+      } else {
+        const committed = this.store.commitReviewAnswer(job.request, generated.value, generated.generation)
+        result = committed.ok
+          ? { ok: true, attempt: committed.attempt, dashboard: committed.dashboard }
+          : reviewFailure(committed.code, committed.message)
+        if (committed.ok) this.operationError = undefined
+      }
+    } catch (error) {
+      if (job.signal.aborted) {
+        result = reviewFailure('REVIEW_REQUEST_CANCELLED', 'The review request was cancelled.')
+      } else if (controller.signal.aborted) {
+        result = this.settings.enabled
+          ? reviewFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime changed before the review completed.')
+          : reviewFailure('EXPLAIN_DISABLED', 'Learning mode is disabled.')
+      } else {
+        result = reviewFailure('REVIEW_EVALUATION_FAILED', 'The review answer could not be evaluated.')
+        this.operationError = {
+          code: 'REVIEW_EVALUATION_FAILED',
+          message: 'The review answer could not be evaluated.',
+        }
+        this.logger.warn('review evaluation failed: %s', safeError(error).message)
+      }
+    } finally {
+      this.activeReview = undefined
       this.endRequest(controller)
       this.store.notifyRuntimeChange()
     }
@@ -648,6 +787,7 @@ export class ExplainScheduler {
 
   private hasImmediateWork(): boolean {
     return this.manualQueue.length > 0
+      || this.reviewQueue.length > 0
       || this.store.pendingRephrases(this.failedRephrases).length > 0
       || (this.queue.hasExecutable(this.store.activeSources())
         && this.store.autoBudget(this.settings.maxAutoRequestsPerDay).used
@@ -692,6 +832,7 @@ export class ExplainScheduler {
       : error instanceof CompactionError ? error.code : 'RUNTIME_FAILED'
     this.failed = { code, message: safe.message }
     this.settleQueuedManual(manualFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime is not ready.'))
+    this.settleQueuedReview(reviewFailure('EXPLAIN_RUNTIME_FAILED', 'The learning runtime is not ready.'))
     this.store.notifyRuntimeChange()
   }
 
@@ -705,6 +846,10 @@ export class ExplainScheduler {
   private settleQueuedManual(result: ManualExplainResult): void {
     for (const job of this.manualQueue.splice(0)) job.settle(result)
   }
+
+  private settleQueuedReview(result: SubmitReviewAnswerResult): void {
+    for (const job of this.reviewQueue.splice(0)) job.settle(result)
+  }
 }
 
 function rephraseKey(explanationId: string, revision: number): string {
@@ -717,6 +862,13 @@ function safeError(error: unknown): Error {
 
 function safeCause(error: Error): Error {
   return error.cause instanceof Error ? error.cause : error
+}
+
+function reviewFailure(
+  code: Extract<SubmitReviewAnswerResult, { readonly ok: false }>['error']['code'],
+  message: string,
+): Extract<SubmitReviewAnswerResult, { readonly ok: false }> {
+  return { ok: false, error: { code, message } }
 }
 
 function manualFailure(

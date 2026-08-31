@@ -1,6 +1,6 @@
 # dsh-explain PRD（P0 定稿）
 
-> 状态：**P0 定稿；M7 v0.2 本地数据治理实现与验收完成**（2026-08-30）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
+> 状态：**P0 定稿；M8 v0.3 复习闭环实现与验收完成**（2026-08-31）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
 > 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v12 同步。
 
 ## 定位
@@ -46,7 +46,7 @@ explain 维护一份不进入主 Agent 的全局 `ExplainContext`，用来判断
 | Explain 快捷入口（P1，M6 已实现） | Explain 自己在 composer 工具行填写 `/explain --selection <text>`，并在已完成 assistant 回答上填写 `/explain --answer <turn> <request>`；都不自动提交、不覆盖非空草稿，Advisor 只经用户显式选中进入 |
 | 自主选题 | 只观察顶层 Session 中正常完成且包含非空 assistant 输出的回合；explain 可以返回“不讲” |
 | 来源讲解槽 | 每个来源 Session 最多一个活跃讲解，可以没有；有活跃讲解时仍保留本来源最新一个候选 |
-| 全局单飞 | 全局最多一个辅助模型请求；主动请求、重讲、压缩和自主候选按明确优先级串行执行 |
+| 全局单飞 | 全局最多一个辅助模型请求；主动请求、复习评估、重讲、压缩和自主候选按明确优先级串行执行 |
 | 自主调用预算 | 自主判断默认最多发送 50 次/滚动 24 小时；发送失败与重试也计数，耗尽后候选暂停，用户触发的主动讲解、重讲与压缩不占额度 |
 | 全局 `ExplainContext` | 汇总对话偏好、知识概况和学习进展；每次主动讲解、自主讲解和重讲都读取，永不进入主 Agent 请求 |
 | 自动压缩 | 连续 30 分钟无 explain 操作，或预计上下文占用大于 50% 时，压缩尚未纳入检查点的 observations 与已关闭讲解 |
@@ -57,7 +57,8 @@ explain 维护一份不进入主 Agent 的全局 `ExplainContext`，用来判断
 | ✗ 没懂 | 保持同一 `ExplanationId`、`TopicId` 和来源 Session，生成 `revision + 1` |
 | 撤销掌握 | 已掌握状态提供「撤销」操作；撤销不自动生成讲解，只允许未来再次命中该 Topic |
 | 本地持久化 | 学习历史、反馈、Topic 状态、来源活跃状态、压缩检查点、`ExplainContext` 和全局顺序写入 `$DSH_HOME/dsh-explain/v1/thread.sqlite` |
-| 数据管理（M7） | 设置页导出版本化、脱敏的 `dsh-explain-backup-v1.json`；输入 `CLEAR` 并通过 store revision CAS 后原子清除学习内容，同时保留 settings、运行租约和滚动自主额度计数 |
+| 复习闭环（M8） | 新掌握概念次日进入复习；每轮最多三道回忆/应用/辨析题，评估为掌握/模糊/遗忘，按确定性间隔排期并回链来源 |
+| 数据管理（M7/M8） | 设置页导出版本化、脱敏的 `dsh-explain-backup-v2.json`，包含复习历史与排期；输入 `CLEAR` 并通过 store revision CAS 后原子清除学习内容，同时保留 settings、运行租约和滚动自主额度计数 |
 | UI 依赖 | 只使用 DSH 第一方 `conversation.view`、`conversation.input.left` 和 `conversation.chat.assistant-actions` 槽位；P0/P1 不引入外部 UI 插件 |
 
 ## 交互与调度流程
@@ -172,7 +173,7 @@ P0 不自动切换或抢占 `conversation.view`。用户在当前工作 Session 
 - 行内讲解、回合尾部反馈、右侧悬浮窗和自动抢焦点。
 - 空白 Session Hero 阶段的学习入口、独立学习页面和隐藏工作 composer。
 - 学习卡内连续自由对话、语音、深度档位和自适应课程；P0 的主动学习是一次命令对应一条讲解。
-- 语义向量查重、知识图谱、复习计划、测验和卡片。
+- 语义向量查重、知识图谱、自适应课程、外部题库与社交排行。
 - 将 `ExplainContext` 注入主 Agent，或自动读取/写入其他 memory 插件的私有数据。
 - 跨 Session 定位到具体消息；M4 只支持打开仍存在的来源 Session。
 - 完整生产提示词与工作转录的审计重放。

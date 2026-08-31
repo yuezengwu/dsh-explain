@@ -79,5 +79,22 @@ export const LEARNING_VIEW_CSS = `
 .dsh-explain-diagnostics dl>div{min-width:0;padding:10px 12px;background:var(--dsw-alias-bg-layer-2)}
 .dsh-explain-diagnostics dt{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxs-12)}
 .dsh-explain-diagnostics dd{margin:3px 0 0;overflow-wrap:anywhere;font:var(--dsw-font-sm-14)}
+.dsh-explain-review{padding:16px;border:1px solid var(--dsw-alias-border-focus,var(--dsw-alias-border-l2));border-radius:14px;background:var(--dsw-alias-bg-layer-2)}
+.dsh-explain-review-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.dsh-explain-review-intro{margin:5px 0 0;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-12);line-height:1.5}
+.dsh-explain-review-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.dsh-explain-review-card{background:var(--dsw-alias-bg-layer-1)}
+.dsh-explain-review-card .dsh-explain-badge{display:inline-flex;margin-bottom:6px}
+.dsh-explain-review-question{margin:14px 0 10px;font:var(--dsw-font-sm-14);font-weight:600;line-height:1.55;white-space:pre-wrap}
+.dsh-explain-review-answer{box-sizing:border-box;width:100%;min-height:110px;resize:vertical;padding:10px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base);font:var(--dsw-font-sm-14);line-height:1.5}
+.dsh-explain-review-answer:focus{outline:2px solid var(--dsw-alias-border-focus,var(--dsw-alias-border-l2));outline-offset:1px}
+.dsh-explain-review-recent{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.dsh-explain-review-recent>h3{margin:0;font:var(--dsw-font-xs-12);color:var(--dsw-alias-label-secondary)}
+.dsh-explain-review-result{padding:10px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
+.dsh-explain-review-result>div{display:flex;justify-content:space-between;gap:12px;font:var(--dsw-font-xs-12)}
+.dsh-explain-review-result p{margin:6px 0;font:var(--dsw-font-xs-12);line-height:1.5}
+.dsh-explain-review-result small{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxs-12)}
+.dsh-explain-review-result-footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dsh-explain-review-verdict{flex:none}.dsh-explain-review-verdict-mastered{color:var(--dsw-alias-label-success,var(--dsw-alias-label-primary))}.dsh-explain-review-verdict-partial{color:var(--dsw-alias-label-warning,var(--dsw-alias-label-secondary))}.dsh-explain-review-verdict-forgotten{color:var(--dsw-alias-label-danger,var(--dsw-alias-label-primary))}
 @media (max-width:720px){.dsh-explain-root{padding:16px 12px calc(var(--dsh-composer-height,152px) + 24px)}.dsh-explain-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-explain-context{grid-template-columns:1fr}.dsh-explain-context-wide{grid-column:auto}.dsh-explain-card-header{flex-direction:column}.dsh-explain-history-row{align-items:flex-start;flex-direction:column}.dsh-explain-history-actions{justify-content:flex-start}.dsh-explain-settings-form,.dsh-explain-diagnostics dl,.dsh-explain-danger-zone{grid-template-columns:1fr}.dsh-explain-settings-heading,.dsh-explain-data-export{align-items:flex-start;flex-direction:column}}
 `
