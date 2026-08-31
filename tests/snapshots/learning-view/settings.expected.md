@@ -10,17 +10,17 @@
 - text: 模型
 - combobox "模型 建议列表不限制路由；未列出的 id 会在启用时校验容量。"
 - text: 建议列表不限制路由；未列出的 id 会在启用时校验容量。 每 24 小时自主请求上限
-- spinbutton "每 24 小时自主请求上限 失败与重试计入额度；用户显式重讲和压缩不计入。": "12"
-- text: 失败与重试计入额度；用户显式重讲和压缩不计入。
+- spinbutton "每 24 小时自主请求上限 失败与重试计入额度；用户显式复习、重讲和压缩不计入。": "12"
+- text: 失败与重试计入额度；用户显式复习、重讲和压缩不计入。
 - button "保存设置"
 - text: 设置 revision 1
 - heading "数据管理" [level=3]
 - paragraph: 导出或清除本机保存的学习记录。清除前建议先下载备份。
 - strong: 导出学习数据
-- text: 下载版本化 JSON，包含学习卡片、Topic 状态和 ExplainContext；不包含完整会话、凭证或绝对路径。
+- text: 下载版本化 JSON，包含学习卡片、复习记录、Topic 状态和 ExplainContext；不包含完整会话、凭证或绝对路径。
 - button "导出 JSON"
 - strong: 清除本机学习数据
-- paragraph: 永久删除所有学习卡片、Topic 状态和 ExplainContext。进行中的讲解会被取消。
+- paragraph: 永久删除所有学习卡片、复习记录、Topic 状态和 ExplainContext。进行中的讲解或复习会被取消。
 - text: 辅助模型设置、启用状态和当前 24 小时自主额度计数会保留。 输入 CLEAR 以确认
 - textbox "输入 CLEAR 以确认":
   - /placeholder: CLEAR

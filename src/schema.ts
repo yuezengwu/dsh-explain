@@ -1,5 +1,5 @@
-/** Current dsh-explain SQLite format. Pre-release builds reject every other version. */
-export const SCHEMA_VERSION = 2
+/** Current dsh-explain SQLite format. Version 2 is migrated in place. */
+export const SCHEMA_VERSION = 3
 
 /** Complete schema installed atomically for a new database. */
 export const CREATE_SCHEMA_SQL = `
@@ -127,8 +127,120 @@ CREATE TABLE runtime_lease (
   expires_at INTEGER NOT NULL
 ) STRICT;
 
+CREATE TABLE review_state (
+  topic_id TEXT PRIMARY KEY REFERENCES topics(topic_id),
+  stage INTEGER NOT NULL DEFAULT 0 CHECK (stage >= 0 AND stage <= 5),
+  streak INTEGER NOT NULL DEFAULT 0 CHECK (streak >= 0),
+  next_review_at INTEGER NOT NULL,
+  last_reviewed_at INTEGER,
+  last_result TEXT CHECK (last_result IS NULL OR last_result IN ('mastered', 'partial', 'forgotten')),
+  updated_at INTEGER NOT NULL
+) STRICT;
+
+CREATE INDEX review_state_due ON review_state(next_review_at, topic_id);
+
+CREATE TABLE review_batches (
+  batch_id TEXT PRIMARY KEY,
+  state TEXT NOT NULL CHECK (state IN ('active', 'completed')),
+  created_at INTEGER NOT NULL,
+  completed_at INTEGER
+) STRICT;
+
+CREATE UNIQUE INDEX review_batches_one_active ON review_batches(state) WHERE state = 'active';
+
+CREATE TABLE review_attempts (
+  review_id TEXT PRIMARY KEY,
+  batch_id TEXT NOT NULL REFERENCES review_batches(batch_id),
+  position INTEGER NOT NULL CHECK (position >= 1 AND position <= 3),
+  topic_id TEXT NOT NULL REFERENCES topics(topic_id),
+  explanation_id TEXT NOT NULL REFERENCES explanations(explanation_id),
+  explanation_revision INTEGER NOT NULL CHECK (explanation_revision >= 1),
+  question_kind TEXT NOT NULL CHECK (question_kind IN ('recall', 'application', 'distinction')),
+  question TEXT NOT NULL,
+  answer TEXT,
+  result TEXT CHECK (result IS NULL OR result IN ('mastered', 'partial', 'forgotten')),
+  feedback TEXT,
+  generation_json TEXT,
+  created_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  next_review_at INTEGER,
+  UNIQUE(batch_id, position),
+  UNIQUE(batch_id, topic_id),
+  CHECK (
+    (answer IS NULL AND result IS NULL AND feedback IS NULL AND generation_json IS NULL
+      AND completed_at IS NULL AND next_review_at IS NULL)
+    OR (answer IS NOT NULL AND result IS NOT NULL AND feedback IS NOT NULL
+      AND generation_json IS NOT NULL AND completed_at IS NOT NULL AND next_review_at IS NOT NULL)
+  )
+) STRICT;
+
+CREATE INDEX review_attempts_recent ON review_attempts(completed_at DESC);
+
+CREATE TABLE review_mutation_requests (
+  request_id TEXT PRIMARY KEY,
+  fingerprint TEXT NOT NULL,
+  review_id TEXT NOT NULL REFERENCES review_attempts(review_id),
+  created_at INTEGER NOT NULL
+) STRICT;
+
 INSERT INTO meta(singleton, schema_version, store_revision, next_ordinal)
 VALUES (1, ${SCHEMA_VERSION}, 0, 1);
 INSERT INTO runtime_state(singleton, activity_generation, context_generation)
 VALUES (1, 0, 0);
+`
+
+/** Atomic v2 to v3 migration. Existing mastered topics become immediately due. */
+export const MIGRATE_V2_TO_V3_SQL = `
+CREATE TABLE review_state (
+  topic_id TEXT PRIMARY KEY REFERENCES topics(topic_id),
+  stage INTEGER NOT NULL DEFAULT 0 CHECK (stage >= 0 AND stage <= 5),
+  streak INTEGER NOT NULL DEFAULT 0 CHECK (streak >= 0),
+  next_review_at INTEGER NOT NULL,
+  last_reviewed_at INTEGER,
+  last_result TEXT CHECK (last_result IS NULL OR last_result IN ('mastered', 'partial', 'forgotten')),
+  updated_at INTEGER NOT NULL
+) STRICT;
+CREATE INDEX review_state_due ON review_state(next_review_at, topic_id);
+CREATE TABLE review_batches (
+  batch_id TEXT PRIMARY KEY,
+  state TEXT NOT NULL CHECK (state IN ('active', 'completed')),
+  created_at INTEGER NOT NULL,
+  completed_at INTEGER
+) STRICT;
+CREATE UNIQUE INDEX review_batches_one_active ON review_batches(state) WHERE state = 'active';
+CREATE TABLE review_attempts (
+  review_id TEXT PRIMARY KEY,
+  batch_id TEXT NOT NULL REFERENCES review_batches(batch_id),
+  position INTEGER NOT NULL CHECK (position >= 1 AND position <= 3),
+  topic_id TEXT NOT NULL REFERENCES topics(topic_id),
+  explanation_id TEXT NOT NULL REFERENCES explanations(explanation_id),
+  explanation_revision INTEGER NOT NULL CHECK (explanation_revision >= 1),
+  question_kind TEXT NOT NULL CHECK (question_kind IN ('recall', 'application', 'distinction')),
+  question TEXT NOT NULL,
+  answer TEXT,
+  result TEXT CHECK (result IS NULL OR result IN ('mastered', 'partial', 'forgotten')),
+  feedback TEXT,
+  generation_json TEXT,
+  created_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  next_review_at INTEGER,
+  UNIQUE(batch_id, position),
+  UNIQUE(batch_id, topic_id),
+  CHECK (
+    (answer IS NULL AND result IS NULL AND feedback IS NULL AND generation_json IS NULL
+      AND completed_at IS NULL AND next_review_at IS NULL)
+    OR (answer IS NOT NULL AND result IS NOT NULL AND feedback IS NOT NULL
+      AND generation_json IS NOT NULL AND completed_at IS NOT NULL AND next_review_at IS NOT NULL)
+  )
+) STRICT;
+CREATE INDEX review_attempts_recent ON review_attempts(completed_at DESC);
+CREATE TABLE review_mutation_requests (
+  request_id TEXT PRIMARY KEY,
+  fingerprint TEXT NOT NULL,
+  review_id TEXT NOT NULL REFERENCES review_attempts(review_id),
+  created_at INTEGER NOT NULL
+) STRICT;
+INSERT INTO review_state(topic_id, stage, streak, next_review_at, updated_at)
+SELECT topic_id, 0, 0, updated_at, updated_at FROM topics WHERE state = 'mastered';
+UPDATE meta SET schema_version = 3 WHERE singleton = 1;
 `

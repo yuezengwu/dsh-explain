@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
@@ -8,7 +8,7 @@ import type {
   SessionListState,
   SnapshotStore,
 } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ThreadEntryView } from 'dsh-explain/types'
+import type { ReviewId, ThreadEntryView } from 'dsh-explain/types'
 import type { LearningSnapshot } from './learning-store.ts'
 import { diagnosticState } from './diagnostics.ts'
 
@@ -23,6 +23,8 @@ export interface LearningViewInjected {
   refresh: () => Promise<void>
   feedback: (entry: ThreadEntryView, action: 'understood' | 'not-understood') => Promise<void>
   reopen: (entry: ThreadEntryView) => Promise<void>
+  startReview: () => Promise<void>
+  submitReviewAnswer: (reviewId: ReviewId, answer: string) => Promise<void>
   openSource: (sourceSessionId: SessionId) => boolean
 }
 
@@ -30,7 +32,8 @@ type LearningViewProps = ConvViewProps & InjectFace<LearningViewInjected> & Prop
 
 /** Global learning thread rendered through one Session-scoped conversation view entry. */
 export function LearningView({
-  sessionId, useLearning, useSessions, activate, loadOlder, refresh, feedback, reopen, openSource, t,
+  sessionId, useLearning, useSessions, activate, loadOlder, refresh, feedback, reopen,
+  startReview, submitReviewAnswer, openSource, t,
 }: LearningViewProps) {
   useEffect(() => activate(), [activate])
   const snapshot = useLearning(value => value)
@@ -103,6 +106,17 @@ export function LearningView({
                 label={t('metric.budget')}
               />
             </div>
+            {snapshot.review !== undefined && (
+              <ReviewPanel
+                snapshot={snapshot}
+                sessionId={sessionId}
+                sources={sources}
+                onStart={startReview}
+                onSubmit={submitReviewAnswer}
+                onOpenSource={openSource}
+                t={t}
+              />
+            )}
             <ContextPanel snapshot={snapshot} t={t} />
           </>
         )}
@@ -179,6 +193,110 @@ export function LearningView({
         </section>
       </main>
     </div>
+  )
+}
+
+function ReviewPanel({ snapshot, sessionId, sources, onStart, onSubmit, onOpenSource, t }: {
+  readonly snapshot: LearningSnapshot
+  readonly sessionId: SessionId
+  readonly sources: SessionListState['byId']
+  readonly onStart: LearningViewInjected['startReview']
+  readonly onSubmit: LearningViewInjected['submitReviewAnswer']
+  readonly onOpenSource: LearningViewInjected['openSource']
+  readonly t: LearningViewProps['t']
+}) {
+  const review = snapshot.review!
+  const current = review.current
+  const [answer, setAnswer] = useState('')
+  useEffect(() => { setAnswer('') }, [current?.reviewId])
+  return (
+    <section className="dsh-explain-section dsh-explain-review">
+      <div className="dsh-explain-review-heading">
+        <div>
+          <h2 className="dsh-explain-section-title">{t('review.title')}</h2>
+          <p className="dsh-explain-review-intro">{t('review.intro')}</p>
+        </div>
+        {current === undefined && (
+          <Button size="sm" variant="primary"
+            disabled={snapshot.reviewPending || snapshot.status?.enabled !== true || review.dueCount === 0}
+            onClick={() => { void onStart() }}>
+            {snapshot.reviewPending ? t('review.starting') : t('review.start')}
+          </Button>
+        )}
+      </div>
+      <div className="dsh-explain-review-stats">
+        <Metric value={review.dueCount} label={t('review.due')} />
+        <Metric value={review.weakCount} label={t('review.weak')} />
+        <Metric value={review.newCount} label={t('review.new')} />
+        <Metric value={review.completedCount} label={t('review.completed')} />
+      </div>
+      {snapshot.reviewError !== undefined && (
+        <div className="dsh-explain-error" role="alert">{snapshot.reviewError}</div>
+      )}
+      {current === undefined
+        ? <div className="dsh-explain-empty">
+            {review.dueCount === 0
+              ? review.nextDueAt === undefined ? t('review.none')
+                : `${t('review.next')} ${new Date(review.nextDueAt).toLocaleString()}`
+              : t('review.ready')}
+          </div>
+        : (
+          <article className="dsh-explain-card dsh-explain-review-card">
+            <div className="dsh-explain-card-header">
+              <div>
+                <span className="dsh-explain-badge">{t(`review.kind.${current.kind}`)}</span>
+                <h3>{current.topicTitle}</h3>
+              </div>
+              <span className="dsh-explain-count">{current.position}/{current.total}</span>
+            </div>
+            <p className="dsh-explain-review-question">{current.question}</p>
+            <textarea
+              className="dsh-explain-review-answer"
+              value={answer}
+              maxLength={4_000}
+              placeholder={t('review.answerPlaceholder')}
+              disabled={snapshot.reviewPending}
+              onChange={event => { setAnswer(event.target.value) }}
+            />
+            <div className="dsh-explain-actions">
+              <Button size="sm" variant="primary"
+                disabled={snapshot.reviewPending || answer.trim() === ''}
+                onClick={() => { void onSubmit(current.reviewId, answer) }}>
+                {snapshot.reviewPending ? t('review.evaluating') : t('review.submit')}
+              </Button>
+              {sources[current.sourceSessionId] === undefined
+                ? <span className="dsh-explain-source-unavailable">{t('entry.sourceUnavailable')}</span>
+                : current.sourceSessionId !== sessionId && <Button size="sm" variant="outline" onClick={() => { onOpenSource(current.sourceSessionId) }}>
+                    {t('action.openSource')}
+                  </Button>}
+            </div>
+          </article>
+        )}
+      {review.recent.length > 0 && (
+        <div className="dsh-explain-review-recent">
+          <h3>{t('review.recent')}</h3>
+          {review.recent.slice(0, 3).map(attempt => (
+            <div className="dsh-explain-review-result" key={attempt.reviewId}>
+              <div>
+                <strong>{attempt.topicTitle}</strong>
+                <span className={`dsh-explain-review-verdict dsh-explain-review-verdict-${attempt.result}`}>
+                  {t(`review.result.${attempt.result}`)}
+                </span>
+              </div>
+              <p>{attempt.feedback}</p>
+              <div className="dsh-explain-review-result-footer">
+                <small>{t('review.next')} {new Date(attempt.nextReviewAt).toLocaleString()}</small>
+                {sources[attempt.sourceSessionId] !== undefined && attempt.sourceSessionId !== sessionId && (
+                  <Button size="sm" variant="outline" onClick={() => { onOpenSource(attempt.sourceSessionId) }}>
+                    {t('action.openSource')}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
 

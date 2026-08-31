@@ -311,9 +311,10 @@ describe('keyless assembled DSH Web learning view', () => {
     await continueButton.click()
     await page.locator('[class*="onboardingStage"]').waitFor({ state: 'detached', timeout: 15_000 })
     const configureLater = page.getByRole('button', { name: '稍后配置', exact: true })
-    await configureLater.waitFor({ timeout: 15_000 })
-    await configureLater.click()
-    await configureLater.waitFor({ state: 'detached', timeout: 15_000 })
+    if (await configureLater.count() > 0) {
+      await configureLater.click()
+      await configureLater.waitFor({ state: 'detached', timeout: 15_000 })
+    }
     expect(await page.getByRole('tab', { name: '学习' }).count()).toBe(0)
     try {
       await openWorkspaceSession(page, 'workspace-primary')
@@ -340,6 +341,7 @@ describe('keyless assembled DSH Web learning view', () => {
   it('renders available and missing sources while disabled', async () => {
     if (page === undefined) throw new Error('web page is not initialized')
     const view = page.getByTestId('dsh-explain-learning-view')
+    await view.getByText('学习模式已关闭', { exact: true }).waitFor({ timeout: 15_000 })
     const snapshot = await stableAria(view)
     await compareOrRefresh(snapshot)
     expect(snapshot).toContain('学习模式已关闭')
@@ -396,7 +398,7 @@ describe('keyless assembled DSH Web learning view', () => {
     expect(pageErrors).toEqual([])
   })
 
-  it('downloads the v1 backup and clears learning data through the real settings page', async () => {
+  it('downloads the v2 backup and clears learning data through the real settings page', async () => {
     if (page === undefined) throw new Error('web page is not initialized')
     await page.getByRole('button', { name: '设置', exact: true }).click()
     const settingsDialog = page.getByRole('dialog', { name: '设置', exact: true })
@@ -408,14 +410,17 @@ describe('keyless assembled DSH Web learning view', () => {
     const downloadReady = page.waitForEvent('download')
     await settings.getByRole('button', { name: '导出 JSON' }).click()
     const download = await downloadReady
-    expect(download.suggestedFilename()).toBe('dsh-explain-backup-v1.json')
+    expect(download.suggestedFilename()).toBe('dsh-explain-backup-v2.json')
     const downloadPath = await download.path()
     if (downloadPath === null) throw new Error('learning backup download has no local path')
     const backupJson = await readFile(downloadPath, 'utf8')
     expect(JSON.parse(backupJson)).toMatchObject({
       format: 'dsh-explain-backup',
-      version: 1,
-      data: { entries: [{ ordinal: 1 }, { ordinal: 2 }] },
+      version: 2,
+      data: {
+        entries: [{ ordinal: 1 }, { ordinal: 2 }],
+        review: { dashboard: { dueCount: 0 }, attempts: [] },
+      },
     })
     expect(backupJson).not.toContain('sourceSummary')
     expect(backupJson).not.toContain(sourceWorkspace)

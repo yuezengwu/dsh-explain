@@ -42,6 +42,7 @@ Git-hosted plugins build during installation. If pnpm requests build approval, a
 | Entry point | What happens |
 |---|---|
 | `/explain <request>` | Requests an explanation using the current session as bounded source context. |
+| `/review` | Starts or resumes a local review round in the Learning tab. |
 | **Explain selected text** | Creates an editable `/explain --selection …` draft from visible text. It never submits automatically. |
 | **Learn from this answer** | Creates an editable draft tied to the exact finalized assistant turn. |
 | Automatic evaluation | After an eligible completed turn, Explain may add one useful explanation within the configured budget. |
@@ -56,20 +57,24 @@ Each learning card answers three questions:
 
 Choose **Got it** to close the card, or **Not yet** to request a different explanation. Rephrasing remains available even if the source session is later deleted.
 
+## Review what you learned
+
+Concepts marked **Got it** enter a local review schedule the next day. **Learning → Today's review** selects up to three due concepts and asks recall, application, and distinction questions. The auxiliary model evaluates answers as **Mastered**, **Partial**, or **Forgotten**, gives concise feedback, links back to the source session, and schedules the next review at a deterministic interval. Review calls share the global single-flight scheduler and do not consume the autonomous-evaluation budget.
+
 ## One learning thread, many work sessions
 
 Every `$DSH_HOME` owns exactly one Explain learning thread. Individual work sessions contribute material, but resumes and forks never copy the learning state.
 
 - Each source session has at most one explanation awaiting feedback.
 - All work sessions display the same global history in the first-party **Learning** tab.
-- One global scheduler serializes manual explanations, autonomous evaluation, rephrases, and compaction.
+- One global scheduler serializes manual explanations, reviews, autonomous evaluation, rephrases, and compaction.
 - The default autonomous budget is 50 requests per rolling 24 hours and survives restarts.
 - A private `ExplainContext` tracks explanation preferences, knowledge level, and learning progress.
 - When structured observations or closed explanations are pending, auxiliary history compacts after 30 minutes without an Explain action, or before a request would exceed 50% of the selected model's context window.
 
 ## Own your learning data
 
-Open **Settings → Learning → Data management** to download `dsh-explain-backup-v1.json`. The versioned backup contains learning cards, Topic state, and the public `ExplainContext` projection; it excludes full source sessions, private source summaries, credentials, and absolute host paths.
+Open **Settings → Learning → Data management** to download `dsh-explain-backup-v2.json`. The versioned backup contains learning cards, Topic state, review schedules and outcomes, and the public `ExplainContext` projection; it excludes full source sessions, private source summaries, credentials, and absolute host paths.
 
 The same page can clear all learned content after you type `CLEAR`. Explain first cancels and fences in-flight generation, then removes the learning thread and context in one SQLite transaction. Auxiliary-model settings, the enabled state, and the current rolling 24-hour autonomous-usage count are deliberately preserved.
 
@@ -88,7 +93,7 @@ Explain uses first-party DSH `conversation.view`, composer, assistant-action, an
 ## Compatibility and verification
 
 - Current compatibility line: DSH `0.1.1-rc.2`.
-- Unit suite: 67 tests.
+- Unit suite: 70 tests.
 - Assembled DSH Web acceptance: 5 scenarios.
 - Explain-owned shortcut acceptance: 3 M6 scenarios.
 - Real-model workflow evidence: [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16).

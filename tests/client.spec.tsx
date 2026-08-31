@@ -6,7 +6,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { createSnapshotStore } from './client-runtime-stub.ts'
-import { EntryId, ExplanationId, TopicId } from '../src/brands.ts'
+import { EntryId, ExplanationId, ReviewBatchId, ReviewId, TopicId } from '../src/brands.ts'
 import { LearningView } from '../src/client/LearningView.tsx'
 import { LearningSettingsSection } from '../src/client/LearningSettingsSection.tsx'
 import { diagnosticState } from '../src/client/diagnostics.ts'
@@ -102,6 +102,26 @@ describe('conversation learning view', () => {
         },
         inferred: true,
       },
+      review: {
+        dueCount: 1,
+        weakCount: 0,
+        newCount: 1,
+        completedCount: 0,
+        current: {
+          reviewId: ReviewId('review-current'),
+          batchId: ReviewBatchId('review-batch'),
+          position: 1,
+          total: 3,
+          topicId: TopicId('topic-review'),
+          topicTitle: '类型收窄复习',
+          kind: 'recall',
+          question: '请用自己的话解释类型收窄。',
+          sourceSessionId: SessionId('session-current'),
+          sourceTurn: 9,
+          createdAt: 1_700_000_000_100,
+        },
+        recent: [],
+      },
       entries: [current, other, history],
       hasMore: false,
       pendingEntryIds: [],
@@ -118,6 +138,7 @@ describe('conversation learning view', () => {
       .mockResolvedValue(undefined)
     const cleanupView = vi.fn()
     const activate = vi.fn(() => cleanupView)
+    const submitReviewAnswer = vi.fn().mockResolvedValue(undefined)
     const props = {
       sessionId: SessionId('session-current'),
       useLearning: learningHook(store),
@@ -127,6 +148,8 @@ describe('conversation learning view', () => {
       refresh: vi.fn().mockResolvedValue(undefined),
       feedback,
       reopen: vi.fn().mockResolvedValue(undefined),
+      startReview: vi.fn().mockResolvedValue(undefined),
+      submitReviewAnswer,
       openSource: vi.fn(() => true),
       t: (key: keyof typeof zh) => zh[key],
     } as unknown as ComponentProps<typeof LearningView>
@@ -143,6 +166,15 @@ describe('conversation learning view', () => {
     expect(screen.getByText('Mastered concept')).toBeTruthy()
     expect(screen.getByText('已理解基础类型收窄。')).toBeTruthy()
     expect(screen.getByText('4/50')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '今日复习' })).toBeTruthy()
+    expect(screen.getByText('请用自己的话解释类型收窄。')).toBeTruthy()
+    fireEvent.change(screen.getByPlaceholderText('用自己的话回答，不必复述原文…'), {
+      target: { value: '通过运行时证据把宽类型缩小为更具体的类型。' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '提交答案' }))
+    expect(submitReviewAnswer).toHaveBeenCalledWith(
+      ReviewId('review-current'), '通过运行时证据把宽类型缩小为更具体的类型。',
+    )
     expect(screen.getByRole('button', { name: '打开来源会话' })).toBeTruthy()
     expect(screen.getByText('来源会话不可用')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: '✓ 懂了' })[0]!)
@@ -237,6 +269,9 @@ describe('global learning store lifecycle', () => {
           },
         },
       }),
+      reviewDashboard: vi.fn().mockResolvedValue({
+        ok: true, value: { dueCount: 0, weakCount: 0, newCount: 0, completedCount: 0, recent: [] },
+      }),
       configuration: vi.fn().mockResolvedValue({
         ok: true,
         value: { revision: 0, enabled: true, maxAutoRequestsPerDay: 50 },
@@ -290,6 +325,9 @@ describe('global learning store lifecycle', () => {
             understoodFeedback: 0, notUnderstoodFeedback: 0,
           },
         },
+      }),
+      reviewDashboard: vi.fn().mockResolvedValue({
+        ok: true, value: { dueCount: 0, weakCount: 0, newCount: 0, completedCount: 0, recent: [] },
       }),
       configuration: vi.fn().mockResolvedValue({
         ok: true,
@@ -345,6 +383,9 @@ describe('global learning store lifecycle', () => {
             understoodFeedback: 0, notUnderstoodFeedback: 0,
           },
         },
+      }),
+      reviewDashboard: vi.fn().mockResolvedValue({
+        ok: true, value: { dueCount: 0, weakCount: 0, newCount: 0, completedCount: 0, recent: [] },
       }),
       threadPage: vi.fn().mockResolvedValue({
         ok: true,

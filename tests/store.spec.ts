@@ -117,9 +117,9 @@ describe('ExplainStore schema and projections', () => {
     const backup = store.exportData(1_800_000_000_000)
     expect(backup).toMatchObject({
       format: 'dsh-explain-backup',
-      version: 1,
+      version: 2,
       exportedAt: 1_800_000_000_000,
-      databaseSchemaVersion: 2,
+      databaseSchemaVersion: 3,
       storeRevision: 1,
       data: { entries: [{ ordinal: 1 }, { ordinal: 2 }], context: { inferred: false } },
     })
@@ -140,7 +140,9 @@ describe('ExplainStore schema and projections', () => {
     const result = store.clearLearningData(revision)
     expect(result).toEqual({
       ok: true,
-      cleared: { entries: 2, topics: 1, explanations: 1, observations: 0, checkpoints: 0 },
+      cleared: {
+        entries: 2, topics: 1, explanations: 1, observations: 0, checkpoints: 0, reviewAttempts: 0,
+      },
       preservedAutoRequests: 1,
       storeRevision: revision + 1,
     })
@@ -360,6 +362,94 @@ describe('ExplainStore feedback and entity CAS', () => {
     expect(store.feedback({ ...base, requestId: RequestId('tab-one') }).ok).toBe(true)
     expect(store.feedback({ ...base, requestId: RequestId('tab-two') }))
       .toMatchObject({ ok: false, error: { code: 'STALE_EXPLANATION_REVISION' } })
+  })
+})
+
+describe('ExplainStore review loop', () => {
+  it('persists a three-question round and advances the deterministic schedule', () => {
+    const store = memoryStore()
+    const now = Date.now() + 10
+    for (const [index, title] of ['Narrowing', 'Generics', 'Variance'].entries()) {
+      store.addFixtureExplanation({
+        topicKey: `typescript/review-${index}`,
+        title,
+        sourceSessionId: SessionId(`review-source-${index}`),
+        sourceTurn: index + 1,
+        state: 'closed',
+        topicState: 'mastered',
+      })
+    }
+    expect(store.reviewDashboard(now)).toMatchObject({ dueCount: 3, weakCount: 0, completedCount: 0 })
+
+    const started = store.startReview({ requestId: RequestId('start-round') }, now)
+    expect(started.created).toBe(true)
+    expect(started.dashboard.current).toMatchObject({ position: 1, total: 3, kind: 'recall' })
+    const first = started.dashboard.current!
+    const request = {
+      requestId: RequestId('answer-one'),
+      reviewId: first.reviewId,
+      answer: 'It narrows a broader type from runtime evidence.',
+    }
+    expect(store.prepareReviewAnswer(request)).toMatchObject({ ok: true, kind: 'evaluate' })
+    const committedAt = now + 1_000
+    const committed = store.commitReviewAnswer(
+      request,
+      { result: 'mastered', feedback: 'Correct and clearly reasoned.' },
+      { provider: 'test', model: 'review-model', generatedAt: committedAt },
+      committedAt,
+    )
+    expect(committed).toMatchObject({
+      ok: true,
+      attempt: { result: 'mastered', answer: request.answer },
+      dashboard: { dueCount: 2, current: { position: 2, total: 3, kind: 'application' } },
+    })
+    if (!committed.ok) throw new Error('review commit failed')
+    expect(committed.attempt.nextReviewAt).toBe(committedAt + 3 * 24 * 60 * 60 * 1_000)
+    expect(store.prepareReviewAnswer(request)).toMatchObject({
+      ok: true, kind: 'replay', attempt: { reviewId: first.reviewId },
+    })
+    expect(store.exportData(committedAt).data.review.attempts).toHaveLength(1)
+  })
+
+  it('migrates v2 mastered topics into an immediately due v3 review schedule', () => {
+    const path = diskPath()
+    const first = new ExplainStore(path)
+    stores.push(first)
+    first.addFixtureExplanation({
+      topicKey: 'typescript/migrated-review',
+      title: 'Migrated review',
+      sourceSessionId: SessionId('migration-source'),
+      sourceTurn: 1,
+      state: 'closed',
+      topicState: 'mastered',
+    })
+    first.close()
+    stores.splice(stores.indexOf(first), 1)
+    const database = new DatabaseSync(path)
+    database.exec(`
+      PRAGMA foreign_keys = OFF;
+      DROP TABLE review_mutation_requests;
+      DROP TABLE review_attempts;
+      DROP TABLE review_batches;
+      DROP TABLE review_state;
+      UPDATE meta SET schema_version = 2 WHERE singleton = 1;
+    `)
+    database.close()
+
+    const migrated = new ExplainStore(path)
+    stores.push(migrated)
+    expect(migrated.exportData().databaseSchemaVersion).toBe(3)
+    expect(migrated.reviewDashboard()).toMatchObject({ dueCount: 1 })
+    const current = migrated.startReview({ requestId: RequestId('migrated-start') }).dashboard.current
+    expect(current).toMatchObject({ topicTitle: 'Migrated review' })
+    if (current === undefined) throw new Error('migrated review is missing')
+    expect(migrated.reopenTopic({
+      requestId: RequestId('reopen-reviewed-topic'),
+      topicId: current.topicId,
+      expectedTopicRevision: 1,
+    })).toMatchObject({ ok: true })
+    expect(migrated.reviewDashboard()).toMatchObject({ dueCount: 0 })
+    expect(migrated.reviewDashboard().current).toBeUndefined()
   })
 })
 

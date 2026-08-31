@@ -21,6 +21,8 @@ import type {
   ManualExplanation,
   ManualExplainTarget,
   RephraseTarget,
+  ReviewEvaluation,
+  ReviewEvaluationTarget,
   SourceCapsule,
 } from './domain.ts'
 
@@ -31,6 +33,8 @@ const REPHRASE_SYSTEM = `You are dsh-explain. Rephrase one still-active explanat
 const MANUAL_SYSTEM = `You are dsh-explain, a private auxiliary learning assistant. Fulfill one explicit learning request using the supplied bounded source context and global learning context. Always produce a useful explanation; never skip. Write every user-visible field in the language used by manualRequest. Do not infer occupation, identity, health, politics, or other sensitive attributes. Return exactly one JSON object with topicKey, title, what, why, and pitfall, with no markdown or extra text.`
 
 const COMPACTION_SYSTEM = `You are dsh-explain's context compactor. Produce a full replacement learning-context snapshot from the previous snapshot, new structured observations, closed explanations, and authoritative statistics. Preserve the language established by the previous snapshot or, when none exists, the newest supplied learning evidence. Never infer occupation, identity, health, politics, or other sensitive attributes. Topic mastered/learning state is not yours to set. Return exactly one JSON object with dialogueProfile, knowledgeOverview, and learningTrend.`
+
+const REVIEW_SYSTEM = `You are dsh-explain's private review evaluator. Assess one answer semantically against the supplied explanation, accepting accurate paraphrases rather than keyword matching. Use mastered only when the core idea and requested reasoning are correct, partial when there is meaningful but incomplete understanding, and forgotten when the answer is absent, materially wrong, or unrelated. Write concise constructive feedback in the language of the question. Do not infer sensitive attributes. Return exactly one JSON object with result and feedback, with no markdown or extra fields.`
 
 /** Fully rendered request priced before any provider attempt is reserved. */
 export interface AuxiliaryRequest<T> {
@@ -174,6 +178,33 @@ export function renderManualExplainRequest(
     })],
     maxTokens,
     parse: parseManualExplanation,
+  }
+}
+
+/** Build one strict semantic review evaluation without exposing any full Session transcript. */
+export function renderReviewEvaluationRequest(
+  target: ReviewEvaluationTarget,
+  maxTokens: number,
+): AuxiliaryRequest<ReviewEvaluation> {
+  return {
+    system: REVIEW_SYSTEM,
+    messages: [jsonMessage({
+      task: 'Evaluate the learner answer using the exact outputContract.',
+      outputContract: {
+        result: 'mastered | partial | forgotten',
+        feedback: 'one concise constructive string',
+      },
+      review: {
+        topicTitle: target.topicTitle,
+        questionKind: target.kind,
+        question: target.question,
+        learnerAnswer: target.answer,
+        reference: target.explanation,
+      },
+      limits: { feedbackChars: 1_000 },
+    })],
+    maxTokens,
+    parse: parseReviewEvaluation,
   }
 }
 
@@ -407,6 +438,15 @@ function parseManualExplanation(text: string): ManualExplanation {
   const topicKey = requiredText(value.topicKey, 'topicKey', 80)
   if (!validTopicKey(topicKey)) throw new Error('dsh-explain: invalid topicKey')
   return { topicKey, ...parseExplanationObject(value) }
+}
+
+function parseReviewEvaluation(text: string): ReviewEvaluation {
+  const value = jsonObject(text, 'review evaluation')
+  exactKeys(value, ['feedback', 'result'], 'review evaluation')
+  if (value.result !== 'mastered' && value.result !== 'partial' && value.result !== 'forgotten') {
+    throw new Error('dsh-explain: review evaluation has an invalid result')
+  }
+  return { result: value.result, feedback: requiredText(value.feedback, 'review feedback', 1_000) }
 }
 
 function parseExplanationObject(value: Record<string, unknown>): ExplanationContent {

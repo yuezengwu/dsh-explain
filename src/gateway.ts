@@ -5,7 +5,7 @@ import type { ExplainStore } from './store.ts'
 import type {
   ClearLearningDataRequest,
   ClearLearningDataResult,
-  ExplainDataExportV1,
+  ExplainDataExportV2,
   ExplainContextView,
   ExplainConfigurationView,
   ExplainModelCatalogView,
@@ -14,8 +14,13 @@ import type {
   FeedbackRequest,
   ReopenTopicRequest,
   ReopenTopicResult,
+  ReviewDashboardView,
   SetEnabledRequest,
   SetEnabledResult,
+  StartReviewRequest,
+  StartReviewResult,
+  SubmitReviewAnswerRequest,
+  SubmitReviewAnswerResult,
   ThreadPageRequest,
   ThreadPageResult,
   UpdateConfigurationRequest,
@@ -107,8 +112,40 @@ export class ExplainGateway extends TypertRemoteService {
 
   /** Export the complete public learning projection as a versioned, privacy-bounded backup. */
   @Remote
-  exportData(): ExplainDataExportV1 {
+  exportData(): ExplainDataExportV2 {
     return this.store.exportData()
+  }
+
+  /** Read today's review counts, active question, and recent outcomes. */
+  @Remote
+  reviewDashboard(): ReviewDashboardView {
+    return this.store.reviewDashboard()
+  }
+
+  /** Start or resume one local review round of up to three due concepts. */
+  @Remote
+  startReview(request: StartReviewRequest): StartReviewResult {
+    if (!this.runtime.settings().enabled) {
+      return { ok: false, error: { code: 'EXPLAIN_DISABLED', message: 'Learning mode is disabled.' } }
+    }
+    const scheduler = this.runtime.scheduler.status()
+    if (scheduler.state !== 'ready' || scheduler.route === undefined) {
+      return { ok: false, error: { code: 'EXPLAIN_RUNTIME_FAILED', message: 'The learning runtime is not ready.' } }
+    }
+    const result = this.store.startReview(request)
+    if (!result.created && result.dashboard.current === undefined) {
+      return { ok: false, error: { code: 'REVIEW_NOT_DUE', message: 'No mastered concept is due for review.' } }
+    }
+    return { ok: true, dashboard: result.dashboard }
+  }
+
+  /** Evaluate one exact review answer through the scheduler's single model flight. */
+  @Remote
+  submitReviewAnswer(
+    request: SubmitReviewAnswerRequest,
+    signal: AbortSignal,
+  ): Promise<SubmitReviewAnswerResult> {
+    return this.runtime.scheduler.requestReviewAnswer(request, signal)
   }
 
   /** Fence producers and atomically clear learned content while retaining settings and usage counters. */

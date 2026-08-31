@@ -21,6 +21,12 @@ export type RequestId = Branded<'dsh-explain/request'>
 /** Host-generated identity for one accepted autonomous model request. */
 export type AutoRequestId = Branded<'dsh-explain/auto-request'>
 
+/** Stable identity of one three-question review round. */
+export type ReviewBatchId = Branded<'dsh-explain/review-batch'>
+
+/** Stable identity of one persisted review question and answer. */
+export type ReviewId = Branded<'dsh-explain/review'>
+
 /** Construct a TopicId after persistence-boundary validation. */
 export const TopicId = (value: string): TopicId => value as TopicId
 
@@ -41,3 +47,9 @@ export const RequestId = (value: string): RequestId => value as RequestId
 
 /** Construct an AutoRequestId after persistence-boundary validation. */
 export const AutoRequestId = (value: string): AutoRequestId => value as AutoRequestId
+
+/** Construct a ReviewBatchId after persistence-boundary validation. */
+export const ReviewBatchId = (value: string): ReviewBatchId => value as ReviewBatchId
+
+/** Construct a ReviewId after persistence-boundary validation. */
+export const ReviewId = (value: string): ReviewId => value as ReviewId

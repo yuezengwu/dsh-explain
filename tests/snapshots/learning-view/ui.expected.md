@@ -9,6 +9,17 @@
   - text: 待反馈
   - strong: 0/50
   - text: 自主额度
+  - heading "今日复习" [level=2]
+  - paragraph: 用回忆、应用和辨析把“看懂了”变成“真正记住了”。
+  - button "开始复习" [disabled]
+  - strong: "0"
+  - text: 待复习
+  - strong: "0"
+  - text: 薄弱概念
+  - strong: "0"
+  - text: 首次复习
+  - strong: "0"
+  - text: 今日完成 暂无待复习概念。标记“懂了”的概念会在次日进入复习。
   - heading "学习概况 模型推断" [level=2]
   - heading "知识概况" [level=3]
   - paragraph: 正在学习 TypeScript 的可辨识联合。
