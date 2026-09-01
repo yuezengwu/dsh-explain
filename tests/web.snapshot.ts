@@ -21,6 +21,7 @@ const SOURCE_SESSION_ID = SessionId('fixture-source')
 const MISSING_SOURCE_SESSION_ID = SessionId('missing-source')
 const FIXED_TIME = Date.UTC(2026, 0, 2, 3, 4, 5)
 const DAY_MS = 86_400_000
+const COMPOSER_LABEL = '发消息或做任务… / 调用指令 @ 文件或对话'
 
 type SnapshotMode = 'replay' | 'refresh'
 
@@ -172,23 +173,36 @@ function freePort(): Promise<number> {
   })
 }
 
-async function startDsh(dshSource: string, dshHome: string, port: number): Promise<ChildProcessWithoutNullStreams> {
+interface StartedDsh {
+  readonly child: ChildProcessWithoutNullStreams
+  readonly authenticatedUrl: string
+}
+
+function redactWebToken(output: string): string {
+  return output.replace(/([?&]token=)[^\s)]+/gu, '$1<redacted>')
+}
+
+async function startDsh(dshSource: string, dshHome: string, port: number): Promise<StartedDsh> {
   const child = spawn(process.execPath, [
-    '--import', 'tsx/esm', join(dshSource, 'apps/cli/src/bin.ts'), '--profile', 'web', '--port', String(port),
+    '--import', 'tsx/esm', join(dshSource, 'apps/cli/src/bin.ts'),
+    '--profile', 'web', '--no-open', '--port', String(port),
   ], {
     cwd: dshSource,
     env: dshEnvironment(dshHome),
     stdio: ['pipe', 'pipe', 'pipe'],
   })
   let output = ''
+  let authenticatedUrl: string | undefined
   child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString() })
   child.stderr.on('data', (chunk: Buffer) => { output += chunk.toString() })
   await new Promise<void>((resolveReady, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error(`DSH Web did not start on port ${port}\n${output}`))
+      reject(new Error(`DSH Web did not start on port ${port}\n${redactWebToken(output)}`))
     }, 30_000)
     const poll = setInterval(() => {
-      if (output.includes(`dsh web: http://127.0.0.1:${port}`)) {
+      const match = /dsh web: (http:\/\/127\.0\.0\.1:\d+\/\?token=[A-Za-z0-9_-]+)/u.exec(output)
+      if (match?.[1] !== undefined) {
+        authenticatedUrl = match[1]
         clearTimeout(timer)
         clearInterval(poll)
         resolveReady()
@@ -197,10 +211,11 @@ async function startDsh(dshSource: string, dshHome: string, port: number): Promi
     child.once('exit', (code, signal) => {
       clearTimeout(timer)
       clearInterval(poll)
-      reject(new Error(`DSH Web exited before readiness (${String(code ?? signal)})\n${output}`))
+      reject(new Error(`DSH Web exited before readiness (${String(code ?? signal)})\n${redactWebToken(output)}`))
     })
   })
-  return child
+  if (authenticatedUrl === undefined) throw new Error('DSH Web printed no authenticated URL')
+  return { child, authenticatedUrl }
 }
 
 async function stopDsh(child: ChildProcessWithoutNullStreams | undefined): Promise<void> {
@@ -297,7 +312,8 @@ describe('keyless assembled DSH Web learning view', () => {
     await seedDshSession(dshSource, dshHome, sourceWorkspace, SOURCE_SESSION_ID)
     await seedDshSession(dshSource, dshHome, workspace, SESSION_ID)
     const port = await freePort()
-    host = await startDsh(dshSource, dshHome, port)
+    const started = await startDsh(dshSource, dshHome, port)
+    host = started.child
     browser = await chromium.launch()
     page = await browser.newPage({
       viewport: { width: 1680, height: 1000 },
@@ -305,16 +321,23 @@ describe('keyless assembled DSH Web learning view', () => {
       timezoneId: 'UTC',
     })
     page.on('pageerror', error => { pageErrors.push(String(error)) })
-    await page.goto(`http://127.0.0.1:${port}`, { waitUntil: 'load' })
+    await page.goto(started.authenticatedUrl, { waitUntil: 'load' })
     const continueButton = page.getByRole('button', { name: '继续', exact: true })
-    await continueButton.waitFor({ timeout: 15_000 })
+    try {
+      await continueButton.waitFor({ timeout: 15_000 })
+    } catch (error) {
+      throw new Error([
+        'DSH onboarding did not become ready.',
+        await page.locator('body').ariaSnapshot(),
+        `Page errors: ${JSON.stringify(pageErrors)}`,
+      ].join('\n'), { cause: error })
+    }
     await continueButton.click()
     await page.locator('[class*="onboardingStage"]').waitFor({ state: 'detached', timeout: 15_000 })
     const configureLater = page.getByRole('button', { name: '稍后配置', exact: true })
-    if (await configureLater.count() > 0) {
-      await configureLater.click()
-      await configureLater.waitFor({ state: 'detached', timeout: 15_000 })
-    }
+    await configureLater.waitFor({ timeout: 15_000 })
+    await configureLater.click()
+    await configureLater.waitFor({ state: 'detached', timeout: 15_000 })
     expect(await page.getByRole('tab', { name: '学习' }).count()).toBe(0)
     try {
       await openWorkspaceSession(page, 'workspace-primary')
@@ -324,9 +347,9 @@ describe('keyless assembled DSH Web learning view', () => {
     const learning = page.getByRole('tab', { name: '学习' })
     await learning.waitFor({ timeout: 15_000 })
     expect(await learning.count()).toBe(1)
+    await page.getByRole('textbox', { name: COMPOSER_LABEL }).waitFor({ timeout: 15_000 })
     await learning.click()
     await page.getByRole('heading', { name: '全局学习线程' }).waitFor({ timeout: 15_000 })
-    await page.getByRole('textbox', { name: '给智能体发消息' }).waitFor({ timeout: 15_000 })
   }, 120_000)
 
   afterAll(async () => {
@@ -360,16 +383,21 @@ describe('keyless assembled DSH Web learning view', () => {
 
   it('discovers the explain request command from the composer', async () => {
     if (page === undefined) throw new Error('web page is not initialized')
-    const composer = page.getByRole('textbox', { name: '给智能体发消息' })
+    await page.getByRole('tab', { name: '对话', exact: true }).click()
+    const composer = page.getByRole('textbox', { name: COMPOSER_LABEL })
+    await composer.waitFor({ timeout: 15_000 })
     await composer.fill('/expl')
     const option = page.getByRole('option', {
       name: /explain Request a learning explanation or control the global learning thread/,
     })
     await option.waitFor({ timeout: 15_000 })
     await option.click()
-    expect(await composer.inputValue()).toBe('/explain ')
-    await page.getByText('<request> | on | off | status', { exact: true }).waitFor({ timeout: 15_000 })
+    expect(await composer.textContent()).toBe('/explain ')
+    expect(await composer.evaluate(node => (node as HTMLElement).style.getPropertyValue('--dsh-composer-hint')))
+      .toContain('<request> | on | off | status')
     await composer.fill('')
+    await page.getByRole('tab', { name: '学习', exact: true }).click()
+    await page.getByRole('heading', { name: '全局学习线程' }).waitFor({ timeout: 15_000 })
     expect(pageErrors).toEqual([])
   })
 

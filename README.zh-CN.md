@@ -26,7 +26,7 @@
 
 ## 快速开始
 
-Explain 当前适配 DSH `0.1.1-rc.2`。
+Explain 当前已发布版本适配 DSH `0.1.1-rc.2`。本兼容分支验证 DSH `0.1.2-alpha.3`，不替换现有 RC.2 发布线。
 
 ```sh
 npx @deepseek-ai/dsh@0.1.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain
@@ -92,7 +92,8 @@ Explain 只使用 DSH 第一方 `conversation.view`、composer、assistant actio
 
 ## 兼容性与验证
 
-- 当前兼容版本线：DSH `0.1.1-rc.2`。
+- 当前已发布兼容线：DSH `0.1.1-rc.2`。
+- 本兼容分支目标：DSH `0.1.2-alpha.3`。
 - 单元测试：70 项。
 - DSH Web 组装验收：5 个场景。
 - Explain 自有快捷入口验收：3 个 M6 场景。
@@ -103,7 +104,7 @@ DSH 仍处于开发者预览阶段。Explain 跟随当前公开 API 版本线，
 
 ## 本地开发
 
-默认安装使用已发布的 0.1.1-rc.2 API 包。assembled Web 测试还需要已构建的 DSH 0.1.1-rc.2 源码 checkout：
+本兼容分支的默认开发安装使用已发布的 0.1.2-alpha.3 API 包。assembled Web 测试还需要已构建的 DSH 0.1.2-alpha.3 源码 checkout：
 
 ```sh
 pnpm install

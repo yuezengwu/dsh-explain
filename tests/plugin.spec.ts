@@ -13,7 +13,8 @@ import LlmService, {
   type StreamChunk,
 } from '@deepseek-ai/dsh-llm'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
-import Settings, { settingsNamespace, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
+import Settings, { type SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import TokenMeterService from '@deepseek-ai/dsh-token-meter'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { Config, apply, inject, name } from '../src/index.ts'
@@ -98,6 +99,8 @@ describe('dsh-explain plugin lifecycle', () => {
     await sessions
     const llm = ctx.plugin(LlmService)
     await llm
+    const projections = ctx.plugin(SessionProjectionRegistry)
+    await projections
     const meter = ctx.plugin(TokenMeterService)
     await meter
     const settings = ctx.plugin(MemorySettings)
@@ -288,7 +291,7 @@ describe('dsh-explain plugin lifecycle', () => {
         maxAutoRequestsPerDay: 20,
       })).resolves.toMatchObject({ ok: false, error: { code: 'SETTINGS_STALE' } })
 
-      await ctx.settings.update(settingsNamespace('dsh-explain'), { timeoutMs: 9_000 })
+      await ctx.settings.update('dsh-explain', { timeoutMs: 9_000 })
       expect(ctx.explain.configuration().revision).toBe(2)
       await expect(ctx.explain.updateConfiguration({
         expectedRevision: 2,
@@ -349,6 +352,7 @@ describe('dsh-explain plugin lifecycle', () => {
       await commands.dispose()
       await settings.dispose()
       await meter.dispose()
+      await projections.dispose()
       await llm.dispose()
       await sessions.dispose()
     }

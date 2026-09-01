@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 const REPOSITORY = fileURLToPath(new URL('..', import.meta.url))
 const SESSION_FIXTURE = join(REPOSITORY, 'tests/snapshots/learning-view/session.jsonl')
 const SESSION_ID = 'm6-combination-session'
+const COMPOSER_LABEL = '发消息或做任务… / 调用指令 @ 文件或对话'
 
 interface PluginSpec {
   readonly marker: string
@@ -67,19 +68,33 @@ function freePort(): Promise<number> {
   })
 }
 
-async function startDsh(dshSource: string, dshHome: string, port: number): Promise<ChildProcessWithoutNullStreams> {
-  const child = spawn(process.execPath, dshArgs(dshSource, ['--profile', 'web', '--port', String(port)]), {
+interface StartedDsh {
+  readonly child: ChildProcessWithoutNullStreams
+  readonly authenticatedUrl: string
+}
+
+function redactWebToken(output: string): string {
+  return output.replace(/([?&]token=)[^\s)]+/gu, '$1<redacted>')
+}
+
+async function startDsh(dshSource: string, dshHome: string, port: number): Promise<StartedDsh> {
+  const child = spawn(process.execPath, dshArgs(dshSource, [
+    '--profile', 'web', '--no-open', '--port', String(port),
+  ]), {
     cwd: dshSource,
     env: dshEnvironment(dshHome),
     stdio: ['pipe', 'pipe', 'pipe'],
   })
   let output = ''
+  let authenticatedUrl: string | undefined
   child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString() })
   child.stderr.on('data', (chunk: Buffer) => { output += chunk.toString() })
   await new Promise<void>((resolveReady, reject) => {
-    const timer = setTimeout(() => { reject(new Error(`DSH Web did not start\n${output}`)) }, 45_000)
+    const timer = setTimeout(() => { reject(new Error(`DSH Web did not start\n${redactWebToken(output)}`)) }, 45_000)
     const poll = setInterval(() => {
-      if (!output.includes(`dsh web: http://127.0.0.1:${port}`)) return
+      const match = /dsh web: (http:\/\/127\.0\.0\.1:\d+\/\?token=[A-Za-z0-9_-]+)/u.exec(output)
+      if (match?.[1] === undefined) return
+      authenticatedUrl = match[1]
       clearTimeout(timer)
       clearInterval(poll)
       resolveReady()
@@ -87,10 +102,11 @@ async function startDsh(dshSource: string, dshHome: string, port: number): Promi
     child.once('exit', (code, signal) => {
       clearTimeout(timer)
       clearInterval(poll)
-      reject(new Error(`DSH Web exited before readiness (${String(code ?? signal)})\n${output}`))
+      reject(new Error(`DSH Web exited before readiness (${String(code ?? signal)})\n${redactWebToken(output)}`))
     })
   })
-  return child
+  if (authenticatedUrl === undefined) throw new Error('DSH Web printed no authenticated URL')
+  return { child, authenticatedUrl }
 }
 
 async function stopDsh(child: ChildProcessWithoutNullStreams | undefined): Promise<void> {
@@ -127,7 +143,9 @@ async function finishOnboarding(page: Page): Promise<void> {
   await page.getByRole('button', { name: '继续', exact: true }).click()
   await page.locator('[class*="onboardingStage"]').waitFor({ state: 'detached', timeout: 15_000 })
   const configureLater = page.getByRole('button', { name: '稍后配置', exact: true })
-  if (await configureLater.count() > 0) await configureLater.click()
+  await configureLater.waitFor({ timeout: 15_000 })
+  await configureLater.click()
+  await configureLater.waitFor({ state: 'detached', timeout: 15_000 })
 }
 
 describe('M6 Explain-owned shortcuts', () => {
@@ -161,11 +179,12 @@ describe('M6 Explain-owned shortcuts', () => {
     ].join('\n'))
     await seedSession(dshSource, dshHome, workspace)
     const port = await freePort()
-    host = await startDsh(dshSource, dshHome, port)
+    const started = await startDsh(dshSource, dshHome, port)
+    host = started.child
     browser = await chromium.launch()
     page = await browser.newPage({ viewport: { width: 1440, height: 920 }, locale: 'zh-CN' })
     page.on('pageerror', error => { pageErrors.push(String(error)) })
-    await page.goto(`http://127.0.0.1:${port}`, { waitUntil: 'load' })
+    await page.goto(started.authenticatedUrl, { waitUntil: 'load' })
     await finishOnboarding(page)
     const workspaceItem = page.getByRole('treeitem', { name: 'workspace', exact: true })
     await workspaceItem.waitFor({ timeout: 15_000 })
@@ -211,13 +230,15 @@ describe('M6 Explain-owned shortcuts', () => {
     })
     await expect.poll(() => selectionAction.getAttribute('aria-disabled')).toBeNull()
     await selectionAction.click()
-    const composer = page.getByRole('textbox', { name: '给智能体发消息' })
-    await expect.poll(() => composer.inputValue()).toBe(`/explain --selection ${text}`)
+    const composer = page.getByRole('textbox', { name: COMPOSER_LABEL })
+    await expect.poll(() => composer.textContent()).toBe(`/explain --selection ${text}`)
     await composer.fill('')
+    await expect.poll(() => composer.getAttribute('data-phase')).toBe('plain')
     const answerAction = page.getByRole('button', { name: '学习这个回答', exact: true })
     await answerAction.waitFor({ timeout: 15_000 })
+    await expect.poll(() => answerAction.getAttribute('aria-disabled')).toBeNull()
     await answerAction.click()
-    await expect.poll(() => composer.inputValue()).toBe('/explain --answer 1 请解释这个回答中最关键、最值得学习的概念。')
+    await expect.poll(() => composer.textContent()).toBe('/explain --answer 1 请解释这个回答中最关键、最值得学习的概念。')
     expect(await page.getByText(text, { exact: true }).count()).toBe(1)
     expect(pageErrors).toEqual([])
   })

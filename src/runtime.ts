@@ -1,8 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import {
   SettingsConflictError,
-  settingsNamespace,
-  type SettingsScope,
 } from '@deepseek-ai/dsh-settings'
 import {
   RuntimeSettings,
@@ -25,12 +23,12 @@ import type {
 } from './types.ts'
 
 type SetEnabledError = Extract<SetEnabledResult, { readonly ok: false }>['error']
-const SETTINGS_NAMESPACE = settingsNamespace('dsh-explain')
+const SETTINGS_NAMESPACE = 'dsh-explain'
 
 /** Settings owner and lifecycle bridge around the global scheduler. */
 export class ExplainRuntime {
   readonly scheduler: ExplainScheduler
-  private readonly scope: SettingsScope<ExplainRuntimeSettings>
+  private settingsSource: () => ExplainRuntimeSettings
   private current: ExplainRuntimeSettings
   private synchronizeTail: Promise<void> = Promise.resolve()
   private clearing = false
@@ -40,15 +38,22 @@ export class ExplainRuntime {
     private readonly store: ExplainStore,
     resolved: ResolvedExplainConfig,
   ) {
-    const base = runtimeSettings(resolved)
-    this.scope = ctx.settings.register(SETTINGS_NAMESPACE, RuntimeSettings, { base })
-    this.current = normalizeSettings(this.scope.get())
+    const entry = runtimeSettings(resolved)
+    this.settingsSource = () => entry
+    this.current = normalizeSettings(entry)
     this.scheduler = new ExplainScheduler(ctx, store, this.current)
     ctx.on('llm/adapters-updated', () => {
       this.store.notifyRuntimeChange()
       this.scheduler.adaptersUpdated()
     })
-    this.scope.watch(() => this.synchronize())
+    ctx.settings.installSection(ctx, SETTINGS_NAMESPACE, RuntimeSettings, entry, {
+      setSource: (source) => { this.settingsSource = source },
+      onChange: () => {
+        void this.synchronize().catch((error: unknown) => {
+          ctx.logger('dsh-explain').warn('settings synchronization failed: %s', messageOf(error))
+        })
+      },
+    })
   }
 
   /** Start lease renewal and any configured runtime work. */
@@ -62,7 +67,7 @@ export class ExplainRuntime {
     const descriptor = this.ctx.settings.describe({ redactSecrets: true })
       .find(candidate => candidate.ns === SETTINGS_NAMESPACE)
     if (descriptor === undefined) throw new Error('dsh-explain: settings namespace is unavailable')
-    const settings = normalizeSettings(this.scope.get())
+    const settings = normalizeSettings(this.settingsSource())
     return {
       revision: descriptor.revision,
       enabled: settings.enabled,
@@ -149,7 +154,7 @@ export class ExplainRuntime {
         return { code: 'RUNTIME_FAILED', message: 'The selected auxiliary model route is unavailable.' }
       }
     }
-    await this.scope.update({ enabled })
+    await this.ctx.settings.update(SETTINGS_NAMESPACE, { enabled })
     await this.synchronize()
     return undefined
   }
@@ -219,7 +224,7 @@ export class ExplainRuntime {
 
   private synchronize(): Promise<void> {
     const task = this.synchronizeTail.then(async () => {
-      const normalized = normalizeSettings(this.scope.get())
+      const normalized = normalizeSettings(this.settingsSource())
       if (settingsEqual(normalized, this.current)) return
       const previous = this.current
       this.current = normalized
@@ -253,4 +258,8 @@ function normalizeSettings(input: ExplainRuntimeSettings): ExplainRuntimeSetting
 
 function settingsEqual(left: ExplainRuntimeSettings, right: ExplainRuntimeSettings): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : 'unknown settings failure'
 }
