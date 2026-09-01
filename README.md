@@ -26,7 +26,7 @@ Select text or choose **Learn from this answer**, review the editable `/explain`
 
 ## Quick start
 
-Explain currently targets DSH `0.1.1-rc.2`.
+The published Explain release currently targets DSH `0.1.1-rc.2`. This compatibility branch validates DSH `0.1.2-alpha.3` without replacing that RC.2 release line.
 
 ```sh
 npx @deepseek-ai/dsh@0.1.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain
@@ -92,7 +92,8 @@ Explain uses first-party DSH `conversation.view`, composer, assistant-action, an
 
 ## Compatibility and verification
 
-- Current compatibility line: DSH `0.1.1-rc.2`.
+- Published compatibility line: DSH `0.1.1-rc.2`.
+- Compatibility-branch target: DSH `0.1.2-alpha.3`.
 - Unit suite: 70 tests.
 - Assembled DSH Web acceptance: 5 scenarios.
 - Explain-owned shortcut acceptance: 3 M6 scenarios.
@@ -103,7 +104,7 @@ DSH is still a developer preview. Explain follows the current public API line an
 
 ## Local development
 
-The default install uses the published 0.1.1-rc.2 API packages. Assembled-Web tests also need a built DSH 0.1.1-rc.2 source checkout:
+On this compatibility branch, the default development install uses the published 0.1.2-alpha.3 API packages. Assembled-Web tests also need a built DSH 0.1.2-alpha.3 source checkout:
 
 ```sh
 pnpm install

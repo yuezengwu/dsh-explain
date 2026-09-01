@@ -1,10 +1,10 @@
 export type {
   ObservableSnapshot,
-  SessionListState,
-  SessionId,
   SnapshotStore,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+} from '@deepseek-ai/dsh-client-store'
+export type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+export type { SessionId } from '@deepseek-ai/dsh-session'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 
 /** Minimal synchronous snapshot store for client component tests. */
 export function createSnapshotStore<T>(initial: T): SnapshotStore<T> {

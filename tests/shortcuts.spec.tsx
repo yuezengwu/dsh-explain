@@ -2,7 +2,7 @@
 import React, { type ComponentProps } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import {
   assistantTurn,
   commitExplainDraft,
@@ -63,17 +63,19 @@ describe('Explain-owned shortcuts', () => {
 
   it('maps each finalized assistant action to its exact source turn', () => {
     const snapshot = {
-      nodes: [
-        { kind: 'assistant', messageId: 'older', turn: 2 },
-        { kind: 'assistant', messageId: 'target', turn: 7 },
-      ],
-    } as unknown as ConversationSnapshot
+      legacy: {
+        nodes: [
+          { kind: 'assistant', messageId: 'older', turn: 2 },
+          { kind: 'assistant', messageId: 'target', turn: 7 },
+        ],
+      },
+    } as unknown as ChatSnapshot
     expect(assistantTurn(snapshot, 'target')).toBe(7)
     expect(assistantTurn(snapshot, 'missing')).toBeUndefined()
     const draft = vi.fn().mockReturnValue({ ok: true })
     const props = {
       messageId: 'target',
-      useSession: (selector: (value: ConversationSnapshot) => unknown) => selector(snapshot),
+      useChat: (selector: (value: ChatSnapshot) => unknown) => selector(snapshot),
       useInput: (selector: (value: { phase: string; draft: string }) => unknown) => selector({
         phase: 'plain', draft: '',
       }),

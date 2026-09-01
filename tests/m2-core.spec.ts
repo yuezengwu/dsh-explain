@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  CallId,
+  ToolCallId,
   createAssistantMessage,
   createToolResultMessage,
   createUserMessage,
@@ -55,7 +55,7 @@ describe('completed-turn source observation', () => {
       source: { kind: 'plugin', plugin: 'test-context' },
       content: [{ type: 'text', text: 'private synthetic context' }],
     }), { surfaceOp: 'append' })
-    const callId = CallId('call-1')
+    const callId = ToolCallId('call-1')
     session.append('tool/call', { turn: 1, step: 1, callId, name: 'read', arguments: '{"path":"secret"}' })
     session.append('tool/result', {
       turn: 1,
@@ -176,7 +176,7 @@ describe('completed-turn source observation', () => {
       source: { kind: 'user' },
       content: [{ type: 'text', text: 'What changed now?' }],
     }), { surfaceOp: 'append' })
-    const callId = CallId('selection-call')
+    const callId = ToolCallId('selection-call')
     session.append('tool/call', { turn: 2, step: 1, callId, name: 'read', arguments: '{}' })
     session.append('tool/result', {
       turn: 2,

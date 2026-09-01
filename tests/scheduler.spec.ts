@@ -14,6 +14,7 @@ import type { SourceCapsule } from '../src/domain.ts'
 import { ExplainScheduler } from '../src/scheduler.ts'
 import { ExplainStore } from '../src/store.ts'
 import { SessionId } from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 
 const stores: ExplainStore[] = []
 const schedulers: ExplainScheduler[] = []
@@ -150,6 +151,9 @@ async function setup(
   const llm = ctx.plugin(LlmService)
   serviceFibers.push(llm)
   await llm
+  const projections = ctx.plugin(SessionProjectionRegistry)
+  serviceFibers.push(projections)
+  await projections
   const meter = ctx.plugin(TokenMeterService)
   serviceFibers.push(meter)
   await meter

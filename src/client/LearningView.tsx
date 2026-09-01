@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { ObservableSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import type {
-  ObservableSnapshot,
-  SessionId,
-  SessionListState,
-  SnapshotStore,
-} from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { ReviewId, ThreadEntryView } from 'dsh-explain/types'
 import type { LearningSnapshot } from './learning-store.ts'
 import { diagnosticState } from './diagnostics.ts'

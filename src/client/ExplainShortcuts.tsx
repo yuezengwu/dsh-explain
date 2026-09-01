@@ -4,7 +4,7 @@ import { IconSparkle16, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   InjectFace, PropsLocale, PropsRuntime,
 } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from './locales.ts'
 
@@ -64,10 +64,12 @@ export function commitExplainDraft(input: ExplainDraftInput | undefined, command
 }
 
 /** Resolve a finalized assistant message to its exact source turn. */
-export function assistantTurn(snapshot: ConversationSnapshot, messageId: unknown): number | undefined {
-  for (let index = snapshot.nodes.length - 1; index >= 0; index -= 1) {
-    const node = snapshot.nodes[index]
-    if (node?.kind === 'assistant' && node.messageId === messageId) return node.turn
+export function assistantTurn(snapshot: ChatSnapshot, messageId: unknown): number | undefined {
+  for (let index = snapshot.legacy.nodes.length - 1; index >= 0; index -= 1) {
+    const node = snapshot.legacy.nodes[index]
+    if (node?.kind === 'assistant' && node.messageId === messageId) {
+      return node.turn
+    }
   }
   return undefined
 }
@@ -134,8 +136,8 @@ export function ExplainSelectionShortcut({ input, draft, t }: ExplainSelectionSh
 }
 
 /** Per-message action that drafts an exact-turn learning request. */
-export function ExplainAnswerShortcut({ messageId, useSession, useInput, draft, t }: ExplainAnswerShortcutProps) {
-  const turn = useSession(snapshot => assistantTurn(snapshot, messageId))
+export function ExplainAnswerShortcut({ messageId, useChat, useInput, draft, t }: ExplainAnswerShortcutProps) {
+  const turn = useChat(snapshot => assistantTurn(snapshot, messageId))
   const input = useInput(snapshot => snapshot)
   const [status, setStatus] = useState<string | null>(null)
   const unavailable = turn === undefined || input.phase !== 'plain' || input.draft.trim() !== ''
