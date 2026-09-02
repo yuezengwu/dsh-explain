@@ -14,8 +14,8 @@ The final caption is the product promise: **Work once. Learn continuously.**
 
 ## Recording contract
 
-- DSH source: built `0.1.2-alpha.3` checkout supplied through `DSH_SOURCE_DIR`.
-- Version gate: the recorder rejects a source checkout whose root package version is not exactly `0.1.2-alpha.3`.
+- DSH source: built `0.1.2-alpha.5` checkout supplied through `DSH_SOURCE_DIR`.
+- Version gate: the recorder rejects a source checkout whose root package version is not exactly `0.1.2-alpha.5`.
 - Surface: real assembled DSH Web with the local `dsh-explain` checkout installed as a plugin.
 - Data: deterministic English fixture content created under a temporary `DSH_HOME`; no personal sessions, paths, credentials, or network model calls.
 - Model route: a keyless route-only replay catalog so the real runtime is enabled without transmitting data.
@@ -37,7 +37,7 @@ The final caption is the product promise: **Work once. Learn continuously.**
 
 ## Commands
 
-The recorder requires the repository dependencies, a Playwright Chromium install, `ffmpeg`, and a built DSH `0.1.2-alpha.3` source checkout.
+The recorder requires the repository dependencies, a Playwright Chromium install, `ffmpeg`, and a built DSH `0.1.2-alpha.5` source checkout.
 
 ```sh
 DSH_SOURCE_DIR=/absolute/path/to/deepseek-harness pnpm demo:record

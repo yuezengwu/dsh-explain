@@ -113,4 +113,4 @@ git diff --check
 | 4 | 忘记后不复发 | forget 删除用户覆盖并设置推断时间水位；有效投影立即隐藏旧 checkpoint，控制层进入所有后续辅助请求 |
 | 5 | 成本与主流程隔离 | 画像写入不调用 Scheduler、不增加 `auto_request_usage`，也不改变主 Agent 消息来源 |
 | 6 | 数据治理 | backup v3 包含完整画像审计；`CLEAR` 同事务删除控制、suppression 与审计并单独计数 |
-| 7 | 测试伴随 | `pnpm typecheck`、71 个单元/集成测试、alpha.3 assembled Web 6/6、M6 组合 3/3、生产构建与 pack dry-run |
+| 7 | 测试伴随 | `pnpm typecheck`、71 个单元/集成测试、alpha.5 assembled Web 6/6、M6 组合 3/3、生产构建与 pack dry-run |

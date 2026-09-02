@@ -4,7 +4,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { CommandResult } from '@deepseek-ai/dsh-commands'
-import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
+import type { SessionEvent } from '@deepseek-ai/dsh-session'
 // Type-only imports install the consumed service/event declarations on Context.
 import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-settings'
@@ -17,6 +17,7 @@ import {
   captureSelectionExplainTarget,
   captureSourceCapsule,
   captureAnswerExplainTarget,
+  type ObservedSession,
 } from './observer.ts'
 import { ExplainRuntime } from './runtime.ts'
 import { ExplainStore } from './store.ts'
@@ -61,7 +62,7 @@ export async function apply(ctx: Context, config: ExplainConfig): Promise<void> 
   registerExplainCommand(ctx, runtime, gateway)
   registerReviewCommand(ctx, gateway)
 
-  const seenTurnEnds = new WeakMap<Session, number>()
+  const seenTurnEnds = new WeakMap<object, number>()
   const logger = ctx.logger('dsh-explain')
   ctx.on('session/event', (session, event) => {
     if (event.type !== 'turn/end' || session.header.origin === 'subagent'
@@ -71,8 +72,9 @@ export async function apply(ctx: Context, config: ExplainConfig): Promise<void> 
     queueMicrotask(() => {
       try {
         if (!runtime.scheduler.acceptsGeneration(generation)) return
+        // Source-linked validation may expose both registry and workspace identities for this exact public face.
         const capsule = captureSourceCapsule(
-          session,
+          session as unknown as ObservedSession,
           event as SessionEvent<'turn/end'>,
           runtime.settings().maxSourceChars,
         )

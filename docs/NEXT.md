@@ -1,12 +1,18 @@
 # dsh-explain 迭代计划
 
-## M10：Demo 与 GitHub 展示面
+## M11：DSH 0.1.2-alpha.5 兼容
 
 > 状态：**实现与本地验收完成，等待提交确认**（2026-09-02）。
 
+依赖基线从 DSH `0.1.2-alpha.3` 升级到 `0.1.2-alpha.5`。来源观察改用 `Session.seq`、`eventAt()` 与 `snapshotEvents()`，适配 `Session.events` 移除和强类型序号；composer 左侧快捷入口改从标准 `useInput` hook 读取状态；组装夹具补齐新的未继承会话元数据。发布包、官方源码链接、keyless Web 6/6、M6 组合 3/3、71 项单元/集成测试和 alpha.5 Demo 均在同一候选分支验证。
+
+## M10：Demo 与 GitHub 展示面
+
+> 状态：**已合入 `main`（PR #28），GitHub 展示面已更新**（2026-09-02）。
+
 围绕「Capture → Review → Adapt」重录 28 秒主 Demo：在真实组装的 DSH Web `0.1.2-alpha.3` 中展示从已完成回答生成可编辑草稿、查看全局学习线程和到期复习、修正学习画像、导出本地数据的完整闭环。录制使用临时 `$DSH_HOME`、确定性样例数据和无网络 replay 路由，不读取个人会话、凭证或宿主路径；脚本以 `--no-open` 启动，避免自动化抢占默认浏览器。
 
-本轮同时重构中英文 README 首屏、Quick start、隐私模型与验证状态，产出 MP4、README GIF、四张真实界面证据图、品牌横幅和 1280×640 Social Preview。品牌背景由图像生成工具制作，但所有产品界面均来自真实录制；生成来源、录制约束与复现命令记录在 [DEMO.md](./DEMO.md)。GitHub About、topics 和 Social Preview 的公开更新要等本分支合入后再执行；`v0.3.0` 发布仍是独立确认边界。
+本轮同时重构中英文 README 首屏、Quick start、隐私模型与验证状态，产出 MP4、README GIF、四张真实界面证据图、品牌横幅和 1280×640 Social Preview。品牌背景由图像生成工具制作，但所有产品界面均来自真实录制；生成来源、录制约束与复现命令记录在 [DEMO.md](./DEMO.md)。PR #28 合入后已经同步 GitHub About、topics 和 Social Preview；`v0.3.0` 发布仍是独立确认边界。
 
 ## M9：可校正学习画像
 
@@ -221,7 +227,7 @@ M4 只在 UI 中开放启用、模型路由和自主预算。超时、重试、�
 
 - 在私有 hub 的 `catalog.source.json` 登记插件分类和本地目录安装方式。
 - 更新 keyless assembled Web snapshot，覆盖设置页、来源跳转和来源缺失降级。
-- 使用当前 DSH 0.1.2-alpha.3 和真实模型重新录制完整学习循环 GIF；记录插件提交、DSH 提交和素材哈希。
+- 当时使用 DSH 0.1.2-alpha.3 和真实模型重新录制完整学习循环 GIF；记录插件提交、DSH 提交和素材哈希。
 
 ## 非目标
 
@@ -283,7 +289,7 @@ Host Remote 增加三个方法：`configuration()` 返回当前 UI 可编辑字�
 7. **来源删除降级**：删除来源 Session 后讲解、反馈和重讲历史继续可读，导航动作变为不可用说明且没有浏览器错误。
 8. **宿主生命周期**：`settings.section` 与 Session 服务晚注册、collapse 和 redeclaration 时，贡献正确建立、移除和恢复，无重复注册或悬挂订阅。
 9. **主工作隔离**：设置、诊断和导航不改变主 Session 日志、`deriveMessages()` 或主 Agent 请求。
-10. **测试伴随**：相关单元/集成测试、keyless assembled Web snapshot、真实 DSH 0.1.2-alpha.3 模型流程和 GIF 在同一变更中通过并可追溯。
+10. **测试伴随**：相关单元/集成测试、keyless assembled Web snapshot、当时的 DSH 0.1.2-alpha.3 真实模型流程和 GIF 在同一变更中通过并可追溯。
 
 ## M4 后的候选顺序
 

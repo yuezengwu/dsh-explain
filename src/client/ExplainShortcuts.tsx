@@ -86,7 +86,8 @@ function failureCopy(result: ExplainDraftResult, t: ExplainSelectionShortcutProp
 }
 
 /** Composer-row action that turns the current browser selection into an editable command. */
-export function ExplainSelectionShortcut({ input, draft, t }: ExplainSelectionShortcutProps) {
+export function ExplainSelectionShortcut({ useInput, draft, t }: ExplainSelectionShortcutProps) {
+  const input = useInput(snapshot => snapshot)
   const [selection, setSelection] = useState(selectedText)
   const [status, setStatus] = useState<string | null>(null)
   const pointerSelection = useRef('')

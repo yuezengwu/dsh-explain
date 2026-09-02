@@ -38,6 +38,7 @@ try {
     id: sessionId,
     createdAt: Date.UTC(2026, 0, 2, 3, 4, 0),
     cwd: workspace,
+    isSeeded: false,
     delegationDepth: 0,
   }
   await context.sessionPersistence.create(meta)
