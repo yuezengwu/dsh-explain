@@ -120,6 +120,7 @@ describe('dsh-explain plugin lifecycle', () => {
         { method: 'threadPage', invocation: { kind: 'direct' } },
         { method: 'context', invocation: { kind: 'direct' } },
         { method: 'exportData', invocation: { kind: 'direct' } },
+        { method: 'updateLearnerProfile', invocation: { kind: 'direct' } },
         { method: 'reviewDashboard', invocation: { kind: 'direct' } },
         { method: 'startReview', invocation: { kind: 'direct' } },
         { method: 'submitReviewAnswer', invocation: { kind: 'direct' } },
@@ -314,7 +315,7 @@ describe('dsh-explain plugin lifecycle', () => {
       const backup = ctx.explain.exportData()
       expect(backup).toMatchObject({
         format: 'dsh-explain-backup',
-        version: 2,
+        version: 3,
         data: { entries: [{ ordinal: 1 }, { ordinal: 2 }, { ordinal: 3 }] },
       })
       expect(JSON.stringify(backup)).not.toContain('sourceSummary')

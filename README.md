@@ -70,11 +70,12 @@ Every `$DSH_HOME` owns exactly one Explain learning thread. Individual work sess
 - One global scheduler serializes manual explanations, reviews, autonomous evaluation, rephrases, and compaction.
 - The default autonomous budget is 50 requests per rolling 24 hours and survives restarts.
 - A private `ExplainContext` tracks explanation preferences, knowledge level, and learning progress.
+- **Learning → Learning overview** shows explanation-length, structure, example, terminology, and topic-familiarity judgments with confidence and source links. You can correct them, forget a judgment, or set an explicit preference; explicit preferences outrank corrections, which outrank model inference.
 - When structured observations or closed explanations are pending, auxiliary history compacts after 30 minutes without an Explain action, or before a request would exceed 50% of the selected model's context window.
 
 ## Own your learning data
 
-Open **Settings → Learning → Data management** to download `dsh-explain-backup-v2.json`. The versioned backup contains learning cards, Topic state, review schedules and outcomes, and the public `ExplainContext` projection; it excludes full source sessions, private source summaries, credentials, and absolute host paths.
+Open **Settings → Learning → Data management** to download `dsh-explain-backup-v3.json`. The versioned backup contains learning cards, Topic state, review schedules and outcomes, the effective public `ExplainContext` projection, and the learner-profile audit trail; it excludes full source sessions, private source summaries, credentials, and absolute host paths.
 
 The same page can clear all learned content after you type `CLEAR`. Explain first cancels and fences in-flight generation, then removes the learning thread and context in one SQLite transaction. Auxiliary-model settings, the enabled state, and the current rolling 24-hour autonomous-usage count are deliberately preserved.
 

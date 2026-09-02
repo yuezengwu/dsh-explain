@@ -125,6 +125,17 @@ export interface StoredContextObservation {
   readonly createdAt: number
 }
 
+/** Durable user-authored controls that take precedence over model inference. */
+export interface LearnerProfileControl {
+  readonly targetKind: 'dialogue-preference' | 'topic-familiarity'
+  readonly targetKey: string
+  readonly value?: string
+  readonly authority?: 'correction' | 'explicit'
+  readonly sourceObservationId?: ObservationId
+  readonly suppressInferencesThrough?: number
+  readonly updatedAt: number
+}
+
 /** One closed explanation reduced to safe display fields for compaction. */
 export interface ClosedExplanationContext {
   readonly explanationId: ExplanationId
@@ -170,6 +181,7 @@ export interface CompactionBatch {
   readonly previous?: StoredCheckpoint
   readonly observations: readonly StoredContextObservation[]
   readonly explanations: readonly ClosedExplanationContext[]
+  readonly learnerProfileControls: readonly LearnerProfileControl[]
   readonly throughOrdinal: number
 }
 
@@ -189,4 +201,5 @@ export interface AuxiliaryContext {
   readonly activeExplanations: readonly ActiveExplanationContext[]
   readonly uncoveredObservations: readonly StoredContextObservation[]
   readonly uncoveredClosedExplanations: readonly ClosedExplanationContext[]
+  readonly learnerProfileControls: readonly LearnerProfileControl[]
 }

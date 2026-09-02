@@ -97,7 +97,11 @@ v6 不包含 `events.ts`、Session projection、ConversationNodeDefinition 或 t
 
 ### 导出与清除边界
 
-`exportData()` 只组装 typed Remote 已允许浏览器读取的 `ThreadEntryView`、`ExplainContextView` 与公开复习投影。导出信封固定为 `format: dsh-explain-backup`、`version: 2`，同时记录导出时间、SQLite schema version 与 store revision。它不读取或序列化 revision-one 私有 `sourceSummary`、完整 Session 转录、credentials、工具原始参数/结果或绝对路径；v0.3 只承诺导出，不提供未经验证的导入路径。
+`exportData()` 只组装 typed Remote 已允许浏览器读取的 `ThreadEntryView`、`ExplainContextView`、公开复习投影与画像修改审计。导出信封固定为 `format: dsh-explain-backup`、`version: 3`，同时记录导出时间、SQLite schema version 与 store revision。它不读取或序列化 revision-one 私有 `sourceSummary`、完整 Session 转录、credentials、工具原始参数/结果或绝对路径；当前只承诺导出，不提供未经验证的导入路径。
+
+### 可校正学习画像
+
+SQLite schema v4 增加 `learner_profile_overrides`、`learner_profile_suppressions` 与 append-only `learner_profile_events`。写入使用 request-id 幂等、fingerprint 冲突检测和 `expectedStoreRevision` CAS；显式偏好不能被较低优先级的 correction 覆盖。forget 只屏蔽操作时间之前的推断，新的有来源 observation 仍可形成新判断。所有控制进入后续辅助请求，但写操作本身不调度模型，也不写自主额度表。
 
 ### 复习持久化与排期
 
@@ -107,7 +111,7 @@ SQLite schema v3 增加 `review_state`、`review_batches`、`review_attempts` �
 
 `clearLearningData()` 需要精确确认词 `CLEAR` 与页面所见 `expectedStoreRevision`。Runtime 串行化清除；Scheduler 先进入 resetting 状态、提升 epoch、abort 当前模型调用、结算手动队列、清空 timers/candidates，并等待既有 drain 完全退出。只有在生产者静默后，Store 才执行一次 `BEGIN IMMEDIATE` 事务和 revision CAS；在途迟到结果不能重新落库。
 
-事务删除 entries、explanations、topics、mutation requests、observations、checkpoints 与 coverage，并复位由这些内容派生的 runtime clocks。它故意不删除 `auto_request_usage` 与 `runtime_lease`，也不触碰 DSH settings namespace，因此清除不能绕过调用上限、抢占运行租约或改变 provider/model/enabled 配置。事务失败会整体回滚；stale revision 不发生任何写入。
+事务删除 entries、explanations、topics、mutation requests、observations、checkpoints、coverage、画像控制及其审计，并复位由这些内容派生的 runtime clocks。它故意不删除 `auto_request_usage` 与 `runtime_lease`，也不触碰 DSH settings namespace，因此清除不能绕过调用上限、抢占运行租约或改变 provider/model/enabled 配置。事务失败会整体回滚；stale revision 不发生任何写入。
 
 ### 路径与配置
 
@@ -123,7 +127,7 @@ $DSH_HOME/dsh-explain/v1/thread.sqlite
 
 ### Schema
 
-`SCHEMA_VERSION = 2`。预发布期间不提供隐式迁移：版本不同、结构损坏或约束不满足时加载失败并保留原数据库，禁止删除、覆盖或空库回退。
+`SCHEMA_VERSION = 4`。schema v2 按顺序原位迁移到 v3（复习）再到 v4（可校正画像），schema v3 直接迁移到 v4；未知版本、结构损坏或约束不满足时加载失败并保留原数据库，禁止删除、覆盖或空库回退。
 
 | 表 | 关键字段 | 角色 |
 |---|---|---|
@@ -137,6 +141,9 @@ $DSH_HOME/dsh-explain/v1/thread.sqlite
 | `context_checkpoints` | `checkpoint_id`, `generation`, `trigger`, `through_ordinal`, `context_json`, `model_json`, `created_at`, `request_id UNIQUE` | 可重建的 `ExplainContext` 快照与成功生成的模型元数据 |
 | `context_coverage` | `checkpoint_id`, `explanation_id UNIQUE` | 明确标记哪些已关闭 Explanation 被哪个检查点吸收 |
 | `observation_coverage` | `checkpoint_id`, `observation_id UNIQUE` | 明确标记哪些结构化观察被哪个检查点吸收 |
+| `learner_profile_overrides` | `target_kind`, `target_key`, `value`, `authority`, `source_observation_id`, `updated_at` | 当前 correction / explicit 覆盖层；每个画像字段最多一条 |
+| `learner_profile_suppressions` | `target_kind`, `target_key`, `through_created_at`, `updated_at` | “忘记这一判断”的时间水位；只允许更新证据重新出现 |
+| `learner_profile_events` | `event_id`, `request_id UNIQUE`, `fingerprint`, target/action/value/source, `created_at` | 不含原始转录的 append-only 修改审计与幂等账本 |
 | `auto_request_usage` | `auto_request_id`, `source_session_id`, `provider`, `model`, `attempt`, `started_at` | 自主模型请求的滚动 24 小时持久占额与发送目标；重启不能清零 |
 | `runtime_lease` | `name`, `owner_id`, `generation`, `expires_at` | 同一 `$DSH_HOME` 的单 host runtime 租约与 fencing token |
 
@@ -482,6 +489,7 @@ interface FeedbackRequest {
 | `explain.status()` | 全局开关、模型路由/容量完备性、runtime 状态、活跃来源数、候选数、自主额度已用/上限/最早恢复时间、最近操作/压缩时间、当前压力、store revision 和 view cursor |
 | `explain.threadPage({ beforeOrdinal, limit })` | 按 ordinal 倒序分页，limit 默认 30、最大 100；返回读取时的 store revision |
 | `explain.context()` | 最新 `ExplainContext`、生成时间、推断标记和数据库实时学习统计 |
+| `explain.updateLearnerProfile(request)` | revision CAS 下设置、纠正或忘记一个画像字段；返回立即生效的投影且不触发模型请求 |
 | `explain.watch({ after: ViewCursor })` | 最长 25 秒 long-poll；cursor 变化时返回新 cursor，incarnation 不同则立即返回，无变化返回 timeout |
 | `explain.feedback(request)` | Explanation revision CAS + 幂等提交 understood / not-understood |
 | `explain.reopenTopic(request)` | Topic revision CAS + 撤销全局掌握状态 |

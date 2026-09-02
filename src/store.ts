@@ -25,6 +25,7 @@ import type {
   ExplanationContent,
   ExplanationOrigin,
   GenerationRecord,
+  LearnerProfileControl,
   LeaseToken,
   ManualExplanation,
   ManualExplainTarget,
@@ -40,7 +41,7 @@ import type {
 import type {
   ClearedLearningDataCounts,
   DialoguePreferenceView,
-  ExplainDataExportV2,
+  ExplainDataExportV3,
   ExplainContextStats,
   ExplainContextView,
   ExplainMutationFailure,
@@ -48,6 +49,8 @@ import type {
   FeedbackRequest,
   ReopenTopicRequest,
   ReopenTopicResult,
+  LearnerProfileAuditEventView,
+  LearnerProfileEvidenceView,
   ReviewAttemptView,
   ReviewDashboardView,
   ReviewQuestionKind,
@@ -58,15 +61,25 @@ import type {
   ThreadEntryView,
   ThreadPageRequest,
   ThreadPageResult,
+  TopicFamiliarityView,
+  UpdateLearnerProfileRequest,
+  UpdateLearnerProfileResult,
   ViewCursor,
   WatchResult,
 } from './types.ts'
-import { CREATE_SCHEMA_SQL, MIGRATE_V2_TO_V3_SQL, SCHEMA_VERSION } from './schema.ts'
+import {
+  CREATE_SCHEMA_SQL,
+  MIGRATE_V2_TO_V3_SQL,
+  MIGRATE_V3_TO_V4_SQL,
+  SCHEMA_VERSION,
+} from './schema.ts'
 
 const DAY_MS = 24 * 60 * 60 * 1_000
 const DEFAULT_PAGE_LIMIT = 30
 const MAX_PAGE_LIMIT = 100
 const WATCH_TIMEOUT_MS = 25_000
+const DIALOGUE_DIMENSIONS = new Set(['verbosity', 'structure', 'examples', 'terminology'])
+const TOPIC_FAMILIARITY_LEVELS = new Set(['unknown', 'beginner', 'working', 'advanced'])
 
 interface MetaRow {
   schema_version: number
@@ -166,6 +179,33 @@ interface ObservationRow {
   kind: ContextObservation['kind']
   payload_json: string
   confidence: 'low' | 'medium' | 'high'
+  created_at: number
+}
+
+interface ProfileOverrideRow {
+  target_kind: 'dialogue-preference' | 'topic-familiarity'
+  target_key: string
+  value: string
+  authority: 'correction' | 'explicit'
+  source_observation_id: string | null
+  updated_at: number
+}
+
+interface ProfileSuppressionRow {
+  target_kind: 'dialogue-preference' | 'topic-familiarity'
+  target_key: string
+  through_created_at: number
+  updated_at: number
+}
+
+interface ProfileEventRow {
+  event_id: string
+  target_kind: 'dialogue-preference' | 'topic-familiarity'
+  target_key: string
+  action: 'set' | 'forget'
+  value: string | null
+  authority: 'correction' | 'explicit' | null
+  source_observation_id: string | null
   created_at: number
 }
 
@@ -737,6 +777,7 @@ export class ExplainStore {
       activeExplanations: this.explanationContexts('active') as ActiveExplanationContext[],
       uncoveredObservations: this.uncoveredObservations(),
       uncoveredClosedExplanations: this.explanationContexts('closed'),
+      learnerProfileControls: this.learnerProfileControls(),
     }
   }
 
@@ -755,6 +796,7 @@ export class ExplainStore {
       ...(previous === undefined ? {} : { previous }),
       observations,
       explanations,
+      learnerProfileControls: this.learnerProfileControls(),
       throughOrdinal: ordinals.length === 0
         ? previousThroughOrdinal
         : Math.max(previousThroughOrdinal, ...ordinals),
@@ -869,7 +911,7 @@ export class ExplainStore {
   }
 
   /** Export every browser-visible learning projection without private source summaries or host paths. */
-  exportData(exportedAt = Date.now()): ExplainDataExportV2 {
+  exportData(exportedAt = Date.now()): ExplainDataExportV3 {
     const rows = this.database.prepare(`
       SELECT e.entry_id, e.ordinal, e.kind, e.explanation_id,
              x.state AS explanation_state, e.topic_id,
@@ -883,7 +925,7 @@ export class ExplainStore {
     `).all() as unknown as EntryRow[]
     return {
       format: 'dsh-explain-backup',
-      version: 2,
+      version: 3,
       exportedAt,
       databaseSchemaVersion: SCHEMA_VERSION,
       storeRevision: this.storeRevision(),
@@ -894,6 +936,7 @@ export class ExplainStore {
           dashboard: this.reviewDashboard(exportedAt),
           attempts: this.reviewAttempts(),
         },
+        profileAudit: this.profileAudit(),
       },
     }
   }
@@ -1091,6 +1134,111 @@ export class ExplainStore {
     })
   }
 
+  /** Apply one idempotent, revision-fenced learner-profile correction without invoking a model. */
+  updateLearnerProfile(request: UpdateLearnerProfileRequest, now = Date.now()): UpdateLearnerProfileResult {
+    const invalid = profileRequestError(request)
+    if (invalid !== undefined) return { ok: false, error: { code: 'PROFILE_INVALID', message: invalid } }
+    const fingerprint = profileFingerprint(request)
+    return this.write(() => {
+      const replay = this.database.prepare(`
+        SELECT fingerprint FROM learner_profile_events WHERE request_id = ?
+      `).get(request.requestId) as unknown as { fingerprint: string } | undefined
+      if (replay !== undefined) {
+        return replay.fingerprint === fingerprint
+          ? { ok: true as const, context: this.context(), storeRevision: this.storeRevision() }
+          : {
+              ok: false as const,
+              error: {
+                code: 'REQUEST_ID_CONFLICT' as const,
+                message: 'The request id already belongs to a different learner-profile change.',
+              },
+            }
+      }
+      if (this.storeRevision() !== request.expectedStoreRevision) {
+        return {
+          ok: false as const,
+          error: { code: 'STORE_STALE' as const, message: 'Learning data changed; refresh before editing the profile.' },
+        }
+      }
+      if (request.sourceObservationId !== undefined
+        && !this.observationMatchesTarget(request.sourceObservationId, request.targetKind, request.targetKey)) {
+        return {
+          ok: false as const,
+          error: { code: 'PROFILE_INVALID' as const, message: 'The selected source does not support this profile field.' },
+        }
+      }
+      const existing = this.database.prepare(`
+        SELECT authority FROM learner_profile_overrides WHERE target_kind = ? AND target_key = ?
+      `).get(request.targetKind, request.targetKey) as unknown as { authority: 'correction' | 'explicit' } | undefined
+      if (request.action === 'set' && request.authority === 'correction' && existing?.authority === 'explicit') {
+        return {
+          ok: false as const,
+          error: {
+            code: 'PROFILE_EXPLICIT_PRECEDENCE' as const,
+            message: 'An explicit preference already has priority over inferred corrections.',
+          },
+        }
+      }
+      if (request.action === 'set') {
+        this.database.prepare(`
+          INSERT INTO learner_profile_overrides(
+            target_kind, target_key, value, authority, source_observation_id, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(target_kind, target_key) DO UPDATE SET
+            value = excluded.value,
+            authority = excluded.authority,
+            source_observation_id = excluded.source_observation_id,
+            updated_at = excluded.updated_at
+        `).run(
+          request.targetKind,
+          request.targetKey,
+          request.value!.trim(),
+          request.authority!,
+          request.sourceObservationId ?? null,
+          now,
+        )
+        this.database.prepare(`
+          DELETE FROM learner_profile_suppressions WHERE target_kind = ? AND target_key = ?
+        `).run(request.targetKind, request.targetKey)
+      } else {
+        this.database.prepare(`
+          DELETE FROM learner_profile_overrides WHERE target_kind = ? AND target_key = ?
+        `).run(request.targetKind, request.targetKey)
+        this.database.prepare(`
+          INSERT INTO learner_profile_suppressions(target_kind, target_key, through_created_at, updated_at)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(target_kind, target_key) DO UPDATE SET
+            through_created_at = MAX(through_created_at, excluded.through_created_at),
+            updated_at = excluded.updated_at
+        `).run(request.targetKind, request.targetKey, now, now)
+      }
+      this.database.prepare(`
+        INSERT INTO learner_profile_events(
+          event_id, request_id, fingerprint, target_kind, target_key, action,
+          value, authority, source_observation_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        randomUUID(),
+        request.requestId,
+        fingerprint,
+        request.targetKind,
+        request.targetKey,
+        request.action,
+        request.value?.trim() ?? null,
+        request.authority ?? null,
+        request.sourceObservationId ?? null,
+        now,
+      )
+      this.database.prepare(`
+        UPDATE runtime_state
+        SET context_generation = context_generation + 1, last_user_action_at = ?
+        WHERE singleton = 1
+      `).run(now)
+      this.advanceStoreRevision()
+      return { ok: true as const, context: this.context(), storeRevision: this.storeRevision() }
+    })
+  }
+
   /** Atomically clear learned content while preserving settings, request usage, and the live runtime lease. */
   clearLearningData(expectedStoreRevision: number): StoreClearLearningDataResult {
     if (!Number.isInteger(expectedStoreRevision) || expectedStoreRevision < 0) {
@@ -1106,8 +1254,12 @@ export class ExplainStore {
         observations: this.count('SELECT COUNT(*) AS count FROM context_observations'),
         checkpoints: this.count('SELECT COUNT(*) AS count FROM context_checkpoints'),
         reviewAttempts: this.count('SELECT COUNT(*) AS count FROM review_attempts'),
+        profileChanges: this.count('SELECT COUNT(*) AS count FROM learner_profile_events'),
       }
       this.database.exec(`
+        DELETE FROM learner_profile_events;
+        DELETE FROM learner_profile_overrides;
+        DELETE FROM learner_profile_suppressions;
         DELETE FROM review_mutation_requests;
         DELETE FROM review_attempts;
         DELETE FROM review_batches;
@@ -1147,24 +1299,19 @@ export class ExplainStore {
       ORDER BY generation DESC
       LIMIT 1
     `).get() as unknown as CheckpointRow | undefined
-    if (checkpoint === undefined) {
-      return {
-        dialogueProfile: [],
-        knowledgeOverview: '',
-        learningTrend: '',
-        stats,
-        inferred: false,
-      }
-    }
-    const payload = parseObject(checkpoint.context_json, 'context checkpoint') as CheckpointPayload
-    const profile = parseDialogueProfile(payload.dialogueProfile)
+    const payload = checkpoint === undefined
+      ? undefined
+      : parseObject(checkpoint.context_json, 'context checkpoint') as CheckpointPayload
+    const profile = payload === undefined ? [] : parseDialogueProfile(payload.dialogueProfile)
     return {
-      generatedAt: checkpoint.created_at,
-      dialogueProfile: profile,
-      knowledgeOverview: checkpointText(payload.knowledgeOverview, 'knowledgeOverview'),
-      learningTrend: checkpointText(payload.learningTrend, 'learningTrend'),
+      ...(checkpoint === undefined ? {} : { generatedAt: checkpoint.created_at }),
+      dialogueProfile: this.effectiveDialogueProfile(profile, checkpoint?.created_at),
+      topicFamiliarities: this.effectiveTopicFamiliarities(),
+      profileAudit: this.profileAudit(20),
+      knowledgeOverview: payload === undefined ? '' : checkpointText(payload.knowledgeOverview, 'knowledgeOverview'),
+      learningTrend: payload === undefined ? '' : checkpointText(payload.learningTrend, 'learningTrend'),
       stats,
-      inferred: true,
+      inferred: checkpoint !== undefined,
     }
   }
 
@@ -1502,6 +1649,226 @@ export class ExplainStore {
     }
   }
 
+  private learnerProfileControls(): readonly LearnerProfileControl[] {
+    const overrides = this.database.prepare(`
+      SELECT target_kind, target_key, value, authority, source_observation_id, updated_at
+      FROM learner_profile_overrides ORDER BY target_kind, target_key
+    `).all() as unknown as ProfileOverrideRow[]
+    const suppressions = this.database.prepare(`
+      SELECT target_kind, target_key, through_created_at, updated_at
+      FROM learner_profile_suppressions ORDER BY target_kind, target_key
+    `).all() as unknown as ProfileSuppressionRow[]
+    return [
+      ...overrides.map(row => ({
+        targetKind: row.target_kind,
+        targetKey: row.target_key,
+        value: row.value,
+        authority: row.authority,
+        ...(row.source_observation_id === null
+          ? {} : { sourceObservationId: ObservationId(row.source_observation_id) }),
+        updatedAt: row.updated_at,
+      })),
+      ...suppressions.map(row => ({
+        targetKind: row.target_kind,
+        targetKey: row.target_key,
+        suppressInferencesThrough: row.through_created_at,
+        updatedAt: row.updated_at,
+      })),
+    ]
+  }
+
+  private effectiveDialogueProfile(
+    inferred: ExplainContextSnapshot['dialogueProfile'],
+    checkpointCreatedAt?: number,
+  ): readonly DialoguePreferenceView[] {
+    const overrides = this.profileOverrides('dialogue-preference')
+    const suppressions = this.profileSuppressions('dialogue-preference')
+    const candidates = new Map<DialoguePreferenceView['kind'], DialoguePreferenceView>()
+    for (const item of inferred) {
+      const evidence = this.profileEvidence(item.evidenceObservationIds, item.evidenceEntryOrdinals)
+      candidates.set(item.kind, { ...item, authority: 'inferred', evidence })
+    }
+    const observationRows = this.database.prepare(`
+      SELECT observation_id, source_session_id, source_turn, kind,
+             payload_json, confidence, created_at
+      FROM context_observations WHERE kind = 'dialogue-preference'
+      ORDER BY created_at DESC, observation_id DESC
+    `).all() as unknown as ObservationRow[]
+    const newestObservations = new Set<string>()
+    for (const row of observationRows) {
+      const observation = parseStoredObservation(row)
+      if (observation.kind !== 'dialogue-preference' || newestObservations.has(observation.dimension)) continue
+      newestObservations.add(observation.dimension)
+      if (checkpointCreatedAt !== undefined && row.created_at <= checkpointCreatedAt) continue
+      candidates.set(observation.dimension, {
+        kind: observation.dimension,
+        preference: observation.value,
+        confidence: observation.confidence,
+        evidenceObservationIds: [ObservationId(row.observation_id)],
+        evidenceEntryOrdinals: [],
+        authority: 'inferred',
+        evidence: [{
+          observationId: ObservationId(row.observation_id),
+          sourceSessionId: SessionId(row.source_session_id),
+          sourceTurn: row.source_turn,
+          createdAt: row.created_at,
+        }],
+      })
+    }
+    const visible: DialoguePreferenceView[] = [...candidates.values()].filter((item) => {
+      if (overrides.has(item.kind)) return false
+      const suppressedThrough = suppressions.get(item.kind)
+      return suppressedThrough === undefined
+        || (item.evidence ?? []).some(source => source.createdAt > suppressedThrough)
+    })
+    for (const row of overrides.values()) {
+      const evidenceObservationIds = row.source_observation_id === null
+        ? [] : [ObservationId(row.source_observation_id)]
+      visible.push({
+        kind: row.target_key as DialoguePreferenceView['kind'],
+        preference: row.value,
+        confidence: 'high',
+        evidenceObservationIds,
+        evidenceEntryOrdinals: [],
+        authority: row.authority,
+        evidence: this.profileEvidence(evidenceObservationIds, []),
+      })
+    }
+    const order = ['verbosity', 'structure', 'examples', 'terminology']
+    return visible.sort((left, right) => order.indexOf(left.kind) - order.indexOf(right.kind))
+  }
+
+  private effectiveTopicFamiliarities(): readonly TopicFamiliarityView[] {
+    const overrides = this.profileOverrides('topic-familiarity')
+    const suppressions = this.profileSuppressions('topic-familiarity')
+    const rows = this.database.prepare(`
+      SELECT observation_id, source_session_id, source_turn, kind,
+             payload_json, confidence, created_at
+      FROM context_observations WHERE kind = 'topic-familiarity'
+      ORDER BY created_at DESC, observation_id DESC
+    `).all() as unknown as ObservationRow[]
+    const result = new Map<string, TopicFamiliarityView>()
+    for (const row of rows) {
+      const observation = parseStoredObservation(row)
+      if (observation.kind !== 'topic-familiarity' || result.has(observation.topicKey)
+        || overrides.has(observation.topicKey)
+        || row.created_at <= (suppressions.get(observation.topicKey) ?? -1)) continue
+      result.set(observation.topicKey, {
+        topicKey: observation.topicKey,
+        level: observation.level,
+        confidence: observation.confidence,
+        authority: 'inferred',
+        evidence: [{
+          observationId: ObservationId(row.observation_id),
+          sourceSessionId: SessionId(row.source_session_id),
+          sourceTurn: row.source_turn,
+          createdAt: row.created_at,
+        }],
+      })
+    }
+    for (const row of overrides.values()) {
+      const evidenceObservationIds = row.source_observation_id === null
+        ? [] : [ObservationId(row.source_observation_id)]
+      result.set(row.target_key, {
+        topicKey: row.target_key,
+        level: row.value as TopicFamiliarityView['level'],
+        confidence: 'high',
+        authority: row.authority,
+        evidence: this.profileEvidence(evidenceObservationIds, []),
+      })
+    }
+    return [...result.values()].sort((left, right) => left.topicKey.localeCompare(right.topicKey))
+  }
+
+  private profileOverrides(kind: ProfileOverrideRow['target_kind']): Map<string, ProfileOverrideRow> {
+    const rows = this.database.prepare(`
+      SELECT target_kind, target_key, value, authority, source_observation_id, updated_at
+      FROM learner_profile_overrides WHERE target_kind = ? ORDER BY target_key
+    `).all(kind) as unknown as ProfileOverrideRow[]
+    return new Map(rows.map(row => [row.target_key, row]))
+  }
+
+  private profileSuppressions(kind: ProfileSuppressionRow['target_kind']): Map<string, number> {
+    const rows = this.database.prepare(`
+      SELECT target_kind, target_key, through_created_at, updated_at
+      FROM learner_profile_suppressions WHERE target_kind = ? ORDER BY target_key
+    `).all(kind) as unknown as ProfileSuppressionRow[]
+    return new Map(rows.map(row => [row.target_key, row.through_created_at]))
+  }
+
+  private profileEvidence(
+    observationIds: readonly ObservationId[],
+    entryOrdinals: readonly number[],
+  ): readonly LearnerProfileEvidenceView[] {
+    const observation = this.database.prepare(`
+      SELECT source_session_id, source_turn, created_at
+      FROM context_observations WHERE observation_id = ?
+    `)
+    const entry = this.database.prepare(`
+      SELECT source_session_id, source_turn, created_at FROM entries WHERE ordinal = ?
+    `)
+    return [
+      ...observationIds.flatMap((observationId) => {
+        const row = observation.get(observationId) as unknown as {
+          source_session_id: string; source_turn: number; created_at: number
+        } | undefined
+        return row === undefined ? [] : [{
+          observationId,
+          sourceSessionId: SessionId(row.source_session_id),
+          sourceTurn: row.source_turn,
+          createdAt: row.created_at,
+        }]
+      }),
+      ...entryOrdinals.flatMap((entryOrdinal) => {
+        const row = entry.get(entryOrdinal) as unknown as {
+          source_session_id: string | null; source_turn: number | null; created_at: number
+        } | undefined
+        return row === undefined ? [] : [{
+          entryOrdinal,
+          ...(row.source_session_id === null ? {} : { sourceSessionId: SessionId(row.source_session_id) }),
+          ...(row.source_turn === null ? {} : { sourceTurn: row.source_turn }),
+          createdAt: row.created_at,
+        }]
+      }),
+    ]
+  }
+
+  private profileAudit(limit?: number): readonly LearnerProfileAuditEventView[] {
+    const rows = this.database.prepare(`
+      SELECT event_id, target_kind, target_key, action,
+             value, authority, source_observation_id, created_at
+      FROM learner_profile_events ORDER BY created_at DESC, event_id DESC
+      ${limit === undefined ? '' : 'LIMIT ?'}
+    `).all(...(limit === undefined ? [] : [limit])) as unknown as ProfileEventRow[]
+    return rows.map(row => ({
+      eventId: row.event_id,
+      targetKind: row.target_kind,
+      targetKey: row.target_key,
+      action: row.action,
+      ...(row.value === null ? {} : { value: row.value }),
+      ...(row.authority === null ? {} : { authority: row.authority }),
+      ...(row.source_observation_id === null
+        ? {} : { sourceObservationId: ObservationId(row.source_observation_id) }),
+      createdAt: row.created_at,
+    }))
+  }
+
+  private observationMatchesTarget(
+    observationId: ObservationId,
+    targetKind: UpdateLearnerProfileRequest['targetKind'],
+    targetKey: string,
+  ): boolean {
+    const row = this.database.prepare(`
+      SELECT observation_id, source_session_id, source_turn, kind, payload_json, confidence, created_at
+      FROM context_observations WHERE observation_id = ?
+    `).get(observationId) as unknown as ObservationRow | undefined
+    if (row === undefined) return false
+    const observation = parseStoredObservation(row)
+    return observation.kind === targetKind && (observation.kind === 'dialogue-preference'
+      ? observation.dimension === targetKey
+      : observation.topicKey === targetKey)
+  }
+
   private topicHints(limit: number): readonly TopicHint[] {
     const rows = this.database.prepare(`
       SELECT t.topic_id, t.topic_key, t.title, t.state, t.topic_revision,
@@ -1631,6 +1998,17 @@ export class ExplainStore {
       this.database.exec('BEGIN IMMEDIATE')
       try {
         this.database.exec(MIGRATE_V2_TO_V3_SQL)
+        this.database.exec('COMMIT')
+      } catch (error) {
+        this.database.exec('ROLLBACK')
+        throw error
+      }
+      meta = this.meta()
+    }
+    if (meta.schema_version === 3) {
+      this.database.exec('BEGIN IMMEDIATE')
+      try {
+        this.database.exec(MIGRATE_V3_TO_V4_SQL)
         this.database.exec('COMMIT')
       } catch (error) {
         this.database.exec('ROLLBACK')
@@ -1857,7 +2235,7 @@ export class ExplainStore {
   }
 }
 
-function parseDialogueProfile(value: unknown): readonly DialoguePreferenceView[] {
+function parseDialogueProfile(value: unknown): ExplainContextSnapshot['dialogueProfile'] {
   if (!Array.isArray(value) || value.length > 16) {
     throw new Error('dsh-explain: context checkpoint dialogueProfile must contain at most 16 items')
   }
@@ -2064,6 +2442,53 @@ function reopenFingerprint(request: ReopenTopicRequest): string {
 
 function reviewFingerprint(reviewId: string, answer: string): string {
   return JSON.stringify(['review-answer', reviewId, answer])
+}
+
+function profileFingerprint(request: UpdateLearnerProfileRequest): string {
+  return JSON.stringify([
+    'learner-profile',
+    request.targetKind,
+    request.targetKey,
+    request.action,
+    request.value?.trim() ?? null,
+    request.authority ?? null,
+    request.sourceObservationId ?? null,
+  ])
+}
+
+function profileRequestError(request: UpdateLearnerProfileRequest): string | undefined {
+  try {
+    assertRequestId(request.requestId)
+  } catch {
+    return 'The request id is invalid.'
+  }
+  if (!Number.isInteger(request.expectedStoreRevision) || request.expectedStoreRevision < 0) {
+    return 'The expected store revision must be a non-negative integer.'
+  }
+  if (request.targetKind === 'dialogue-preference') {
+    if (!DIALOGUE_DIMENSIONS.has(request.targetKey)) return 'The dialogue-preference dimension is invalid.'
+  } else if (request.targetKind === 'topic-familiarity') {
+    if (!validTopicKey(request.targetKey)) return 'The topic key is invalid.'
+  } else {
+    return 'The learner-profile target kind is invalid.'
+  }
+  if (request.action === 'forget') {
+    if (request.value !== undefined || request.authority !== undefined) {
+      return 'A forget request cannot include a value or authority.'
+    }
+    return undefined
+  }
+  if (request.action !== 'set') return 'The learner-profile action is invalid.'
+  if (request.authority !== 'correction' && request.authority !== 'explicit') {
+    return 'A profile value must be marked as a correction or explicit preference.'
+  }
+  if (typeof request.value !== 'string' || request.value.trim() === '' || request.value.length > 240) {
+    return 'The profile value must be a non-empty string of at most 240 characters.'
+  }
+  if (request.targetKind === 'topic-familiarity' && !TOPIC_FAMILIARITY_LEVELS.has(request.value)) {
+    return 'The topic-familiarity level is invalid.'
+  }
+  return undefined
 }
 
 function reviewQuestion(kind: ReviewQuestionKind, title: string): string {

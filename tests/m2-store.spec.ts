@@ -101,6 +101,165 @@ describe('runtime lease and autonomous budget', () => {
 })
 
 describe('autonomous, rephrase, and checkpoint persistence', () => {
+  it('applies correctable learner-profile precedence, sources, audit, and forget controls locally', () => {
+    const store = memoryStore()
+    const now = 1_800_000_000_000
+    const lease = store.acquireLease('profile-owner', now, DAY_MS)
+    const source = capsule('profile-source', 8)
+    const committed = store.commitAutoDecision(lease, source, {
+      ...decision(),
+      contextObservations: [
+        ...decision().contextObservations,
+        {
+          kind: 'topic-familiarity',
+          topicKey: 'typescript/discriminated-unions',
+          level: 'beginner',
+          confidence: 'medium',
+        },
+      ],
+    }, generation(now + 1))
+    const entry = committed.entry
+    if (entry?.explanationId === undefined || entry.revision === undefined) throw new Error('missing profile fixture')
+    expect(store.context()).toMatchObject({
+      inferred: false,
+      dialogueProfile: [{ kind: 'examples', authority: 'inferred' }],
+      topicFamiliarities: [{ topicKey: 'typescript/discriminated-unions', authority: 'inferred' }],
+    })
+    expect(store.feedback({
+      requestId: RequestId('profile-master'),
+      sourceSessionId: source.sourceSessionId,
+      explanationId: entry.explanationId,
+      revision: entry.revision,
+      action: 'understood',
+    }).ok).toBe(true)
+    const batch = store.compactionBatch()
+    if (batch === undefined) throw new Error('missing profile compaction batch')
+    const exampleObservation = batch.observations.find(item => item.observation.kind === 'dialogue-preference')
+    const topicObservation = batch.observations.find(item => item.observation.kind === 'topic-familiarity')
+    if (exampleObservation === undefined || topicObservation === undefined) throw new Error('missing profile evidence')
+    expect(store.commitCheckpoint(lease, batch, 'idle', 'profile-checkpoint', {
+      dialogueProfile: [{
+        kind: 'examples',
+        preference: 'Prefer one concrete code example.',
+        confidence: 'high',
+        evidenceObservationIds: [exampleObservation.observationId],
+        evidenceEntryOrdinals: [],
+      }],
+      knowledgeOverview: '',
+      learningTrend: '',
+    }, generation(now + 2))).toBeDefined()
+
+    expect(store.context()).toMatchObject({
+      dialogueProfile: [{
+        kind: 'examples', authority: 'inferred',
+        evidence: [{ sourceSessionId: SessionId('profile-source'), sourceTurn: 8 }],
+      }],
+      topicFamiliarities: [{
+        topicKey: 'typescript/discriminated-unions', level: 'beginner', authority: 'inferred',
+      }],
+    })
+    const beforeStale = store.storeRevision()
+    expect(store.updateLearnerProfile({
+      requestId: RequestId('profile-stale'),
+      expectedStoreRevision: beforeStale - 1,
+      targetKind: 'dialogue-preference',
+      targetKey: 'structure',
+      action: 'set',
+      value: 'Start with a compact outline.',
+      authority: 'explicit',
+    }, now + 3)).toMatchObject({ ok: false, error: { code: 'STORE_STALE' } })
+    expect(store.storeRevision()).toBe(beforeStale)
+    expect(store.updateLearnerProfile({
+      requestId: RequestId('profile-wrong-source'),
+      expectedStoreRevision: beforeStale,
+      targetKind: 'dialogue-preference',
+      targetKey: 'examples',
+      action: 'set',
+      value: 'Use an example backed by unrelated evidence.',
+      authority: 'correction',
+      sourceObservationId: topicObservation.observationId,
+    }, now + 3)).toMatchObject({ ok: false, error: { code: 'PROFILE_INVALID' } })
+    expect(store.storeRevision()).toBe(beforeStale)
+    const beforeAutoUsage = store.autoRequestsUsed(now + 3)
+    const correction = store.updateLearnerProfile({
+      requestId: RequestId('profile-correction'),
+      expectedStoreRevision: store.storeRevision(),
+      targetKind: 'dialogue-preference',
+      targetKey: 'examples',
+      action: 'set',
+      value: 'Use two contrasting examples.',
+      authority: 'correction',
+      sourceObservationId: exampleObservation.observationId,
+    }, now + 3)
+    expect(correction).toMatchObject({
+      ok: true,
+      context: { dialogueProfile: [{ preference: 'Use two contrasting examples.', authority: 'correction' }] },
+    })
+    expect(store.autoRequestsUsed(now + 4)).toBe(beforeAutoUsage)
+    expect(store.auxiliaryContext(10).learnerProfileControls).toContainEqual(expect.objectContaining({
+      targetKind: 'dialogue-preference', targetKey: 'examples', authority: 'correction',
+    }))
+
+    const explicitRequest = {
+      requestId: RequestId('profile-explicit'),
+      expectedStoreRevision: store.storeRevision(),
+      targetKind: 'dialogue-preference' as const,
+      targetKey: 'examples',
+      action: 'set' as const,
+      value: 'Always include a minimal runnable example.',
+      authority: 'explicit' as const,
+    }
+    expect(store.updateLearnerProfile(explicitRequest, now + 4)).toMatchObject({
+      ok: true,
+      context: { dialogueProfile: [{ authority: 'explicit' }] },
+    })
+    const afterExplicit = store.storeRevision()
+    expect(store.updateLearnerProfile(explicitRequest, now + 5)).toMatchObject({ ok: true })
+    expect(store.storeRevision()).toBe(afterExplicit)
+    expect(store.updateLearnerProfile({
+      ...explicitRequest,
+      requestId: RequestId('lower-precedence-correction'),
+      expectedStoreRevision: afterExplicit,
+      value: 'A weaker correction.',
+      authority: 'correction',
+    }, now + 6)).toMatchObject({ ok: false, error: { code: 'PROFILE_EXPLICIT_PRECEDENCE' } })
+    expect(store.storeRevision()).toBe(afterExplicit)
+    expect(store.updateLearnerProfile({ ...explicitRequest, value: 'Conflicting replay.' }, now + 7))
+      .toMatchObject({ ok: false, error: { code: 'REQUEST_ID_CONFLICT' } })
+
+    expect(store.updateLearnerProfile({
+      requestId: RequestId('topic-correction'),
+      expectedStoreRevision: store.storeRevision(),
+      targetKind: 'topic-familiarity',
+      targetKey: 'typescript/discriminated-unions',
+      action: 'set',
+      value: 'advanced',
+      authority: 'correction',
+      sourceObservationId: topicObservation.observationId,
+    }, now + 8)).toMatchObject({
+      ok: true,
+      context: { topicFamiliarities: [{ level: 'advanced', authority: 'correction' }] },
+    })
+    expect(store.updateLearnerProfile({
+      requestId: RequestId('profile-forget'),
+      expectedStoreRevision: store.storeRevision(),
+      targetKind: 'dialogue-preference',
+      targetKey: 'examples',
+      action: 'forget',
+      sourceObservationId: exampleObservation.observationId,
+    }, now + 9)).toMatchObject({ ok: true, context: { dialogueProfile: [] } })
+    expect(store.auxiliaryContext(10).learnerProfileControls).toContainEqual(expect.objectContaining({
+      targetKind: 'dialogue-preference', targetKey: 'examples', suppressInferencesThrough: now + 9,
+    }))
+    expect(store.context().profileAudit).toHaveLength(4)
+    const backup = store.exportData(now + 10)
+    expect(backup.data.profileAudit).toHaveLength(4)
+    expect(JSON.stringify(backup)).not.toContain('profile-correction')
+    const cleared = store.clearLearningData(store.storeRevision())
+    expect(cleared).toMatchObject({ ok: true, cleared: { profileChanges: 4 } })
+    expect(store.context()).toMatchObject({ dialogueProfile: [], topicFamiliarities: [], profileAudit: [] })
+  })
+
   it('restores budget, mastered state, history, coverage, and ExplainContext from disk', () => {
     const directory = mkdtempSync(join(tmpdir(), 'dsh-explain-restart-'))
     temporaryDirectories.push(directory)

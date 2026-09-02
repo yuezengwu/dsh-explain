@@ -179,12 +179,46 @@ export interface DialoguePreferenceView {
   readonly confidence: 'low' | 'medium' | 'high'
   readonly evidenceObservationIds: readonly ObservationId[]
   readonly evidenceEntryOrdinals: readonly number[]
+  readonly authority: 'inferred' | 'correction' | 'explicit'
+  readonly evidence: readonly LearnerProfileEvidenceView[]
+}
+
+/** One source coordinate supporting a visible learner-profile inference or correction. */
+export interface LearnerProfileEvidenceView {
+  readonly observationId?: ObservationId
+  readonly entryOrdinal?: number
+  readonly sourceSessionId?: SessionId
+  readonly sourceTurn?: number
+  readonly createdAt: number
+}
+
+/** Effective topic familiarity after user corrections and forget controls are applied. */
+export interface TopicFamiliarityView {
+  readonly topicKey: string
+  readonly level: 'unknown' | 'beginner' | 'working' | 'advanced'
+  readonly confidence: 'low' | 'medium' | 'high'
+  readonly authority: 'inferred' | 'correction' | 'explicit'
+  readonly evidence: readonly LearnerProfileEvidenceView[]
+}
+
+/** Append-only public audit projection of a learner-profile change. */
+export interface LearnerProfileAuditEventView {
+  readonly eventId: string
+  readonly targetKind: 'dialogue-preference' | 'topic-familiarity'
+  readonly targetKey: string
+  readonly action: 'set' | 'forget'
+  readonly value?: string
+  readonly authority?: 'correction' | 'explicit'
+  readonly sourceObservationId?: ObservationId
+  readonly createdAt: number
 }
 
 /** Read-only ExplainContext projection. Model-generated fields are absent before M2 creates a checkpoint. */
 export interface ExplainContextView {
   readonly generatedAt?: number
   readonly dialogueProfile: readonly DialoguePreferenceView[]
+  readonly topicFamiliarities: readonly TopicFamiliarityView[]
+  readonly profileAudit: readonly LearnerProfileAuditEventView[]
   readonly knowledgeOverview: string
   readonly learningTrend: string
   readonly stats: ExplainContextStats
@@ -289,6 +323,45 @@ export interface ExplainDataExportV2 {
   }
 }
 
+/** Portable v3 backup adds effective learner-profile controls and their audit trail. */
+export interface ExplainDataExportV3 {
+  readonly format: 'dsh-explain-backup'
+  readonly version: 3
+  readonly exportedAt: number
+  readonly databaseSchemaVersion: number
+  readonly storeRevision: number
+  readonly data: {
+    readonly entries: readonly ThreadEntryView[]
+    readonly context: ExplainContextView
+    readonly review: {
+      readonly dashboard: ReviewDashboardView
+      readonly attempts: readonly ReviewAttemptView[]
+    }
+    readonly profileAudit: readonly LearnerProfileAuditEventView[]
+  }
+}
+
+/** Set, correct, or forget one learner-profile field against the rendered store revision. */
+export interface UpdateLearnerProfileRequest {
+  readonly requestId: RequestId
+  readonly expectedStoreRevision: number
+  readonly targetKind: 'dialogue-preference' | 'topic-familiarity'
+  readonly targetKey: string
+  readonly action: 'set' | 'forget'
+  readonly value?: string
+  readonly authority?: 'correction' | 'explicit'
+  readonly sourceObservationId?: ObservationId
+}
+
+export interface LearnerProfileMutationFailure {
+  readonly code: 'STORE_STALE' | 'REQUEST_ID_CONFLICT' | 'PROFILE_INVALID' | 'PROFILE_EXPLICIT_PRECEDENCE'
+  readonly message: string
+}
+
+export type UpdateLearnerProfileResult =
+  | { readonly ok: true; readonly context: ExplainContextView; readonly storeRevision: number }
+  | { readonly ok: false; readonly error: LearnerProfileMutationFailure }
+
 /** Destructive clear request guarded by both an explicit phrase and store revision CAS. */
 export interface ClearLearningDataRequest {
   readonly expectedStoreRevision: number
@@ -303,6 +376,7 @@ export interface ClearedLearningDataCounts {
   readonly observations: number
   readonly checkpoints: number
   readonly reviewAttempts: number
+  readonly profileChanges: number
 }
 
 /** Successful clear receipt, including the intentionally retained autonomous-request usage. */

@@ -68,6 +68,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
         reopen: entry => learning.reopen(entry),
         startReview: () => learning.startReview(),
         submitReviewAnswer: (reviewId, answer) => learning.submitReviewAnswer(reviewId, answer),
+        updateLearnerProfile: change => learning.updateLearnerProfile(change),
         openSource: sourceSessionId => learning.openSource(sourceSessionId),
       }),
     }, LearningView))

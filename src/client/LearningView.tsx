@@ -5,7 +5,14 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ConvViewProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionId } from '@deepseek-ai/dsh-session'
-import type { ReviewId, ThreadEntryView } from 'dsh-explain/types'
+import type {
+  DialoguePreferenceView,
+  LearnerProfileEvidenceView,
+  ReviewId,
+  ThreadEntryView,
+  TopicFamiliarityView,
+  UpdateLearnerProfileRequest,
+} from 'dsh-explain/types'
 import type { LearningSnapshot } from './learning-store.ts'
 import { diagnosticState } from './diagnostics.ts'
 
@@ -22,6 +29,9 @@ export interface LearningViewInjected {
   reopen: (entry: ThreadEntryView) => Promise<void>
   startReview: () => Promise<void>
   submitReviewAnswer: (reviewId: ReviewId, answer: string) => Promise<void>
+  updateLearnerProfile: (
+    change: Omit<UpdateLearnerProfileRequest, 'requestId' | 'expectedStoreRevision'>,
+  ) => Promise<boolean>
   openSource: (sourceSessionId: SessionId) => boolean
 }
 
@@ -30,7 +40,7 @@ type LearningViewProps = ConvViewProps & InjectFace<LearningViewInjected> & Prop
 /** Global learning thread rendered through one Session-scoped conversation view entry. */
 export function LearningView({
   sessionId, useLearning, useSessions, activate, loadOlder, refresh, feedback, reopen,
-  startReview, submitReviewAnswer, openSource, t,
+  startReview, submitReviewAnswer, updateLearnerProfile, openSource, t,
 }: LearningViewProps) {
   useEffect(() => activate(), [activate])
   const snapshot = useLearning(value => value)
@@ -114,7 +124,14 @@ export function LearningView({
                 t={t}
               />
             )}
-            <ContextPanel snapshot={snapshot} t={t} />
+            <ContextPanel
+              snapshot={snapshot}
+              sessionId={sessionId}
+              sources={sources}
+              onUpdate={updateLearnerProfile}
+              onOpenSource={openSource}
+              t={t}
+            />
           </>
         )}
 
@@ -301,7 +318,16 @@ function Metric({ value, label }: { readonly value: number | string; readonly la
   return <div className="dsh-explain-metric"><strong>{value}</strong><span>{label}</span></div>
 }
 
-function ContextPanel({ snapshot, t }: { readonly snapshot: LearningSnapshot; readonly t: LearningViewProps['t'] }) {
+const PROFILE_DIMENSIONS = ['verbosity', 'structure', 'examples', 'terminology'] as const
+
+function ContextPanel({ snapshot, sessionId, sources, onUpdate, onOpenSource, t }: {
+  readonly snapshot: LearningSnapshot
+  readonly sessionId: SessionId
+  readonly sources: SessionListState['byId']
+  readonly onUpdate: LearningViewInjected['updateLearnerProfile']
+  readonly onOpenSource: LearningViewInjected['openSource']
+  readonly t: LearningViewProps['t']
+}) {
   const context = snapshot.context!
   return (
     <section className="dsh-explain-section">
@@ -309,30 +335,215 @@ function ContextPanel({ snapshot, t }: { readonly snapshot: LearningSnapshot; re
         {t('section.context')}
         {context.inferred && <span className="dsh-explain-badge">{t('status.inferred')}</span>}
       </h2>
-      {!context.inferred
-        ? <div className="dsh-explain-empty">{t('status.noContext')}</div>
-        : (
-          <div className="dsh-explain-context">
+      <div className="dsh-explain-context">
+        {context.inferred
+          ? <>
             <div className="dsh-explain-context-block">
               <h3>{t('context.knowledge')}</h3><p>{context.knowledgeOverview}</p>
             </div>
             <div className="dsh-explain-context-block">
               <h3>{t('context.trend')}</h3><p>{context.learningTrend}</p>
             </div>
-            <div className="dsh-explain-context-block dsh-explain-context-wide">
-              <h3>{t('context.preferences')}</h3>
-              <div className="dsh-explain-preferences">
-                {context.dialogueProfile.map(preference => (
-                  <span className="dsh-explain-chip" key={`${preference.kind}:${preference.preference}`}>
-                    {preference.preference}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
+          </>
+          : <div className="dsh-explain-empty dsh-explain-context-wide">{t('status.noContext')}</div>}
+        {snapshot.profileError !== undefined && (
+          <div className="dsh-explain-error dsh-explain-context-wide" role="alert">{snapshot.profileError}</div>
         )}
+        <div className="dsh-explain-context-block dsh-explain-context-wide">
+          <h3>{t('context.preferences')}</h3>
+          <p className="dsh-explain-profile-intro">{t('profile.intro')}</p>
+          <div className="dsh-explain-profile-list">
+            {PROFILE_DIMENSIONS.map(dimension => (
+              <DialogueProfileRow
+                key={dimension}
+                dimension={dimension}
+                item={context.dialogueProfile.find(candidate => candidate.kind === dimension)}
+                pending={snapshot.profilePendingKeys?.includes(`dialogue-preference:${dimension}`) === true}
+                sessionId={sessionId}
+                sources={sources}
+                onUpdate={onUpdate}
+                onOpenSource={onOpenSource}
+                t={t}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="dsh-explain-context-block dsh-explain-context-wide">
+          <h3>{t('context.familiarity')}</h3>
+          {(context.topicFamiliarities ?? []).length === 0
+            ? <div className="dsh-explain-empty">{t('profile.noTopics')}</div>
+            : <div className="dsh-explain-profile-list">
+                {(context.topicFamiliarities ?? []).map(item => (
+                  <TopicProfileRow
+                    key={item.topicKey}
+                    item={item}
+                    pending={snapshot.profilePendingKeys?.includes(`topic-familiarity:${item.topicKey}`) === true}
+                    sessionId={sessionId}
+                    sources={sources}
+                    onUpdate={onUpdate}
+                    onOpenSource={onOpenSource}
+                    t={t}
+                  />
+                ))}
+              </div>}
+        </div>
+        {(context.profileAudit ?? []).length > 0 && (
+          <details className="dsh-explain-profile-audit dsh-explain-context-wide">
+            <summary>{t('profile.audit')}</summary>
+            {(context.profileAudit ?? []).slice(0, 5).map(event => (
+              <div key={event.eventId}>
+                <span>{new Date(event.createdAt).toLocaleString()}</span>
+                <strong>{t(`profile.action.${event.action}`)}</strong>
+                <code>{event.targetKey}</code>
+                {event.value !== undefined && <span>{event.value}</span>}
+              </div>
+            ))}
+          </details>
+        )}
+      </div>
     </section>
   )
+}
+
+function DialogueProfileRow({ dimension, item, pending, sessionId, sources, onUpdate, onOpenSource, t }: {
+  readonly dimension: DialoguePreferenceView['kind']
+  readonly item: DialoguePreferenceView | undefined
+  readonly pending: boolean
+  readonly sessionId: SessionId
+  readonly sources: SessionListState['byId']
+  readonly onUpdate: LearningViewInjected['updateLearnerProfile']
+  readonly onOpenSource: LearningViewInjected['openSource']
+  readonly t: LearningViewProps['t']
+}) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(item?.preference ?? '')
+  useEffect(() => { if (!editing) setValue(item?.preference ?? '') }, [editing, item?.preference])
+  const source = item?.evidence?.find(candidate => candidate.sourceSessionId !== undefined)
+  const itemAuthority = item?.authority ?? 'inferred'
+  const authority = item === undefined ? 'explicit' : itemAuthority === 'inferred' ? 'correction' : itemAuthority
+  return (
+    <div className="dsh-explain-profile-row">
+      <div className="dsh-explain-profile-copy">
+        <strong>{t(`profile.dimension.${dimension}`)}</strong>
+        {item === undefined
+          ? <span className="dsh-explain-profile-empty">{t('profile.unknown')}</span>
+          : <span>{item.preference}</span>}
+        {item !== undefined && (
+          <div className="dsh-explain-profile-meta">
+            <span className="dsh-explain-badge">{t(`profile.authority.${itemAuthority}`)}</span>
+            {itemAuthority === 'inferred' && <span>{t('profile.confidence')} {t(`profile.confidence.${item.confidence}`)}</span>}
+            <ProfileSource source={source} sessionId={sessionId} sources={sources} onOpenSource={onOpenSource} t={t} />
+          </div>
+        )}
+      </div>
+      {editing
+        ? <div className="dsh-explain-profile-editor">
+            <input
+              value={value}
+              maxLength={240}
+              autoFocus
+              aria-label={t(`profile.dimension.${dimension}`)}
+              onChange={event => { setValue(event.target.value) }}
+            />
+            <Button size="sm" variant="primary" disabled={pending || value.trim() === ''} onClick={() => {
+              void onUpdate({
+                targetKind: 'dialogue-preference', targetKey: dimension, action: 'set',
+                value: value.trim(), authority,
+                ...(source?.observationId === undefined ? {} : { sourceObservationId: source.observationId }),
+              }).then((ok) => { if (ok) setEditing(false) })
+            }}>{pending ? t('action.pending') : t('action.save')}</Button>
+            <Button size="sm" variant="outline" disabled={pending} onClick={() => { setEditing(false) }}>
+              {t('action.cancel')}
+            </Button>
+          </div>
+        : <div className="dsh-explain-actions">
+            <Button size="sm" variant="outline" disabled={pending} onClick={() => { setEditing(true) }}>
+              {item === undefined ? t('profile.set') : t('profile.correct')}
+            </Button>
+            {item !== undefined && <Button size="sm" variant="outline" disabled={pending} onClick={() => {
+              void onUpdate({
+                targetKind: 'dialogue-preference', targetKey: dimension, action: 'forget',
+                ...(source?.observationId === undefined ? {} : { sourceObservationId: source.observationId }),
+              })
+            }}>{t('profile.forget')}</Button>}
+          </div>}
+    </div>
+  )
+}
+
+function TopicProfileRow({ item, pending, sessionId, sources, onUpdate, onOpenSource, t }: {
+  readonly item: TopicFamiliarityView
+  readonly pending: boolean
+  readonly sessionId: SessionId
+  readonly sources: SessionListState['byId']
+  readonly onUpdate: LearningViewInjected['updateLearnerProfile']
+  readonly onOpenSource: LearningViewInjected['openSource']
+  readonly t: LearningViewProps['t']
+}) {
+  const [editing, setEditing] = useState(false)
+  const [level, setLevel] = useState(item.level)
+  useEffect(() => { if (!editing) setLevel(item.level) }, [editing, item.level])
+  const source = item.evidence.find(candidate => candidate.sourceSessionId !== undefined)
+  const authority = item.authority === 'inferred' ? 'correction' : item.authority
+  return (
+    <div className="dsh-explain-profile-row">
+      <div className="dsh-explain-profile-copy">
+        <strong>{item.topicKey}</strong><span>{t(`profile.level.${item.level}`)}</span>
+        <div className="dsh-explain-profile-meta">
+          <span className="dsh-explain-badge">{t(`profile.authority.${item.authority}`)}</span>
+          {item.authority === 'inferred' && <span>{t('profile.confidence')} {t(`profile.confidence.${item.confidence}`)}</span>}
+          <ProfileSource source={source} sessionId={sessionId} sources={sources} onOpenSource={onOpenSource} t={t} />
+        </div>
+      </div>
+      {editing
+        ? <div className="dsh-explain-profile-editor">
+            <select value={level} aria-label={t('context.familiarity')}
+              onChange={event => { setLevel(event.target.value as TopicFamiliarityView['level']) }}>
+              {(['unknown', 'beginner', 'working', 'advanced'] as const).map(value => (
+                <option key={value} value={value}>{t(`profile.level.${value}`)}</option>
+              ))}
+            </select>
+            <Button size="sm" variant="primary" disabled={pending} onClick={() => {
+              void onUpdate({
+                targetKind: 'topic-familiarity', targetKey: item.topicKey, action: 'set', value: level, authority,
+                ...(source?.observationId === undefined ? {} : { sourceObservationId: source.observationId }),
+              }).then((ok) => { if (ok) setEditing(false) })
+            }}>{pending ? t('action.pending') : t('action.save')}</Button>
+            <Button size="sm" variant="outline" disabled={pending} onClick={() => { setEditing(false) }}>
+              {t('action.cancel')}
+            </Button>
+          </div>
+        : <div className="dsh-explain-actions">
+            <Button size="sm" variant="outline" disabled={pending} onClick={() => { setEditing(true) }}>
+              {t('profile.correct')}
+            </Button>
+            <Button size="sm" variant="outline" disabled={pending} onClick={() => {
+              void onUpdate({
+                targetKind: 'topic-familiarity', targetKey: item.topicKey, action: 'forget',
+                ...(source?.observationId === undefined ? {} : { sourceObservationId: source.observationId }),
+              })
+            }}>{t('profile.forget')}</Button>
+          </div>}
+    </div>
+  )
+}
+
+function ProfileSource({ source, sessionId, sources, onOpenSource, t }: {
+  readonly source: LearnerProfileEvidenceView | undefined
+  readonly sessionId: SessionId
+  readonly sources: SessionListState['byId']
+  readonly onOpenSource: LearningViewInjected['openSource']
+  readonly t: LearningViewProps['t']
+}) {
+  if (source?.sourceSessionId === undefined) return null
+  const available = sources[source.sourceSessionId] !== undefined
+  if (!available) return <span className="dsh-explain-source-unavailable">{t('entry.sourceUnavailable')}</span>
+  const label = `${t('profile.source')}${source.sourceTurn === undefined ? '' : ` · ${t('entry.turn')} ${source.sourceTurn}`}`
+  return source.sourceSessionId === sessionId
+    ? <span>{label}</span>
+    : <button className="dsh-explain-profile-source" type="button" onClick={() => { onOpenSource(source.sourceSessionId!) }}>
+        {label}
+      </button>
 }
 
 function ExplanationCard({

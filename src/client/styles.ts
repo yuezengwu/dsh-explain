@@ -21,6 +21,21 @@ export const LEARNING_VIEW_CSS = `
 .dsh-explain-context-wide{grid-column:1/-1}
 .dsh-explain-preferences{display:flex;flex-wrap:wrap;gap:6px}
 .dsh-explain-chip{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;background:var(--dsw-alias-bg-layer-3);font:var(--dsw-font-xxs-12)}
+.dsh-explain-profile-intro{color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-12)!important;line-height:1.5}
+.dsh-explain-profile-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.dsh-explain-profile-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1)}
+.dsh-explain-profile-copy{min-width:0;display:flex;flex-direction:column;gap:4px;font:var(--dsw-font-sm-14);overflow-wrap:anywhere}
+.dsh-explain-profile-copy>strong{font:var(--dsw-font-xs-12)}
+.dsh-explain-profile-empty{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xs-12)}
+.dsh-explain-profile-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px;color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxs-12)}
+.dsh-explain-profile-row>.dsh-explain-actions{flex:none;margin-top:0}
+.dsh-explain-profile-editor{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:1;min-width:260px}
+.dsh-explain-profile-editor input,.dsh-explain-profile-editor select{box-sizing:border-box;min-width:160px;min-height:34px;padding:6px 9px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base);font:var(--dsw-font-xs-12)}
+.dsh-explain-profile-source{padding:0;border:0;color:var(--dsw-alias-label-accent,var(--dsw-alias-label-secondary));background:transparent;font:inherit;text-decoration:underline;cursor:pointer}
+.dsh-explain-profile-audit{padding-top:4px;color:var(--dsw-alias-label-secondary);font:var(--dsw-font-xs-12)}
+.dsh-explain-profile-audit summary{cursor:pointer}
+.dsh-explain-profile-audit>div{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:7px 0;border-bottom:1px solid var(--dsw-alias-border-l2);font:var(--dsw-font-xxs-12)}
+.dsh-explain-profile-audit code{overflow-wrap:anywhere;color:var(--dsw-alias-label-primary)}
 .dsh-explain-card{padding:16px;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-2);box-shadow:0 1px 2px rgb(0 0 0/.04)}
 .dsh-explain-card-active{border-color:var(--dsw-alias-border-focus,var(--dsw-alias-border-l2))}
 .dsh-explain-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -96,5 +111,5 @@ export const LEARNING_VIEW_CSS = `
 .dsh-explain-review-result small{color:var(--dsw-alias-label-tertiary);font:var(--dsw-font-xxs-12)}
 .dsh-explain-review-result-footer{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .dsh-explain-review-verdict{flex:none}.dsh-explain-review-verdict-mastered{color:var(--dsw-alias-label-success,var(--dsw-alias-label-primary))}.dsh-explain-review-verdict-partial{color:var(--dsw-alias-label-warning,var(--dsw-alias-label-secondary))}.dsh-explain-review-verdict-forgotten{color:var(--dsw-alias-label-danger,var(--dsw-alias-label-primary))}
-@media (max-width:720px){.dsh-explain-root{padding:16px 12px calc(var(--dsh-composer-height,152px) + 24px)}.dsh-explain-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-explain-context{grid-template-columns:1fr}.dsh-explain-context-wide{grid-column:auto}.dsh-explain-card-header{flex-direction:column}.dsh-explain-history-row{align-items:flex-start;flex-direction:column}.dsh-explain-history-actions{justify-content:flex-start}.dsh-explain-settings-form,.dsh-explain-diagnostics dl,.dsh-explain-danger-zone{grid-template-columns:1fr}.dsh-explain-settings-heading,.dsh-explain-data-export{align-items:flex-start;flex-direction:column}}
+@media (max-width:720px){.dsh-explain-root{padding:16px 12px calc(var(--dsh-composer-height,152px) + 24px)}.dsh-explain-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.dsh-explain-context{grid-template-columns:1fr}.dsh-explain-context-wide{grid-column:auto}.dsh-explain-profile-row,.dsh-explain-profile-editor{align-items:stretch;flex-direction:column}.dsh-explain-profile-editor{min-width:0}.dsh-explain-profile-editor input,.dsh-explain-profile-editor select{width:100%}.dsh-explain-profile-row>.dsh-explain-actions{justify-content:flex-start}.dsh-explain-card-header{flex-direction:column}.dsh-explain-history-row{align-items:flex-start;flex-direction:column}.dsh-explain-history-actions{justify-content:flex-start}.dsh-explain-settings-form,.dsh-explain-diagnostics dl,.dsh-explain-danger-zone{grid-template-columns:1fr}.dsh-explain-settings-heading,.dsh-explain-data-export{align-items:flex-start;flex-direction:column}}
 `

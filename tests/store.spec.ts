@@ -117,9 +117,9 @@ describe('ExplainStore schema and projections', () => {
     const backup = store.exportData(1_800_000_000_000)
     expect(backup).toMatchObject({
       format: 'dsh-explain-backup',
-      version: 2,
+      version: 3,
       exportedAt: 1_800_000_000_000,
-      databaseSchemaVersion: 3,
+      databaseSchemaVersion: 4,
       storeRevision: 1,
       data: { entries: [{ ordinal: 1 }, { ordinal: 2 }], context: { inferred: false } },
     })
@@ -142,6 +142,7 @@ describe('ExplainStore schema and projections', () => {
       ok: true,
       cleared: {
         entries: 2, topics: 1, explanations: 1, observations: 0, checkpoints: 0, reviewAttempts: 0,
+        profileChanges: 0,
       },
       preservedAutoRequests: 1,
       storeRevision: revision + 1,
@@ -411,7 +412,7 @@ describe('ExplainStore review loop', () => {
     expect(store.exportData(committedAt).data.review.attempts).toHaveLength(1)
   })
 
-  it('migrates v2 mastered topics into an immediately due v3 review schedule', () => {
+  it('migrates v2 mastered topics through the v3 review schedule into schema v4', () => {
     const path = diskPath()
     const first = new ExplainStore(path)
     stores.push(first)
@@ -432,13 +433,16 @@ describe('ExplainStore review loop', () => {
       DROP TABLE review_attempts;
       DROP TABLE review_batches;
       DROP TABLE review_state;
+      DROP TABLE learner_profile_events;
+      DROP TABLE learner_profile_overrides;
+      DROP TABLE learner_profile_suppressions;
       UPDATE meta SET schema_version = 2 WHERE singleton = 1;
     `)
     database.close()
 
     const migrated = new ExplainStore(path)
     stores.push(migrated)
-    expect(migrated.exportData().databaseSchemaVersion).toBe(3)
+    expect(migrated.exportData().databaseSchemaVersion).toBe(4)
     expect(migrated.reviewDashboard()).toMatchObject({ dueCount: 1 })
     const current = migrated.startReview({ requestId: RequestId('migrated-start') }).dashboard.current
     expect(current).toMatchObject({ topicTitle: 'Migrated review' })

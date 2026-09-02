@@ -95,10 +95,22 @@ git diff --check
 
 | # | 标准 | 自动化证据 |
 |---:|---|---|
-| 1 | 迁移与首次到期 | `store.spec.ts` 把真实 v2 结构迁移到 schema v3，并断言既有 mastered Topic 立即进入待复习 |
+| 1 | 迁移与首次到期 | `store.spec.ts` 把真实 v2 结构经 schema v3 迁移到 v4，并断言既有 mastered Topic 立即进入待复习 |
 | 2 | 持久化三题 | `store.spec.ts` 断言单轮最多三题、固定 recall/application/distinction 顺序与 active round 恢复 |
 | 3 | 语义评估单飞 | `scheduler.spec.ts` 通过真实 LLM service adapter 完成复习评估，断言全局最大并发 1 且不占自主额度 |
 | 4 | 确定性排期 | `store.spec.ts` 断言掌握后从首次复习推进到 3 天，并保留结果、反馈与来源坐标 |
-| 5 | 幂等与隐私 | `store.spec.ts` 覆盖 answer replay；v2 导出包含公开复习历史但仍不包含私有来源摘要、完整转录或绝对路径 |
+| 5 | 幂等与隐私 | `store.spec.ts` 覆盖 answer replay；v3 导出包含公开复习历史但仍不包含私有来源摘要、完整转录或绝对路径 |
 | 6 | 清除一致性 | 清除事务先删复习请求、attempt、batch 与 state，再删除 Topic；清除 receipt 单独报告 review attempt 数 |
 | 7 | 测试伴随 | `pnpm run typecheck`、70 个单元/集成测试、assembled Web、M6 组合测试和生产构建 |
+
+## M9 可校正学习画像
+
+| # | 标准 | 自动化证据 |
+|---:|---|---|
+| 1 | 可见且可追溯 | `m2-store.spec.ts` 断言对话偏好与 Topic 熟悉度投影携带 confidence、observation、Session/turn 来源；`client.spec.tsx` 验证可编辑呈现 |
+| 2 | 固定优先级 | store 断言 explicit > correction > inference，低优先级覆盖显式失败且 revision-neutral |
+| 3 | 幂等与并发 | 写入使用 request-id replay/fingerprint 与 store revision CAS；重复请求不增加 revision，冲突请求返回稳定错误 |
+| 4 | 忘记后不复发 | forget 删除用户覆盖并设置推断时间水位；有效投影立即隐藏旧 checkpoint，控制层进入所有后续辅助请求 |
+| 5 | 成本与主流程隔离 | 画像写入不调用 Scheduler、不增加 `auto_request_usage`，也不改变主 Agent 消息来源 |
+| 6 | 数据治理 | backup v3 包含完整画像审计；`CLEAR` 同事务删除控制、suppression 与审计并单独计数 |
+| 7 | 测试伴随 | `pnpm typecheck`、71 个单元/集成测试、alpha.3 assembled Web 6/6、M6 组合 3/3、生产构建与 pack dry-run |

@@ -27,6 +27,7 @@ const EMPTY_CONTEXT: AuxiliaryContext = {
   activeExplanations: [],
   uncoveredObservations: [],
   uncoveredClosedExplanations: [],
+  learnerProfileControls: [],
 }
 
 function capsule(source: string, turn: number, observedAt: number): SourceCapsule {
@@ -340,12 +341,23 @@ describe('strict auxiliary JSON parsing', () => {
         createdAt: 1,
       }],
       explanations: [],
+      learnerProfileControls: [{
+        targetKind: 'dialogue-preference',
+        targetKey: 'examples',
+        value: 'Use contrasting examples',
+        authority: 'correction',
+        sourceObservationId: observationId,
+        updatedAt: 2,
+      }],
       throughOrdinal: 0,
     }, {}, 500)
     expect(JSON.stringify(request.messages)).toContain('dialogueProfile is always an array')
     const requestBlock = request.messages[0]?.content[0]
     if (requestBlock?.type !== 'text') throw new Error('compaction request text is missing')
-    expect(JSON.parse(requestBlock.text)).toMatchObject({ languageSample: 'Use examples' })
+    expect(JSON.parse(requestBlock.text)).toMatchObject({
+      languageSample: 'Use examples',
+      learnerProfileControls: [{ targetKey: 'examples', authority: 'correction' }],
+    })
     expect(request.parse(JSON.stringify({
       dialogueProfile: [{
         kind: 'examples', preference: 'Use examples', confidence: 'high',
@@ -377,6 +389,7 @@ describe('strict auxiliary JSON parsing', () => {
         createdAt: 1,
       }],
       explanations: [],
+      learnerProfileControls: [],
       throughOrdinal: 0,
     }, {}, 500)
     expect(JSON.stringify(request.messages)).toContain('Han characters')

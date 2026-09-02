@@ -1,5 +1,5 @@
-/** Current dsh-explain SQLite format. Version 2 is migrated in place. */
-export const SCHEMA_VERSION = 3
+/** Current dsh-explain SQLite format. Versions 2 and 3 are migrated in place. */
+export const SCHEMA_VERSION = 4
 
 /** Complete schema installed atomically for a new database. */
 export const CREATE_SCHEMA_SQL = `
@@ -183,6 +183,43 @@ CREATE TABLE review_mutation_requests (
   created_at INTEGER NOT NULL
 ) STRICT;
 
+CREATE TABLE learner_profile_overrides (
+  target_kind TEXT NOT NULL CHECK (target_kind IN ('dialogue-preference', 'topic-familiarity')),
+  target_key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  authority TEXT NOT NULL CHECK (authority IN ('correction', 'explicit')),
+  source_observation_id TEXT,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (target_kind, target_key)
+) WITHOUT ROWID, STRICT;
+
+CREATE TABLE learner_profile_suppressions (
+  target_kind TEXT NOT NULL CHECK (target_kind IN ('dialogue-preference', 'topic-familiarity')),
+  target_key TEXT NOT NULL,
+  through_created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (target_kind, target_key)
+) WITHOUT ROWID, STRICT;
+
+CREATE TABLE learner_profile_events (
+  event_id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL UNIQUE,
+  fingerprint TEXT NOT NULL,
+  target_kind TEXT NOT NULL CHECK (target_kind IN ('dialogue-preference', 'topic-familiarity')),
+  target_key TEXT NOT NULL,
+  action TEXT NOT NULL CHECK (action IN ('set', 'forget')),
+  value TEXT,
+  authority TEXT CHECK (authority IS NULL OR authority IN ('correction', 'explicit')),
+  source_observation_id TEXT,
+  created_at INTEGER NOT NULL,
+  CHECK (
+    (action = 'set' AND value IS NOT NULL AND authority IS NOT NULL)
+    OR (action = 'forget' AND value IS NULL AND authority IS NULL)
+  )
+) STRICT;
+
+CREATE INDEX learner_profile_events_recent ON learner_profile_events(created_at DESC, event_id DESC);
+
 INSERT INTO meta(singleton, schema_version, store_revision, next_ordinal)
 VALUES (1, ${SCHEMA_VERSION}, 0, 1);
 INSERT INTO runtime_state(singleton, activity_generation, context_generation)
@@ -243,4 +280,42 @@ CREATE TABLE review_mutation_requests (
 INSERT INTO review_state(topic_id, stage, streak, next_review_at, updated_at)
 SELECT topic_id, 0, 0, updated_at, updated_at FROM topics WHERE state = 'mastered';
 UPDATE meta SET schema_version = 3 WHERE singleton = 1;
+`
+
+/** Atomic v3 to v4 migration for correctable local learner-profile controls. */
+export const MIGRATE_V3_TO_V4_SQL = `
+CREATE TABLE learner_profile_overrides (
+  target_kind TEXT NOT NULL CHECK (target_kind IN ('dialogue-preference', 'topic-familiarity')),
+  target_key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  authority TEXT NOT NULL CHECK (authority IN ('correction', 'explicit')),
+  source_observation_id TEXT,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (target_kind, target_key)
+) WITHOUT ROWID, STRICT;
+CREATE TABLE learner_profile_suppressions (
+  target_kind TEXT NOT NULL CHECK (target_kind IN ('dialogue-preference', 'topic-familiarity')),
+  target_key TEXT NOT NULL,
+  through_created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (target_kind, target_key)
+) WITHOUT ROWID, STRICT;
+CREATE TABLE learner_profile_events (
+  event_id TEXT PRIMARY KEY,
+  request_id TEXT NOT NULL UNIQUE,
+  fingerprint TEXT NOT NULL,
+  target_kind TEXT NOT NULL CHECK (target_kind IN ('dialogue-preference', 'topic-familiarity')),
+  target_key TEXT NOT NULL,
+  action TEXT NOT NULL CHECK (action IN ('set', 'forget')),
+  value TEXT,
+  authority TEXT CHECK (authority IS NULL OR authority IN ('correction', 'explicit')),
+  source_observation_id TEXT,
+  created_at INTEGER NOT NULL,
+  CHECK (
+    (action = 'set' AND value IS NOT NULL AND authority IS NOT NULL)
+    OR (action = 'forget' AND value IS NULL AND authority IS NULL)
+  )
+) STRICT;
+CREATE INDEX learner_profile_events_recent ON learner_profile_events(created_at DESC, event_id DESC);
+UPDATE meta SET schema_version = 4 WHERE singleton = 1;
 `

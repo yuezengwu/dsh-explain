@@ -5,7 +5,7 @@ import type { ExplainStore } from './store.ts'
 import type {
   ClearLearningDataRequest,
   ClearLearningDataResult,
-  ExplainDataExportV2,
+  ExplainDataExportV3,
   ExplainContextView,
   ExplainConfigurationView,
   ExplainModelCatalogView,
@@ -25,6 +25,8 @@ import type {
   ThreadPageResult,
   UpdateConfigurationRequest,
   UpdateConfigurationResult,
+  UpdateLearnerProfileRequest,
+  UpdateLearnerProfileResult,
   WatchRequest,
   WatchResult,
 } from './types.ts'
@@ -112,8 +114,14 @@ export class ExplainGateway extends TypertRemoteService {
 
   /** Export the complete public learning projection as a versioned, privacy-bounded backup. */
   @Remote
-  exportData(): ExplainDataExportV2 {
+  exportData(): ExplainDataExportV3 {
     return this.store.exportData()
+  }
+
+  /** Persist one explicit learner-profile correction without scheduling an auxiliary request. */
+  @Remote
+  updateLearnerProfile(request: UpdateLearnerProfileRequest): UpdateLearnerProfileResult {
+    return this.store.updateLearnerProfile(request)
   }
 
   /** Read today's review counts, active question, and recent outcomes. */
