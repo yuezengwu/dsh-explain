@@ -38,7 +38,9 @@ describe('Explain-owned shortcuts', () => {
   it('captures selected text into an editable command without submitting', async () => {
     const draft = vi.fn().mockReturnValue({ ok: true })
     const props = {
-      input: { phase: 'plain', draft: '' },
+      useInput: (selector: (value: { phase: string; draft: string }) => unknown) => selector({
+        phase: 'plain', draft: '',
+      }),
       draft,
       t: (key: keyof typeof zh) => zh[key],
     } as unknown as ComponentProps<typeof ExplainSelectionShortcut>

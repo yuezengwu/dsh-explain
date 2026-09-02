@@ -1,11 +1,14 @@
 import { basename } from 'node:path'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
+import { SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { ManualExplainTarget, SourceCapsule } from './domain.ts'
 
+export type ObservedSession = Pick<Session, 'id' | 'header' | 'seq' | 'eventAt' | 'snapshotEvents'>
+
 /** Build one bounded capsule from a completed turn, or reject an ineligible turn. */
 export function captureSourceCapsule(
-  session: Session,
+  session: ObservedSession,
   end: SessionEvent<'turn/end'>,
   maxSourceChars: number,
 ): SourceCapsule | undefined {
@@ -14,7 +17,7 @@ export function captureSourceCapsule(
 }
 
 function captureExplicitSourceCapsule(
-  session: Session,
+  session: ObservedSession,
   end: SessionEvent<'turn/end'>,
   maxSourceChars: number,
 ): SourceCapsule | undefined {
@@ -23,13 +26,13 @@ function captureExplicitSourceCapsule(
 }
 
 function captureEligibleSourceCapsule(
-  session: Session,
+  session: ObservedSession,
   end: SessionEvent<'turn/end'>,
   maxSourceChars: number,
 ): SourceCapsule | undefined {
-  const start = findTurnStart(session.events, end.data.turn, end.seq)
+  const start = findTurnStart(session, end.data.turn, end.seq)
   if (start === undefined) return undefined
-  const events = session.events.slice(start, end.seq + 1)
+  const events = session.snapshotEvents(SessionLogOffset(start), SessionLogOffset(end.seq + 1))
   if (!events.some(event => event.type === 'step/start' && event.data.turn === end.data.turn)) return undefined
 
   const userParts: string[] = []
@@ -85,7 +88,7 @@ function captureEligibleSourceCapsule(
 
 /** Build one explicit request from command input and the latest eligible completed turn. */
 export function captureManualExplainTarget(
-  session: Session,
+  session: ObservedSession,
   request: string,
   maxSourceChars: number,
 ): ManualExplainTarget {
@@ -94,7 +97,7 @@ export function captureManualExplainTarget(
 
 /** Pair selected visible text with its newest reliable source coordinate. */
 export function captureSelectionExplainTarget(
-  session: Session,
+  session: ObservedSession,
   selection: string,
   maxSourceChars: number,
 ): ManualExplainTarget {
@@ -111,7 +114,7 @@ export function captureSelectionExplainTarget(
 
 /** Pair one Explain-owned answer shortcut with its exact settled source turn. */
 export function captureAnswerExplainTarget(
-  session: Session,
+  session: ObservedSession,
   turn: number,
   request: string,
   maxSourceChars: number,
@@ -122,7 +125,7 @@ export function captureAnswerExplainTarget(
 }
 
 function buildManualTarget(
-  session: Session,
+  session: ObservedSession,
   request: string,
   maxSourceChars: number,
   origin: ManualExplainTarget['origin'],
@@ -142,7 +145,7 @@ function buildManualTarget(
     capsule: {
       sourceSessionId: session.id,
       turn: source?.turn ?? 0,
-      endSeq: source?.endSeq ?? session.events.at(-1)?.seq ?? 0,
+      endSeq: source?.endSeq ?? Math.max(session.seq - 1, 0),
       observedAt: Date.now(),
       ...(session.header.cwd === undefined ? {} : { cwdLabel: basename(session.header.cwd).slice(0, 160) }),
       userText: bounded.userText,
@@ -154,13 +157,13 @@ function buildManualTarget(
 }
 
 function selectionSourceCapsule(
-  session: Session,
+  session: ObservedSession,
   selection: string,
   maxSourceChars: number,
 ): SourceCapsule | undefined {
   const needle = searchableText(selection)
-  for (let index = session.events.length - 1; index >= 0; index -= 1) {
-    const event = session.events[index]
+  for (let index = session.seq - 1; index >= 0; index -= 1) {
+    const event = session.eventAt(SessionSeq(index))
     if (event === undefined || !searchableEventText(event).includes(needle)) continue
     if (event.type === 'assistant/message' || event.type === 'tool/result') {
       return sourceCapsuleForTurn(session, event.data.turn, maxSourceChars)
@@ -184,12 +187,12 @@ function searchableText(text: string): string {
 }
 
 function previousSourceCapsule(
-  session: Session,
+  session: ObservedSession,
   beforeIndex: number,
   maxSourceChars: number,
 ): SourceCapsule | undefined {
   for (let index = beforeIndex - 1; index >= 0; index -= 1) {
-    const event = session.events[index]
+    const event = session.eventAt(SessionSeq(index))
     if (event?.type !== 'turn/end') continue
     const capsule = captureExplicitSourceCapsule(session, event, maxSourceChars)
     if (capsule !== undefined) return capsule
@@ -198,21 +201,21 @@ function previousSourceCapsule(
 }
 
 function sourceCapsuleForTurn(
-  session: Session,
+  session: ObservedSession,
   turn: number,
   maxSourceChars: number,
 ): SourceCapsule | undefined {
-  for (let index = session.events.length - 1; index >= 0; index -= 1) {
-    const event = session.events[index]
+  for (let index = session.seq - 1; index >= 0; index -= 1) {
+    const event = session.eventAt(SessionSeq(index))
     if (event?.type !== 'turn/end' || event.data.turn !== turn) continue
     return captureExplicitSourceCapsule(session, event, maxSourceChars)
   }
   return undefined
 }
 
-function latestSourceCapsule(session: Session, maxSourceChars: number): SourceCapsule | undefined {
-  for (let index = session.events.length - 1; index >= 0; index -= 1) {
-    const event = session.events[index]
+function latestSourceCapsule(session: ObservedSession, maxSourceChars: number): SourceCapsule | undefined {
+  for (let index = session.seq - 1; index >= 0; index -= 1) {
+    const event = session.eventAt(SessionSeq(index))
     if (event?.type !== 'turn/end') continue
     const capsule = captureSourceCapsule(session, event, maxSourceChars)
     if (capsule !== undefined) return capsule
@@ -220,9 +223,9 @@ function latestSourceCapsule(session: Session, maxSourceChars: number): SourceCa
   return undefined
 }
 
-function findTurnStart(events: readonly SessionEvent[], turn: number, beforeSeq: number): number | undefined {
-  for (let index = Math.min(beforeSeq, events.length - 1); index >= 0; index -= 1) {
-    const event = events[index]
+function findTurnStart(session: ObservedSession, turn: number, beforeSeq: number): number | undefined {
+  for (let index = Math.min(beforeSeq, session.seq - 1); index >= 0; index -= 1) {
+    const event = session.eventAt(SessionSeq(index))
     if (event?.type === 'turn/start' && event.data.turn === turn) return index
   }
   return undefined

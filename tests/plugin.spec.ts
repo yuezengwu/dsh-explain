@@ -221,7 +221,7 @@ describe('dsh-explain plugin lifecycle', () => {
           text: 'Explanation added to Learning: Discriminated unions on request',
         },
       })
-      expect(session.events.filter(event => event.type === 'command/run').at(-1))
+      expect(session.snapshotEvents().filter(event => event.type === 'command/run').at(-1))
         .toMatchObject({ data: { name: 'explain', args: ' Explain discriminated unions' } })
       expect(session.deriveMessages()).toEqual(messagesBefore)
       expect(ctx.explain.threadPage({ limit: 10 }).entries[0]).toMatchObject({

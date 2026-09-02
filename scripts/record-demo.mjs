@@ -22,8 +22,8 @@ function requireDshSource() {
     if (!existsSync(join(source, expected))) throw new Error(`DSH source is missing ${expected}: ${source}`)
   }
   const manifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
-  if (manifest.version !== '0.1.2-alpha.3') {
-    throw new Error(`DSH source must be 0.1.2-alpha.3, received ${String(manifest.version)}: ${source}`)
+  if (manifest.version !== '0.1.2-alpha.5') {
+    throw new Error(`DSH source must be 0.1.2-alpha.5, received ${String(manifest.version)}: ${source}`)
   }
   return source
 }
