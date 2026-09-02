@@ -2,7 +2,7 @@
 
 ## M11：DSH 0.1.2-alpha.5 兼容
 
-> 状态：**实现与本地验收完成，等待提交确认**（2026-09-02）。
+> 状态：**已合入 `main`（PR #29）**（2026-09-02）。
 
 依赖基线从 DSH `0.1.2-alpha.3` 升级到 `0.1.2-alpha.5`。来源观察改用 `Session.seq`、`eventAt()` 与 `snapshotEvents()`，适配 `Session.events` 移除和强类型序号；composer 左侧快捷入口改从标准 `useInput` hook 读取状态；组装夹具补齐新的未继承会话元数据。发布包、官方源码链接、keyless Web 6/6、M6 组合 3/3、71 项单元/集成测试和 alpha.5 Demo 均在同一候选分支验证。
 
