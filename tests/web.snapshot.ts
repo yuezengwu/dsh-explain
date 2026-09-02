@@ -426,7 +426,25 @@ describe('keyless assembled DSH Web learning view', () => {
     expect(pageErrors).toEqual([])
   })
 
-  it('downloads the v2 backup and clears learning data through the real settings page', async () => {
+  it('corrects an inference and sets an explicit preference without leaving the learning view', async () => {
+    if (page === undefined) throw new Error('web page is not initialized')
+    const view = page.getByTestId('dsh-explain-learning-view')
+    const examples = view.locator('.dsh-explain-profile-row').filter({ hasText: '示例方式' })
+    await examples.getByRole('button', { name: '纠正', exact: true }).click()
+    await examples.getByRole('textbox', { name: '示例方式' }).fill('使用两个对比代码示例。')
+    await examples.getByRole('button', { name: '保存设置', exact: true }).click()
+    await examples.getByText('使用两个对比代码示例。', { exact: true }).waitFor({ timeout: 15_000 })
+    await examples.getByText('用户修正', { exact: true }).waitFor({ timeout: 15_000 })
+    const verbosity = view.locator('.dsh-explain-profile-row').filter({ hasText: '讲解长度' })
+    await verbosity.getByRole('button', { name: '设置偏好', exact: true }).click()
+    await verbosity.getByRole('textbox', { name: '讲解长度' }).fill('先给出简短结论，再展开细节。')
+    await verbosity.getByRole('button', { name: '保存设置', exact: true }).click()
+    await verbosity.getByText('先给出简短结论，再展开细节。', { exact: true }).waitFor({ timeout: 15_000 })
+    await verbosity.getByText('显式偏好', { exact: true }).waitFor({ timeout: 15_000 })
+    expect(pageErrors).toEqual([])
+  })
+
+  it('downloads the v3 backup and clears learning data through the real settings page', async () => {
     if (page === undefined) throw new Error('web page is not initialized')
     await page.getByRole('button', { name: '设置', exact: true }).click()
     const settingsDialog = page.getByRole('dialog', { name: '设置', exact: true })
@@ -438,18 +456,36 @@ describe('keyless assembled DSH Web learning view', () => {
     const downloadReady = page.waitForEvent('download')
     await settings.getByRole('button', { name: '导出 JSON' }).click()
     const download = await downloadReady
-    expect(download.suggestedFilename()).toBe('dsh-explain-backup-v2.json')
+    expect(download.suggestedFilename()).toBe('dsh-explain-backup-v3.json')
     const downloadPath = await download.path()
     if (downloadPath === null) throw new Error('learning backup download has no local path')
     const backupJson = await readFile(downloadPath, 'utf8')
-    expect(JSON.parse(backupJson)).toMatchObject({
+    const backup = JSON.parse(backupJson) as {
+      readonly format: string
+      readonly version: number
+      readonly data: {
+        readonly entries: readonly unknown[]
+        readonly review: unknown
+        readonly context: { readonly dialogueProfile: readonly unknown[] }
+        readonly profileAudit: readonly unknown[]
+      }
+    }
+    expect(backup).toMatchObject({
       format: 'dsh-explain-backup',
-      version: 2,
+      version: 3,
       data: {
         entries: [{ ordinal: 1 }, { ordinal: 2 }],
         review: { dashboard: { dueCount: 0 }, attempts: [] },
       },
     })
+    expect(backup.data.context.dialogueProfile).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'examples', preference: '使用两个对比代码示例。', authority: 'correction' }),
+      expect.objectContaining({ kind: 'verbosity', preference: '先给出简短结论，再展开细节。', authority: 'explicit' }),
+    ]))
+    expect(backup.data.profileAudit).toEqual(expect.arrayContaining([
+      expect.objectContaining({ targetKey: 'examples', action: 'set', authority: 'correction' }),
+      expect.objectContaining({ targetKey: 'verbosity', action: 'set', authority: 'explicit' }),
+    ]))
     expect(backupJson).not.toContain('sourceSummary')
     expect(backupJson).not.toContain(sourceWorkspace)
 

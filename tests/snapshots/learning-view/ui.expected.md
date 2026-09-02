@@ -26,7 +26,23 @@
   - heading "学习进展" [level=3]
   - paragraph: 能从实际重构中理解类型收窄。
   - heading "讲解偏好" [level=3]
-  - text: 优先使用一个具体代码示例。
+  - paragraph: 这是 Explain 当前采用的学习画像。显式偏好优先于修正，修正优先于模型推断。
+  - strong: 讲解长度
+  - text: 尚无判断
+  - button "设置偏好"
+  - strong: 内容结构
+  - text: 尚无判断
+  - button "设置偏好"
+  - strong: 示例方式
+  - text: 优先使用一个具体代码示例。 模型推断 信心 高
+  - button "来源会话 · 回合 1"
+  - button "纠正"
+  - button "忘记这一判断"
+  - strong: 术语习惯
+  - text: 尚无判断
+  - button "设置偏好"
+  - heading "主题熟悉度" [level=3]
+  - text: 尚无主题熟悉度判断。
   - heading "当前会话" [level=2]
   - text: 当前会话暂无讲解
   - heading "其他会话的活跃讲解 2" [level=2]

@@ -5,7 +5,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type {
   ClearLearningDataValue,
-  ExplainDataExportV2,
+  ExplainDataExportV3,
   ExplainConfigurationView,
   ExplainContextView,
   ExplainModelCatalogView,
@@ -14,6 +14,7 @@ import type {
   ReviewId,
   ThreadEntryView,
   UpdateConfigurationRequest,
+  UpdateLearnerProfileRequest,
 } from 'dsh-explain/types'
 import type { RequestId } from 'dsh-explain/types'
 import type {} from 'dsh-explain/remote'
@@ -34,6 +35,8 @@ export interface LearningSnapshot {
   readonly entries: readonly ThreadEntryView[]
   readonly hasMore: boolean
   readonly pendingEntryIds: readonly string[]
+  readonly profilePendingKeys: readonly string[]
+  readonly profileError?: string | undefined
   readonly reviewPending?: boolean | undefined
   readonly reviewError?: string | undefined
   readonly configurationPending: boolean
@@ -60,6 +63,8 @@ const INITIAL: LearningSnapshot = {
   entries: [],
   hasMore: false,
   pendingEntryIds: [],
+  profilePendingKeys: [],
+  profileError: undefined,
   reviewPending: false,
   reviewError: undefined,
   configurationPending: false,
@@ -230,6 +235,58 @@ export class GlobalLearningStore {
     } finally {
       const current = this.store.getSnapshot()
       this.store.set({ ...current, reviewPending: false })
+    }
+  }
+
+  /** Set, correct, or forget one profile field without starting a model request. */
+  async updateLearnerProfile(
+    change: Omit<UpdateLearnerProfileRequest, 'requestId' | 'expectedStoreRevision'>,
+  ): Promise<boolean> {
+    const before = this.store.getSnapshot()
+    const expectedStoreRevision = before.status?.storeRevision
+    if (expectedStoreRevision === undefined) return false
+    const key = `${change.targetKind}:${change.targetKey}`
+    if (before.profilePendingKeys?.includes(key) === true) return false
+    this.store.set({
+      ...before,
+      profilePendingKeys: [...(before.profilePendingKeys ?? []), key],
+      profileError: undefined,
+    })
+    try {
+      const result = unwrapRemote(await this.ctx.remote.explain.updateLearnerProfile({
+        ...change,
+        requestId: requestId(),
+        expectedStoreRevision,
+      }))
+      if (!result.ok) {
+        const current = this.store.getSnapshot()
+        this.store.set({ ...current, profileError: `${result.error.code}: ${result.error.message}` })
+        if (result.error.code === 'STORE_STALE') await this.refreshAfterCurrent()
+        return false
+      }
+      const current = this.store.getSnapshot()
+      this.store.set({
+        ...current,
+        context: result.context,
+        status: current.status === undefined
+          ? undefined : { ...current.status, storeRevision: result.storeRevision },
+        profileError: undefined,
+      })
+      await this.refreshAfterCurrent()
+      return true
+    } catch (error) {
+      const current = this.store.getSnapshot()
+      this.store.set({
+        ...current,
+        profileError: messageOf(error, 'The learner profile could not be updated.'),
+      })
+      return false
+    } finally {
+      const current = this.store.getSnapshot()
+      this.store.set({
+        ...current,
+        profilePendingKeys: (current.profilePendingKeys ?? []).filter(candidate => candidate !== key),
+      })
     }
   }
 
@@ -404,6 +461,8 @@ export class GlobalLearningStore {
         entries: pages.entries,
         hasMore: pages.hasMore,
         pendingEntryIds: [...this.pendingEntries],
+        profilePendingKeys: this.store.getSnapshot().profilePendingKeys ?? [],
+        profileError: this.store.getSnapshot().profileError,
         reviewPending: this.store.getSnapshot().reviewPending,
         reviewError: this.store.getSnapshot().reviewError,
         configurationPending: this.store.getSnapshot().configurationPending,
@@ -538,12 +597,12 @@ export class GlobalLearningStore {
 }
 
 /** Browser download helper kept separate so the privacy-bounded payload can be tested directly. */
-export function downloadExplainBackup(backup: ExplainDataExportV2): void {
+export function downloadExplainBackup(backup: ExplainDataExportV3): void {
   const blob = new Blob([`${JSON.stringify(backup, undefined, 2)}\n`], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
-  anchor.download = 'dsh-explain-backup-v2.json'
+  anchor.download = 'dsh-explain-backup-v3.json'
   anchor.hidden = true
   document.body.append(anchor)
   try {

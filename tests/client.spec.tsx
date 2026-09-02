@@ -6,7 +6,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { SessionListState } from '@deepseek-ai/dsh-api-session-controller/client'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { createSnapshotStore } from './client-runtime-stub.ts'
-import { EntryId, ExplanationId, ReviewBatchId, ReviewId, TopicId } from '../src/brands.ts'
+import { EntryId, ExplanationId, ObservationId, ReviewBatchId, ReviewId, TopicId } from '../src/brands.ts'
 import { LearningView } from '../src/client/LearningView.tsx'
 import { LearningSettingsSection } from '../src/client/LearningSettingsSection.tsx'
 import { diagnosticState } from '../src/client/diagnostics.ts'
@@ -88,9 +88,18 @@ describe('conversation learning view', () => {
           kind: 'examples',
           preference: '偏好一个具体示例',
           confidence: 'high',
-          evidenceObservationIds: [],
+          evidenceObservationIds: [ObservationId('examples-observation')],
           evidenceEntryOrdinals: [1],
+          authority: 'inferred',
+          evidence: [{
+            observationId: ObservationId('examples-observation'),
+            sourceSessionId: SessionId('session-current'),
+            sourceTurn: 1,
+            createdAt: 1_700_000_000_000,
+          }],
         }],
+        topicFamiliarities: [],
+        profileAudit: [],
         knowledgeOverview: '已理解基础类型收窄。',
         learningTrend: '正在形成可靠的类型建模习惯。',
         stats: {
@@ -125,6 +134,7 @@ describe('conversation learning view', () => {
       entries: [current, other, history],
       hasMore: false,
       pendingEntryIds: [],
+      profilePendingKeys: [],
       configurationPending: false,
       configurationError: undefined,
       dataOperationPending: undefined,
@@ -139,6 +149,7 @@ describe('conversation learning view', () => {
     const cleanupView = vi.fn()
     const activate = vi.fn(() => cleanupView)
     const submitReviewAnswer = vi.fn().mockResolvedValue(undefined)
+    const updateLearnerProfile = vi.fn().mockResolvedValue(true)
     const props = {
       sessionId: SessionId('session-current'),
       useLearning: learningHook(store),
@@ -150,6 +161,7 @@ describe('conversation learning view', () => {
       reopen: vi.fn().mockResolvedValue(undefined),
       startReview: vi.fn().mockResolvedValue(undefined),
       submitReviewAnswer,
+      updateLearnerProfile,
       openSource: vi.fn(() => true),
       t: (key: keyof typeof zh) => zh[key],
     } as unknown as ComponentProps<typeof LearningView>
@@ -166,6 +178,20 @@ describe('conversation learning view', () => {
     expect(screen.getByText('Mastered concept')).toBeTruthy()
     expect(screen.getByText('已理解基础类型收窄。')).toBeTruthy()
     expect(screen.getByText('4/50')).toBeTruthy()
+    expect(screen.getByText('信心 高')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '纠正' }))
+    fireEvent.change(screen.getByRole('textbox', { name: '示例方式' }), {
+      target: { value: '偏好两个对比示例' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '保存设置' }))
+    expect(updateLearnerProfile).toHaveBeenCalledWith({
+      targetKind: 'dialogue-preference',
+      targetKey: 'examples',
+      action: 'set',
+      value: '偏好两个对比示例',
+      authority: 'correction',
+      sourceObservationId: ObservationId('examples-observation'),
+    })
     expect(screen.getByRole('heading', { name: '今日复习' })).toBeTruthy()
     expect(screen.getByText('请用自己的话解释类型收窄。')).toBeTruthy()
     fireEvent.change(screen.getByPlaceholderText('用自己的话回答，不必复述原文…'), {
@@ -209,6 +235,8 @@ describe('conversation learning view', () => {
       modelCatalogError: undefined,
       context: {
         dialogueProfile: [],
+        topicFamiliarities: [],
+        profileAudit: [],
         knowledgeOverview: '',
         learningTrend: '',
         stats: {
@@ -220,6 +248,7 @@ describe('conversation learning view', () => {
       entries: [explanation(1, 'session-old', 'closed', 'Readable history')],
       hasMore: false,
       pendingEntryIds: [],
+      profilePendingKeys: [],
       configurationPending: false,
       configurationError: undefined,
       dataOperationPending: undefined,
@@ -464,6 +493,7 @@ describe('learning settings section', () => {
       entries: [],
       hasMore: false,
       pendingEntryIds: [],
+      profilePendingKeys: [],
       configurationPending: false,
       configurationError: undefined,
       dataOperationPending: undefined,

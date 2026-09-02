@@ -32,7 +32,7 @@ const REPHRASE_SYSTEM = `You are dsh-explain. Rephrase one still-active explanat
 
 const MANUAL_SYSTEM = `You are dsh-explain, a private auxiliary learning assistant. Fulfill one explicit learning request using the supplied bounded source context and global learning context. Always produce a useful explanation; never skip. Write every user-visible field in the language used by manualRequest. Do not infer occupation, identity, health, politics, or other sensitive attributes. Return exactly one JSON object with topicKey, title, what, why, and pitfall, with no markdown or extra text.`
 
-const COMPACTION_SYSTEM = `You are dsh-explain's context compactor. Produce a full replacement learning-context snapshot from the previous snapshot, new structured observations, closed explanations, and authoritative statistics. Preserve the language established by the previous snapshot or, when none exists, the newest supplied learning evidence. Never infer occupation, identity, health, politics, or other sensitive attributes. Topic mastered/learning state is not yours to set. Return exactly one JSON object with dialogueProfile, knowledgeOverview, and learningTrend.`
+const COMPACTION_SYSTEM = `You are dsh-explain's context compactor. Produce a full replacement learning-context snapshot from the previous snapshot, new structured observations, closed explanations, authoritative learner-profile controls, and statistics. User controls outrank model inference: explicit preference > correction > inference. Do not restate an inference that a control suppresses or contradicts. Preserve the language established by the previous snapshot or, when none exists, the newest supplied learning evidence. Never infer occupation, identity, health, politics, or other sensitive attributes. Topic mastered/learning state is not yours to set. Return exactly one JSON object with dialogueProfile, knowledgeOverview, and learningTrend.`
 
 const REVIEW_SYSTEM = `You are dsh-explain's private review evaluator. Assess one answer semantically against the supplied explanation, accepting accurate paraphrases rather than keyword matching. Use mastered only when the core idea and requested reasoning are correct, partial when there is meaningful but incomplete understanding, and forgotten when the answer is absent, materially wrong, or unrelated. Write concise constructive feedback in the language of the question. Do not infer sensitive attributes. Return exactly one JSON object with result and feedback, with no markdown or extra fields.`
 
@@ -242,6 +242,7 @@ export function renderCompactionRequest(
         rules: [
           'dialogueProfile is always an array of zero to sixteen complete dialogueProfileItem objects; use [] when no supported preference is justified.',
           'Both evidence fields are always arrays and may cite only exact ids or ordinals present in the supplied evidence.',
+          'learnerProfileControls are authoritative user choices; omit any dialogueProfile inference they suppress or contradict.',
           'The languageSample, not the English instructions or JSON keys, is authoritative for the output language.',
           'Write every user-visible string in exactly the same human language as languageSample; retain English only for technical identifiers when needed.',
           requiredWritingSystem === undefined
@@ -254,6 +255,7 @@ export function renderCompactionRequest(
       previous: batch.previous?.context ?? null,
       newObservations: batch.observations,
       closedExplanations: batch.explanations,
+      learnerProfileControls: batch.learnerProfileControls ?? [],
       authoritativeStats: stats,
     })],
     maxTokens,
