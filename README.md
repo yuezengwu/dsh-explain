@@ -2,82 +2,79 @@
   <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
 </div>
 
-<h1 align="center">dsh-explain</h1>
-
-<p align="center"><strong>Turn everyday DSH work into a private, continuous learning loop.</strong></p>
+<p align="center">
+  <img src="docs/assets/showcase-hero.png" alt="dsh-explain — turn everyday work into a private, continuous learning loop" width="100%">
+</p>
 
 <p align="center">
-  <img alt="DSH 0.1.1-rc.2" src="https://img.shields.io/badge/DSH-0.1.1--rc.2-4c8bf5">
+  <img alt="DSH 0.1.2-alpha.3" src="https://img.shields.io/badge/DSH-0.1.2--alpha.3-4c8bf5">
   <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="Local first" src="https://img.shields.io/badge/data-local--first-2ea44f">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
 
-`dsh-explain` is a learning-mode plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It turns useful concepts from completed work sessions into structured explanations, keeps them in one global learning thread, and adapts future explanations to what the user already knows.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="docs/assets/dsh-explain-demo.mp4">Watch the full demo</a> ·
+  <a href="#local-first-by-design">Privacy model</a> ·
+  <a href="docs/DEMO.md">Reproduce the recording</a>
+</p>
 
-The primary agent stays untouched: Explain uses its own model calls, scheduler, context, and local SQLite database.
+`dsh-explain` is a learning-mode plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It turns useful concepts from completed work into structured explanations, schedules lightweight reviews, and lets you inspect or correct what it learns about you.
 
-## See it in action
+The primary agent stays untouched. Explain uses its own model calls, scheduler, context, and local SQLite database.
 
-![Select a DSH answer, create an Explain request, review the learning card, and mark it mastered](https://github.com/yuezengwu/dsh-explain/blob/m6-owned-shortcuts-assets/m6-owned-shortcuts-real.gif?raw=true)
+## See the learning loop
 
-Select text or choose **Learn from this answer**, review the editable `/explain` draft, generate a learning card, then mark it understood. This demonstration used real DSH Web sessions and real DeepSeek main-agent and Explain model rounds; the exact commits and recording conditions are preserved in [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16#user-content-real-model-gui-evidence).
+![A real DSH Web flow that captures a completed answer, reviews a concept, corrects a learner preference, and exports local data](docs/assets/dsh-explain-demo.gif)
+
+The 28-second preview runs against real assembled DSH Web `0.1.2-alpha.3` with deterministic, private fixture data. [Watch the higher-quality MP4](docs/assets/dsh-explain-demo.mp4) or read the [recording contract](docs/DEMO.md).
+
+| Capture | Review | Adapt |
+|---|---|---|
+| Turn a finalized answer or selected text into an editable `/explain` draft. Nothing submits automatically. | Revisit due concepts through recall, application, and distinction questions. | Inspect explanation preferences and topic familiarity, then correct or forget an inference. |
 
 ## Quick start
 
-The published Explain release currently targets DSH `0.1.1-rc.2`. This compatibility branch validates DSH `0.1.2-alpha.3` without replacing that RC.2 release line.
+Current `main` targets DSH `0.1.2-alpha.3`:
 
 ```sh
-npx @deepseek-ai/dsh@0.1.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain
-npx @deepseek-ai/dsh@0.1.1-rc.2 web
+npx @deepseek-ai/dsh@0.1.2-alpha.3 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.2-alpha.3 --profile web
 ```
 
-Then open **Settings → Learning**, select an auxiliary provider and model, enable learning mode, and save. Explain observes only future completed top-level turns; it does not scan existing history.
+Open **Settings → Learning**, choose an auxiliary provider and model, enable learning mode, and save. Explain observes only future completed top-level turns; it does not scan existing history.
 
-Git-hosted plugins build during installation. If pnpm requests build approval, add the printed `dsh-explain` entry to the profile's `pnpm-workspace.yaml`, then repeat the install command.
+Git-hosted plugins build during installation. If pnpm requests build approval, add the printed `dsh-explain` entry to the profile's `pnpm-workspace.yaml`, then repeat the install command. For automated runs that should not open a browser, start DSH with `--no-open`.
 
-## Ways to learn
+> The latest tagged Explain release is `v0.2.0`; `v0.3.0` has not been published. Installing from GitHub uses the current alpha.3-compatible `main` branch.
+
+## Start from the work itself
 
 | Entry point | What happens |
 |---|---|
 | `/explain <request>` | Requests an explanation using the current session as bounded source context. |
-| `/review` | Starts or resumes a local review round in the Learning tab. |
-| **Explain selected text** | Creates an editable `/explain --selection …` draft from visible text. It never submits automatically. |
+| **Explain selected text** | Creates an editable `/explain --selection …` draft from visible text. |
 | **Learn from this answer** | Creates an editable draft tied to the exact finalized assistant turn. |
-| Automatic evaluation | After an eligible completed turn, Explain may add one useful explanation within the configured budget. |
+| Automatic evaluation | May add one useful explanation after an eligible turn, within your configured budget. |
+| `/review` | Opens or resumes a local review round in the Learning tab. |
 
-Use `/explain on`, `/explain off`, and `/explain status` to control or inspect the runtime without leaving the composer.
+Each explanation answers three practical questions: **What is it? Why does it matter here? What is the common pitfall?** Choose **Got it** to close the card, or **Not yet** for a different explanation.
 
-Each learning card answers three questions:
+## Review, then correct the model
 
-- **What is it?** A concise explanation of the concept.
-- **Why does it matter?** The practical reason it matters in the source work.
-- **What is the common pitfall?** A mistake or misconception to avoid.
+Concepts marked **Got it** enter a local spaced-review schedule. **Learning → Today's review** selects up to three due concepts and asks recall, application, and distinction questions. The auxiliary model evaluates each answer as **Mastered**, **Partial**, or **Forgotten** and schedules the next review at a deterministic interval.
 
-Choose **Got it** to close the card, or **Not yet** to request a different explanation. Rephrasing remains available even if the source session is later deleted.
+**Learning → Learning overview** exposes the current judgments about explanation length, structure, examples, terminology, and topic familiarity—with confidence and source links. You can correct an inference, forget it, or set an explicit preference. Precedence is fixed and visible: **explicit preference → user correction → model inference**.
 
-## Review what you learned
+## One learning thread, many sessions
 
-Concepts marked **Got it** enter a local review schedule the next day. **Learning → Today's review** selects up to three due concepts and asks recall, application, and distinction questions. The auxiliary model evaluates answers as **Mastered**, **Partial**, or **Forgotten**, gives concise feedback, links back to the source session, and schedules the next review at a deterministic interval. Review calls share the global single-flight scheduler and do not consume the autonomous-evaluation budget.
-
-## One learning thread, many work sessions
-
-Every `$DSH_HOME` owns exactly one Explain learning thread. Individual work sessions contribute material, but resumes and forks never copy the learning state.
-
-- Each source session has at most one explanation awaiting feedback.
-- All work sessions display the same global history in the first-party **Learning** tab.
-- One global scheduler serializes manual explanations, reviews, autonomous evaluation, rephrases, and compaction.
-- The default autonomous budget is 50 requests per rolling 24 hours and survives restarts.
-- A private `ExplainContext` tracks explanation preferences, knowledge level, and learning progress.
-- **Learning → Learning overview** shows explanation-length, structure, example, terminology, and topic-familiarity judgments with confidence and source links. You can correct them, forget a judgment, or set an explicit preference; explicit preferences outrank corrections, which outrank model inference.
-- When structured observations or closed explanations are pending, auxiliary history compacts after 30 minutes without an Explain action, or before a request would exceed 50% of the selected model's context window.
-
-## Own your learning data
-
-Open **Settings → Learning → Data management** to download `dsh-explain-backup-v3.json`. The versioned backup contains learning cards, Topic state, review schedules and outcomes, the effective public `ExplainContext` projection, and the learner-profile audit trail; it excludes full source sessions, private source summaries, credentials, and absolute host paths.
-
-The same page can clear all learned content after you type `CLEAR`. Explain first cancels and fences in-flight generation, then removes the learning thread and context in one SQLite transaction. Auxiliary-model settings, the enabled state, and the current rolling 24-hour autonomous-usage count are deliberately preserved.
+- Every `$DSH_HOME` owns exactly one Explain learning thread; resumes and forks never copy it.
+- Every source session has at most one explanation awaiting feedback.
+- One global scheduler serializes explanations, reviews, autonomous evaluation, rephrases, and compaction.
+- Autonomous evaluation has a persistent rolling 24-hour budget, configurable in Settings.
+- Rephrasing still works if a source session is later deleted because only a bounded source summary is retained.
 
 ## Local-first by design
 
@@ -85,37 +82,38 @@ The same page can clear all learned content after you type `CLEAR`. Explain firs
 |---|---|
 | Learning thread | Stored in `$DSH_HOME/dsh-explain/v1/thread.sqlite`. |
 | Enablement and model settings | Stored through DSH settings in `$DSH_HOME/settings.yaml`. |
-| Source material | Reduced to bounded capsules; rephrasing retains at most a 2,000-character restricted source summary. |
+| Source material | Reduced to bounded capsules; rephrasing retains at most a 2,000-character restricted summary. |
 | Global learning context | Sent only to the auxiliary Explain model, never to the primary agent. |
-| Primary session | Never receives Explain events, prompts, or learning context. Primary turns are not blocked. |
+| Export | A versioned local backup includes learning state and profile audit, but excludes full sessions, credentials, and absolute host paths. |
+| Clear | A typed `CLEAR` confirmation atomically removes learned content while preserving runtime settings and the active budget window. |
 
-Explain uses first-party DSH `conversation.view`, composer, assistant-action, and settings extension points. It does not require `better-sidebar` or patches to other plugins.
+Explain uses first-party DSH conversation, composer, assistant-action, and settings extension points. It does not require patches to DSH or other plugins.
 
 ## Compatibility and verification
 
-- Published compatibility line: DSH `0.1.1-rc.2`.
-- Compatibility-branch target: DSH `0.1.2-alpha.3`.
-- Unit suite: 70 tests.
-- Assembled DSH Web acceptance: 5 scenarios.
-- Explain-owned shortcut acceptance: 3 M6 scenarios.
-- Real-model workflow evidence: [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16).
-- Detailed acceptance matrix: [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md).
+| Check | Current result |
+|---|---|
+| DSH compatibility | `0.1.2-alpha.3` public API packages and assembled source |
+| Unit and integration | 71 tests |
+| Assembled DSH Web | 6 scenarios |
+| Explain-owned shortcuts | 3 M6 scenarios |
+| Production package | Build and pack dry-run |
 
-DSH is still a developer preview. Explain follows the current public API line and does not retain compatibility layers for earlier private-preview packages.
+See the [acceptance matrix](docs/ACCEPTANCE.md) for coverage and [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16) for the earlier real-model workflow evidence. DSH remains a developer preview; Explain follows its current public API line instead of retaining compatibility layers for private-preview packages.
 
 ## Local development
 
-On this compatibility branch, the default development install uses the published 0.1.2-alpha.3 API packages. Assembled-Web tests also need a built DSH 0.1.2-alpha.3 source checkout:
+The default development install uses published `0.1.2-alpha.3` API packages. Assembled-Web tests and demo recording also need a built DSH `0.1.2-alpha.3` source checkout:
 
 ```sh
 pnpm install
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
-pnpm run typecheck
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm dsh:link
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm dsh:link:check
+pnpm typecheck
 pnpm test
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:m6
-pnpm run build
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm test:web
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm test:m6
+pnpm build
 ```
 
 Install this checkout directly for manual development:
@@ -126,18 +124,15 @@ dsh --profile web --dump-config
 dsh --profile web
 ```
 
-`test:web` starts a fresh keyless DSH Web composition and verifies the Learning view, settings, source navigation, and missing-source fallback. `test:m6` installs only Explain and verifies both editable-draft shortcuts plus clean unload and reinstall behavior.
-
 ## Documentation
 
 | Document | Purpose |
 |---|---|
+| [Demo production](docs/DEMO.md) | Storyboard, privacy contract, commands, assets, and artwork provenance. |
 | [Product requirements](docs/PRD.md) | User model, scope, policies, and acceptance criteria. |
 | [Architecture](docs/ARCHITECTURE.md) | Persistence, scheduling, RPC, UI integration, and failure behavior. |
 | [Acceptance matrix](docs/ACCEPTANCE.md) | Automated and real-flow evidence. |
-| [Iteration plan](docs/NEXT.md) | Current follow-up work and sequencing. |
-
-The detailed design documents are currently written in Chinese.
+| [Iteration plan](docs/NEXT.md) | Completed milestones and follow-up sequencing. |
 
 ## License
 

@@ -2,82 +2,79 @@
   <a href="README.md">English</a> · <strong>简体中文</strong>
 </div>
 
-<h1 align="center">dsh-explain</h1>
-
-<p align="center"><strong>把日常 DSH 工作变成私有、连续的学习闭环。</strong></p>
+<p align="center">
+  <img src="docs/assets/showcase-hero.png" alt="dsh-explain——把日常工作变成私有、连续的学习闭环" width="100%">
+</p>
 
 <p align="center">
-  <img alt="DSH 0.1.1-rc.2" src="https://img.shields.io/badge/DSH-0.1.1--rc.2-4c8bf5">
+  <img alt="DSH 0.1.2-alpha.3" src="https://img.shields.io/badge/DSH-0.1.2--alpha.3-4c8bf5">
   <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="本地优先" src="https://img.shields.io/badge/数据-本地优先-2ea44f">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
 </p>
 
-`dsh-explain` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的学习模式插件。它从已完成的工作会话中提取值得学习的概念，生成结构化讲解，汇入一条全局学习线程，并依据用户已经掌握的内容持续调整后续讲解。
+<p align="center">
+  <a href="#快速开始">快速开始</a> ·
+  <a href="docs/assets/dsh-explain-demo.mp4">观看完整 Demo</a> ·
+  <a href="#本地优先">隐私模型</a> ·
+  <a href="docs/DEMO.md">复现录制</a>
+</p>
 
-主 Agent 保持不变：Explain 使用独立的模型调用、调度器、学习上下文和本地 SQLite 数据库。
+`dsh-explain` 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的学习模式插件。它把已完成工作中的有用概念整理成结构化讲解，安排轻量复习，并让你查看、修正它对你的认识。
 
-## 演示
+主 Agent 保持不变。Explain 使用独立的模型调用、调度器、学习上下文和本地 SQLite 数据库。
 
-![选取 DSH 回答、创建 Explain 请求、查看学习卡并标记掌握](https://github.com/yuezengwu/dsh-explain/blob/m6-owned-shortcuts-assets/m6-owned-shortcuts-real.gif?raw=true)
+## 看见完整学习闭环
 
-选中文字或点击「学习这个回答」，检查可编辑的 `/explain` 草稿，生成学习卡，再标记为已掌握。该演示使用真实 DSH Web 会话、真实 DeepSeek 主 Agent 回合和 Explain 模型回合；精确提交与录制条件保存在 [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16#user-content-real-model-gui-evidence)。
+![在真实 DSH Web 中捕获一个已完成回答、复习概念、修正学习偏好并导出本地数据](docs/assets/dsh-explain-demo.gif)
+
+这段 28 秒预览运行在真实组装的 DSH Web `0.1.2-alpha.3` 上，使用确定性、无隐私数据的样例环境。可以[观看高清 MP4](docs/assets/dsh-explain-demo.mp4)，或阅读[录制约束](docs/DEMO.md)。
+
+| 捕获 Capture | 复习 Review | 校正 Adapt |
+|---|---|---|
+| 把已完成回答或选中文字变成可编辑的 `/explain` 草稿，绝不自动提交。 | 通过回忆、应用、辨析三类问题复习到期概念。 | 查看讲解偏好与 Topic 熟悉度，并修正或忘记一次推断。 |
 
 ## 快速开始
 
-Explain 当前已发布版本适配 DSH `0.1.1-rc.2`。本兼容分支验证 DSH `0.1.2-alpha.3`，不替换现有 RC.2 发布线。
+当前 `main` 适配 DSH `0.1.2-alpha.3`：
 
 ```sh
-npx @deepseek-ai/dsh@0.1.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain
-npx @deepseek-ai/dsh@0.1.1-rc.2 web
+npx @deepseek-ai/dsh@0.1.2-alpha.3 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.2-alpha.3 --profile web
 ```
 
 启动后进入「**设置 → 学习**」，选择辅助模型的 provider 和 model，启用学习模式并保存。Explain 只观察此后完成的顶层工作回合，不补扫已有历史。
 
-Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按提示把 `dsh-explain` 加入该 profile 的 `pnpm-workspace.yaml`，然后重新执行安装命令。
+Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按提示把 `dsh-explain` 加入该 profile 的 `pnpm-workspace.yaml`，然后重新执行安装命令。自动化运行不应打开浏览器时，可在启动 DSH 时加上 `--no-open`。
 
-## 学习入口
+> Explain 最新标签版本仍是 `v0.2.0`，`v0.3.0` 尚未发布；从 GitHub 安装会使用当前已经适配 alpha.3 的 `main` 分支。
+
+## 从正在做的工作开始学习
 
 | 入口 | 行为 |
 |---|---|
-| `/explain <学习请求>` | 以当前会话的受限来源上下文主动请求一次讲解。 |
-| `/review` | 在「学习」Tab 开始或继续一轮本地复习。 |
-| **解释选中文字** | 从可见选区创建可编辑的 `/explain --selection …` 草稿，绝不自动提交。 |
+| `/explain <学习请求>` | 使用当前会话的受限来源上下文主动请求一次讲解。 |
+| **解释选中文字** | 从可见选区创建可编辑的 `/explain --selection …` 草稿。 |
 | **学习这个回答** | 创建绑定到精确 assistant 完成回合的可编辑草稿。 |
-| 自主判断 | 合格工作回合结束后，Explain 可在配置额度内生成一条值得学习的讲解。 |
+| 自主判断 | 合格工作回合结束后，在配置额度内生成一条值得学习的讲解。 |
+| `/review` | 在「学习」Tab 开始或继续一轮本地复习。 |
 
-使用 `/explain on`、`/explain off` 和 `/explain status`，无需离开输入框即可控制或检查运行状态。
+每张学习卡回答三个实际问题：**是什么？为什么在这里重要？常见坑是什么？** 选择「**懂了**」关闭卡片，或选择「**没懂**」换一种讲法。
 
-每张学习卡回答三个问题：
+## 复习，然后校正模型
 
-- **是什么？** 用简洁语言解释核心概念。
-- **为什么重要？** 说明它在来源工作中的实际价值。
-- **常见坑是什么？** 指出需要避免的错误或误解。
+标记「**懂了**」的概念会进入本地间隔复习计划。「**学习 → 今日复习**」每轮选择最多三个到期概念，提出回忆、应用和辨析问题。辅助模型把答案评为「**掌握 / 模糊 / 遗忘**」，再按确定性间隔安排下次复习。
 
-选择「**懂了**」关闭讲解；选择「**没懂**」请求换一种讲法。即使来源会话之后被删除，重讲仍然可用。
-
-## 复习已经学过的概念
-
-标记「**懂了**」的概念会从次日进入本地复习计划。「**学习 → 今日复习**」每轮选择最多三个到期概念，分别进行回忆、应用和辨析。辅助模型把答案评为「**掌握 / 模糊 / 遗忘**」，给出简短反馈、保留来源会话回链，并按确定性间隔安排下次复习。复习调用复用全局单飞调度器，不占自主判断额度。
+「**学习 → 学习概况**」公开显示讲解长度、结构、示例、术语和 Topic 熟悉度判断，并附带信心与来源回链。你可以修正推断、忘记判断或设置显式偏好。优先级固定且可见：**显式偏好 → 用户修正 → 模型推断**。
 
 ## 多个工作会话，一条学习线程
 
-每个 `$DSH_HOME` 只有一条 Explain 学习线程。不同工作会话可以贡献学习内容，但 resume 和 fork 不会复制学习状态。
-
+- 每个 `$DSH_HOME` 只有一条 Explain 学习线程；resume 和 fork 不会复制它。
 - 每个来源会话至多有一条等待反馈的讲解。
-- 所有工作会话通过第一方「学习」Tab 查看同一份全局历史。
-- 一个全局调度器串行处理主动讲解、复习、自主判断、重讲和压缩。
-- 自主判断默认额度为滚动 24 小时 50 次，并跨重启保留。
-- 私有 `ExplainContext` 记录讲解偏好、知识水平和学习进展。
-- 「**学习 → 学习概况**」会展示讲解长度、结构、示例、术语和 Topic 熟悉度判断，并附带信心与来源回链。用户可纠正、忘记判断或设置显式偏好；优先级固定为显式偏好 > 用户修正 > 模型推断。
-- 存在待压缩的结构化观察或已关闭讲解时，连续 30 分钟没有 Explain 操作，或下一次请求预计超过所选模型上下文窗口的 50%，都会触发辅助历史压缩。
-
-## 掌控自己的学习数据
-
-进入「**设置 → 学习 → 数据管理**」即可下载 `dsh-explain-backup-v3.json`。版本化备份包含学习卡片、Topic 状态、复习排期与结果、有效 `ExplainContext` 投影及画像修改审计，不包含完整来源会话、私有来源摘要、凭证或宿主绝对路径。
-
-同一页面也可在输入 `CLEAR` 后清除全部学习内容。Explain 会先取消并隔离进行中的生成，再通过一个 SQLite 事务删除学习线程和上下文。辅助模型设置、启用状态和当前滚动 24 小时自主额度计数会被明确保留。
+- 一个全局调度器串行处理讲解、复习、自主判断、重讲和压缩。
+- 自主判断使用持久化的滚动 24 小时额度，可在设置中调整。
+- 即使来源会话之后被删除，基于有界来源摘要的重讲仍然可用。
 
 ## 本地优先
 
@@ -85,37 +82,38 @@ Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按�
 |---|---|
 | 学习线程 | 持久化到 `$DSH_HOME/dsh-explain/v1/thread.sqlite`。 |
 | 开关与模型设置 | 通过 DSH settings 保存到 `$DSH_HOME/settings.yaml`。 |
-| 来源材料 | 只保留有界 capsule；重讲最多持久化 2,000 字符的受限来源摘要。 |
+| 来源材料 | 只保留有界 capsule；重讲最多持久化 2,000 字符的受限摘要。 |
 | 全局学习上下文 | 只发送给 Explain 辅助模型，永不发送给主 Agent。 |
-| 主会话 | 不接收 Explain 事件、提示词或学习上下文；主回合不会被阻塞。 |
+| 导出 | 版本化本地备份包含学习状态和画像审计，不包含完整会话、凭证或宿主绝对路径。 |
+| 清除 | 输入 `CLEAR` 后原子删除学习内容，同时保留运行设置和当前额度窗口。 |
 
-Explain 只使用 DSH 第一方 `conversation.view`、composer、assistant action 和 settings 扩展点，不依赖 `better-sidebar`，也不要求修改其他插件。
+Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 settings 扩展点，不要求修改 DSH 或其他插件。
 
 ## 兼容性与验证
 
-- 当前已发布兼容线：DSH `0.1.1-rc.2`。
-- 本兼容分支目标：DSH `0.1.2-alpha.3`。
-- 单元测试：70 项。
-- DSH Web 组装验收：5 个场景。
-- Explain 自有快捷入口验收：3 个 M6 场景。
-- 真实模型流程证据：[PR #16](https://github.com/yuezengwu/dsh-explain/pull/16)。
-- 完整验收矩阵：[docs/ACCEPTANCE.md](docs/ACCEPTANCE.md)。
+| 检查 | 当前结果 |
+|---|---|
+| DSH 兼容 | `0.1.2-alpha.3` 公开 API 包与组装源码 |
+| 单元与集成 | 71 项测试 |
+| DSH Web 组装验收 | 6 个场景 |
+| Explain 自有快捷入口 | 3 个 M6 场景 |
+| 生产包 | 构建与 pack dry-run |
 
-DSH 仍处于开发者预览阶段。Explain 跟随当前公开 API 版本线，不保留更早私有预览包的兼容层。
+完整覆盖见[验收矩阵](docs/ACCEPTANCE.md)，较早的真实模型工作流证据见 [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16)。DSH 仍处于开发者预览阶段；Explain 跟随当前公开 API 版本线，不保留更早私有预览包的兼容层。
 
 ## 本地开发
 
-本兼容分支的默认开发安装使用已发布的 0.1.2-alpha.3 API 包。assembled Web 测试还需要已构建的 DSH 0.1.2-alpha.3 源码 checkout：
+默认开发安装使用已发布的 `0.1.2-alpha.3` API 包。组装 Web 测试与 Demo 录制还需要已构建的 DSH `0.1.2-alpha.3` 源码 checkout：
 
 ```sh
 pnpm install
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run dsh:link:check
-pnpm run typecheck
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm dsh:link
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm dsh:link:check
+pnpm typecheck
 pnpm test
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:web
-DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm run test:m6
-pnpm run build
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm test:web
+DSH_SOURCE_DIR=/absolute/path/to/dsh pnpm test:m6
+pnpm build
 ```
 
 手工开发时直接安装当前 checkout：
@@ -126,16 +124,15 @@ dsh --profile web --dump-config
 dsh --profile web
 ```
 
-`test:web` 启动全新、无密钥的 DSH Web 组合，验证学习视图、设置、来源跳转和来源缺失降级。`test:m6` 只安装 Explain，验证两个可编辑草稿快捷入口，以及卸载、重装后的完整恢复行为。
-
 ## 文档
 
 | 文档 | 内容 |
 |---|---|
+| [Demo 制作](docs/DEMO.md) | 分镜、隐私约束、复现命令、素材与绘图来源。 |
 | [产品需求](docs/PRD.md) | 用户模型、范围、策略和验收标准。 |
 | [技术架构](docs/ARCHITECTURE.md) | 持久化、调度、RPC、UI 集成和失败行为。 |
 | [验收矩阵](docs/ACCEPTANCE.md) | 自动化与真实流程证据。 |
-| [迭代计划](docs/NEXT.md) | 当前后续工作与顺序。 |
+| [迭代计划](docs/NEXT.md) | 已完成里程碑与后续顺序。 |
 
 ## 许可证
 
