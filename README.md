@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img alt="DSH 0.1.2-alpha.5" src="https://img.shields.io/badge/DSH-0.1.2--alpha.5-4c8bf5">
+  <img alt="DSH 0.1.2-rc.1" src="https://img.shields.io/badge/DSH-0.1.2--rc.1-4c8bf5">
   <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="Local first" src="https://img.shields.io/badge/data-local--first-2ea44f">
@@ -29,7 +29,7 @@ The primary agent stays untouched. Explain uses its own model calls, scheduler, 
 
 ![A real DSH Web flow that captures a completed answer, reviews a concept, corrects a learner preference, and exports local data](docs/assets/dsh-explain-demo.gif)
 
-The 28-second preview runs against real assembled DSH Web `0.1.2-alpha.5` with deterministic, private fixture data. [Watch the higher-quality MP4](docs/assets/dsh-explain-demo.mp4) or read the [recording contract](docs/DEMO.md).
+The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with deterministic, private fixture data. [Watch the higher-quality MP4](docs/assets/dsh-explain-demo.mp4) or read the [recording contract](docs/DEMO.md).
 
 | Capture | Review | Adapt |
 |---|---|---|
@@ -37,18 +37,18 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-alpha.5` with d
 
 ## Quick start
 
-Current `main` targets DSH `0.1.2-alpha.5`:
+Current `main` targets DSH `0.1.2-rc.1`:
 
 ```sh
-npx @deepseek-ai/dsh@0.1.2-alpha.5 plugin --profile web add github:yuezengwu/dsh-explain
-npx @deepseek-ai/dsh@0.1.2-alpha.5 --profile web
+npx @deepseek-ai/dsh@0.1.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.2-rc.1 --profile web
 ```
 
 Open **Settings → Learning**, choose an auxiliary provider and model, enable learning mode, and save. Explain observes only future completed top-level turns; it does not scan existing history.
 
 Git-hosted plugins build during installation. If pnpm requests build approval, add the printed `dsh-explain` entry to the profile's `pnpm-workspace.yaml`, then repeat the install command. For automated runs that should not open a browser, start DSH with `--no-open`.
 
-> The latest tagged Explain release is `v0.2.0`; `v0.3.0` has not been published. Installing from GitHub uses the current alpha.5-compatible `main` branch.
+> The latest tagged Explain release is `v0.2.0`; `v0.3.0` has not been published. Installing from GitHub uses the current rc.1-compatible `main` branch.
 
 ## Start from the work itself
 
@@ -93,7 +93,7 @@ Explain uses first-party DSH conversation, composer, assistant-action, and setti
 
 | Check | Current result |
 |---|---|
-| DSH compatibility | `0.1.2-alpha.5` public API packages and assembled source |
+| DSH compatibility | `0.1.2-rc.1` public API packages and assembled source |
 | Unit and integration | 71 tests |
 | Assembled DSH Web | 6 scenarios |
 | Explain-owned shortcuts | 3 M6 scenarios |
@@ -103,7 +103,7 @@ See the [acceptance matrix](docs/ACCEPTANCE.md) for coverage and [PR #16](https:
 
 ## Local development
 
-The default development install uses published `0.1.2-alpha.5` API packages. Assembled-Web tests and demo recording also need a built DSH `0.1.2-alpha.5` source checkout:
+The default development install uses published `0.1.2-rc.1` API packages. Assembled-Web tests and demo recording also need a built DSH `0.1.2-rc.1` source checkout:
 
 ```sh
 pnpm install

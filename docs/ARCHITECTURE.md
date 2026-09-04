@@ -60,8 +60,8 @@ dsh-explain
 
 ### P0 组合前置条件
 
-1. DSH web profile 组合 `@deepseek-ai/dsh-client-store`、`@deepseek-ai/dsh-client-locale`、`@deepseek-ai/dsh-client-ui-slots`，以及拆分后的 chat、conversation、renderer、session 与 settings UI 包；alpha.5 不提供 `@deepseek-ai/dsh-client-runtime`。
-2. host 组合提供 `commands`、`llm`、`tokenMeter`、`settings` 与全局 Session 事件源；explain 声明硬 inject，缺失任一服务时不激活。alpha.5 的 `tokenMeter` 由宿主先组合 `sessionProjections`，Explain 只消费它的 `estimateMessage()`；模型容量由 `llm.resolveModelInfo()` 所有。
+1. DSH web profile 组合 `@deepseek-ai/dsh-client-store`、`@deepseek-ai/dsh-client-locale`、`@deepseek-ai/dsh-client-ui-slots`，以及拆分后的 chat、conversation、renderer、session 与 settings UI 包；rc.1 不提供 `@deepseek-ai/dsh-client-runtime`。
+2. host 组合提供 `commands`、`llm`、`tokenMeter`、`settings` 与全局 Session 事件源；explain 声明硬 inject，缺失任一服务时不激活。rc.1 的 `tokenMeter` 由宿主先组合 `sessionProjections`，Explain 只消费它的 `estimateMessage()`；模型容量由 `llm.resolveModelInfo()` 所有。
 3. package peerDependencies 声明直接使用的第一方包；`dsh.client.inject` 声明 session-controller、locale 及所需 UI 包的组合元数据。该字段不承担 apply 顺序。
 4. client 插件声明实际读取的 `slots`、`locale`、`remote`、`sessions` 与 `conversation` 服务；对 `conversation.view` 的贡献必须通过 `ctx.slots.inject()` 等待真实 slot declaration，不用裸 `slots.register()` 猜测加载顺序。
 5. 安装与组合 smoke 使用正常的本地目录安装与 Web profile，断言 `dsh-explain:learning` 在 view ring 中恰好注册一次；第一方视图宿主由 package peer 与 `dsh.client.inject` 声明为必需组合依赖，slot 的实际声明时序仍由 `slots.inject()` 处理。
@@ -196,7 +196,7 @@ host 在根作用域注册一个 `{ global: true }` 的 `session/event` listener
 4. 该 turn 至少有一个 step，并包含非空、非 explain 注入的 assistant 文本。
 5. `(sessionId, turn, endSeq)` 尚未被当前 runtime 接收。
 
-事件 listener 只做常数级 gate，捕获 Session 引用、不可变的 `turn/end` 事件与当前 runtime generation，并把 capsule 构造排入微任务后立即返回；不得在同步 `session/event` dispatch 中渲染全文、访问磁盘或等待模型。异步 capture 使用 DSH alpha.5 的 `Session.seq`、`eventAt()` 与 `snapshotEvents()` 按需逆序定位来源，只物化截至该 `endSeq` 的 append-only 回合切片；入队前再次校验 enabled 与 generation，避免 off 或模型语义设置变化后补入旧候选。
+事件 listener 只做常数级 gate，捕获 Session 引用、不可变的 `turn/end` 事件与当前 runtime generation，并把 capsule 构造排入微任务后立即返回；不得在同步 `session/event` dispatch 中渲染全文、访问磁盘或等待模型。异步 capture 使用 DSH rc.1 的 `Session.seq`、`eventAt()` 与 `snapshotEvents()` 按需逆序定位来源，只物化截至该 `endSeq` 的 append-only 回合切片；入队前再次校验 enabled 与 generation，避免 off 或模型语义设置变化后补入旧候选。
 
 `SourceCapsule` 包含：
 
@@ -498,7 +498,7 @@ interface FeedbackRequest {
 | `explain.modelCatalog()` | 当前 provider 与建议模型目录；目录只提供选择建议 |
 | `explain.updateConfiguration(request)` | expected-revision CAS 合并 UI 四字段；开启或切换已启用路由前验证精确容量 |
 
-Remote 走 DSH `TypertRemoteService` 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。DSH 0.1.2-alpha.5 的生成客户端把传输结果封装为 `RemoteResult<T>`；browser store 先解封传输结果，再处理方法自身的业务结果，传输失败进入现有可见错误状态。
+Remote 走 DSH `TypertRemoteService` 和 trusted-host authority，不新增未声明认证语义的可变 REST 端点。每个输入在 wire 边界校验；业务错误使用稳定 code，不从异常文本推导。DSH 0.1.2-rc.1 的生成客户端把传输结果封装为 `RemoteResult<T>`；browser store 先解封传输结果，再处理方法自身的业务结果，传输失败进入现有可见错误状态。
 
 browser 的插件级 `learning-store`：
 
