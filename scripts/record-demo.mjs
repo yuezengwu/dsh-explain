@@ -22,8 +22,8 @@ function requireDshSource() {
     if (!existsSync(join(source, expected))) throw new Error(`DSH source is missing ${expected}: ${source}`)
   }
   const manifest = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'))
-  if (manifest.version !== '0.1.2-alpha.5') {
-    throw new Error(`DSH source must be 0.1.2-alpha.5, received ${String(manifest.version)}: ${source}`)
+  if (manifest.version !== '0.1.2-rc.1') {
+    throw new Error(`DSH source must be 0.1.2-rc.1, received ${String(manifest.version)}: ${source}`)
   }
   return source
 }
@@ -177,7 +177,7 @@ async function seedLearningDatabase(dshHome) {
   ])
   const now = DEMO_NOW
   const store = new ExplainStore(join(dshHome, 'dsh-explain/v1/thread.sqlite'))
-  const lease = store.acquireLease('demo-seed', now, DAY_MS)
+  const lease = store.acquireLease('demo-seed', Date.now(), DAY_MS)
   const generation = { provider: 'demo-replay', model: 'demo', generatedAt: now }
   const capsule = (turn, userText, assistantText) => ({
     sourceSessionId: SESSION_ID,
