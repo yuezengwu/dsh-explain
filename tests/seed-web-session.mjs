@@ -41,8 +41,18 @@ try {
     isSeeded: false,
     delegationDepth: 0,
   }
-  await context.sessionPersistence.create(meta)
-  await context.sessionPersistence.append(sessionId, events)
+  if (sessionModule.SESSION_FORMAT_VERSION >= 2) {
+    const handle = await context.sessionPersistence.create(meta)
+    try {
+      await handle.append(events)
+      await handle.flush()
+    } finally {
+      await handle.close()
+    }
+  } else {
+    await context.sessionPersistence.create(meta)
+    await context.sessionPersistence.append(sessionId, events)
+  }
 } finally {
   await context.fiber.dispose()
 }

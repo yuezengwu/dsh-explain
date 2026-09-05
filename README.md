@@ -37,7 +37,7 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 ## Quick start
 
-Current `main` targets DSH `0.1.2-rc.1`:
+The published-package baseline is DSH `0.1.2-rc.1`. This checkout also supports the latest source release, `0.1.3-alpha.1`; its CLI/API packages are not yet on npm as of 2026-09-05. See the [compatibility contract](docs/COMPATIBILITY.md) for exact source revisions and local installation.
 
 ```sh
 npx @deepseek-ai/dsh@0.1.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain
@@ -64,7 +64,7 @@ Each explanation answers three practical questions: **What is it? Why does it ma
 
 ## Review, then correct the model
 
-Concepts marked **Got it** enter a local spaced-review schedule. **Learning → Today's review** selects up to three due concepts and asks recall, application, and distinction questions. The auxiliary model evaluates each answer as **Mastered**, **Partial**, or **Forgotten** and schedules the next review at a deterministic interval.
+Concepts marked **Got it** enter a local spaced-review schedule. **Learning → Today's review** selects up to three due concepts. Each concept advances from recall to application to distinction after successful answers; an unsuccessful answer repeats that skill next time. The auxiliary model evaluates each answer as **Mastered**, **Partial**, or **Forgotten** and schedules the next review at a deterministic interval. Partial or forgotten concepts are treated as learning again and can receive a new explanation; an active explanation pauses that concept's quiz.
 
 **Learning → Learning overview** exposes the current judgments about explanation length, structure, examples, terminology, and topic familiarity—with confidence and source links. You can correct an inference, forget it, or set an explicit preference. Precedence is fixed and visible: **explicit preference → user correction → model inference**.
 
@@ -83,8 +83,8 @@ Concepts marked **Got it** enter a local spaced-review schedule. **Learning → 
 | Learning thread | Stored in `$DSH_HOME/dsh-explain/v1/thread.sqlite`. |
 | Enablement and model settings | Stored through DSH settings in `$DSH_HOME/settings.yaml`. |
 | Source material | Reduced to bounded capsules; rephrasing retains at most a 2,000-character restricted summary. |
-| Global learning context | Sent only to the auxiliary Explain model, never to the primary agent. |
-| Export | A versioned local backup includes learning state and profile audit, but excludes full sessions, credentials, and absolute host paths. |
+| Global learning context | Sent with bounded source text to the configured auxiliary provider. Local storage does not imply offline model inference. |
+| Export | A versioned local backup excludes private source summaries and filters common credential/path formats in public text. Arbitrary private prose may remain; review before sharing. |
 | Clear | A typed `CLEAR` confirmation atomically removes learned content while preserving runtime settings and the active budget window. |
 
 Explain uses first-party DSH conversation, composer, assistant-action, and settings extension points. It does not require patches to DSH or other plugins.
@@ -93,9 +93,9 @@ Explain uses first-party DSH conversation, composer, assistant-action, and setti
 
 | Check | Current result |
 |---|---|
-| DSH compatibility | `0.1.2-rc.1` public API packages and assembled source |
-| Unit and integration | 71 tests |
-| Assembled DSH Web | 6 scenarios |
+| DSH compatibility | `0.1.2-rc.1` published packages; `0.1.2-rc.1` and `0.1.3-alpha.1` assembled source |
+| Unit and integration | 80 tests on each source version |
+| Assembled DSH Web | 7 scenarios per source version |
 | Explain-owned shortcuts | 3 M6 scenarios |
 | Production package | Build and pack dry-run |
 
@@ -103,7 +103,7 @@ See the [acceptance matrix](docs/ACCEPTANCE.md) for coverage and [PR #16](https:
 
 ## Local development
 
-The default development install uses published `0.1.2-rc.1` API packages. Assembled-Web tests and demo recording also need a built DSH `0.1.2-rc.1` source checkout:
+The default development install uses published `0.1.2-rc.1` API packages. Assembled-Web tests accept a built DSH `0.1.2-rc.1` or `0.1.3-alpha.1` checkout. The existing demo recording remains on rc.1:
 
 ```sh
 pnpm install

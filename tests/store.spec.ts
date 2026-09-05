@@ -402,7 +402,7 @@ describe('ExplainStore review loop', () => {
     expect(committed).toMatchObject({
       ok: true,
       attempt: { result: 'mastered', answer: request.answer },
-      dashboard: { dueCount: 2, current: { position: 2, total: 3, kind: 'application' } },
+      dashboard: { dueCount: 2, current: { position: 2, total: 3, kind: 'recall' } },
     })
     if (!committed.ok) throw new Error('review commit failed')
     expect(committed.attempt.nextReviewAt).toBe(committedAt + 3 * 24 * 60 * 60 * 1_000)

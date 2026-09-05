@@ -131,7 +131,8 @@ describe('conversation learning view', () => {
         },
         recent: [],
       },
-      entries: [current, other, history],
+      entries: [history],
+      activeEntries: [current, other],
       hasMore: false,
       pendingEntryIds: [],
       profilePendingKeys: [],
@@ -246,6 +247,7 @@ describe('conversation learning view', () => {
         inferred: false,
       },
       entries: [explanation(1, 'session-old', 'closed', 'Readable history')],
+      activeEntries: [],
       hasMore: false,
       pendingEntryIds: [],
       profilePendingKeys: [],
@@ -306,6 +308,7 @@ describe('global learning store lifecycle', () => {
         value: { revision: 0, enabled: true, maxAutoRequestsPerDay: 50 },
       }),
       modelCatalog: vi.fn().mockResolvedValue({ ok: true, value: { providers: [] } }),
+      activeEntries: vi.fn().mockResolvedValue({ ok: true, value: [] }),
       threadPage: vi.fn().mockResolvedValue({
         ok: true,
         value: { entries: [], hasMore: false, storeRevision: 0 },
@@ -362,6 +365,7 @@ describe('global learning store lifecycle', () => {
         ok: true,
         value: { revision: 0, enabled: true, maxAutoRequestsPerDay: 50 },
       }),
+      activeEntries: vi.fn().mockResolvedValue({ ok: true, value: [] }),
       threadPage: vi.fn().mockResolvedValue({
         ok: true,
         value: { entries: [], hasMore: false, storeRevision: 0 },
@@ -416,6 +420,7 @@ describe('global learning store lifecycle', () => {
       reviewDashboard: vi.fn().mockResolvedValue({
         ok: true, value: { dueCount: 0, weakCount: 0, newCount: 0, completedCount: 0, recent: [] },
       }),
+      activeEntries: vi.fn().mockResolvedValue({ ok: true, value: [] }),
       threadPage: vi.fn().mockResolvedValue({
         ok: true,
         value: { entries: [], hasMore: false, storeRevision: 0 },
@@ -491,6 +496,7 @@ describe('learning settings section', () => {
       modelCatalogError: undefined,
       context: undefined,
       entries: [],
+      activeEntries: [],
       hasMore: false,
       pendingEntryIds: [],
       profilePendingKeys: [],

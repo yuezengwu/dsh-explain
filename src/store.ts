@@ -1,3 +1,4 @@
+import { redactLearningData, redactSensitiveText } from './privacy.ts'
 import { chmodSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -15,7 +16,6 @@ import {
   TopicId,
 } from './brands.ts'
 import type {
-  ActiveExplanationContext,
   AuxiliaryContext,
   ClosedExplanationContext,
   CompactionBatch,
@@ -73,6 +73,13 @@ import {
   MIGRATE_V3_TO_V4_SQL,
   SCHEMA_VERSION,
 } from './schema.ts'
+
+// Keep review enrollment in topics.state; expose current learning evidence consistently
+// without a schema migration or dropping a weak topic's existing review schedule.
+const TOPIC_LEARNING_STATE = `CASE
+  WHEN EXISTS(SELECT 1 FROM explanations active WHERE active.topic_id = t.topic_id AND active.state = 'active')
+    OR EXISTS(SELECT 1 FROM review_state review WHERE review.topic_id = t.topic_id AND review.last_result IN ('partial', 'forgotten'))
+  THEN 'learning' ELSE t.state END`
 
 const DAY_MS = 24 * 60 * 60 * 1_000
 const DEFAULT_PAGE_LIMIT = 30
@@ -519,7 +526,7 @@ export class ExplainStore {
       let topicId: TopicId | undefined
       if (decision.kind === 'explain') {
         const existing = this.database.prepare(`
-          SELECT t.topic_id, t.state,
+          SELECT t.topic_id, ${TOPIC_LEARNING_STATE} AS state,
             EXISTS(SELECT 1 FROM explanations e WHERE e.topic_id = t.topic_id AND e.state = 'active') AS active
           FROM topics t WHERE t.topic_key = ?
         `).get(decision.topicKey) as unknown as { topic_id: string; state: 'learning' | 'mastered'; active: number } | undefined
@@ -558,6 +565,7 @@ export class ExplainStore {
             VALUES (?, ?, ?, 'learning', 1, ?)
           `).run(topicId, decision.topicKey, decision.title, now)
         } else {
+          this.cancelActiveReviewForTopic(topicId, now)
           this.database.prepare(`
             UPDATE topics SET title = ?, topic_revision = topic_revision + 1, updated_at = ?
             WHERE topic_id = ?
@@ -774,9 +782,8 @@ export class ExplainStore {
     return {
       ...(checkpoint === undefined ? {} : { checkpoint }),
       topicHints: this.topicHints(maxTopicHints),
-      activeExplanations: this.explanationContexts('active') as ActiveExplanationContext[],
       uncoveredObservations: this.uncoveredObservations(),
-      uncoveredClosedExplanations: this.explanationContexts('closed'),
+      uncoveredClosedExplanations: this.closedExplanationContexts(),
       learnerProfileControls: this.learnerProfileControls(),
     }
   }
@@ -785,7 +792,7 @@ export class ExplainStore {
   compactionBatch(): CompactionBatch | undefined {
     const state = this.runtimeStateRow()
     const observations = this.uncoveredObservations()
-    const explanations = this.explanationContexts('closed')
+    const explanations = this.closedExplanationContexts()
     if (observations.length === 0 && explanations.length === 0) return undefined
     const ordinals = explanations.flatMap(explanation => explanation.entryOrdinals)
     const previous = this.latestCheckpoint()
@@ -893,7 +900,7 @@ export class ExplainStore {
     const rows = this.database.prepare(`
       SELECT e.entry_id, e.ordinal, e.kind, e.explanation_id,
              x.state AS explanation_state, e.topic_id,
-             t.topic_key, t.title AS topic_title, t.state AS topic_state,
+             t.topic_key, t.title AS topic_title, ${TOPIC_LEARNING_STATE} AS topic_state,
              t.topic_revision, e.revision, e.source_session_id, e.source_turn,
              e.payload_json, e.created_at
       FROM entries e
@@ -910,12 +917,30 @@ export class ExplainStore {
     }
   }
 
-  /** Export every browser-visible learning projection without private source summaries or host paths. */
+  /** Read every current active revision independently of historical pagination. */
+  activeEntries(): readonly ThreadEntryView[] {
+    const rows = this.database.prepare(`
+      SELECT e.entry_id, e.ordinal, e.kind, e.explanation_id,
+             x.state AS explanation_state, e.topic_id,
+             t.topic_key, t.title AS topic_title, ${TOPIC_LEARNING_STATE} AS topic_state,
+             t.topic_revision, e.revision, e.source_session_id, e.source_turn,
+             e.payload_json, e.created_at
+      FROM explanations x
+      JOIN entries e ON e.explanation_id = x.explanation_id
+        AND e.kind = 'explanation' AND e.revision = x.active_revision
+      JOIN topics t ON t.topic_id = x.topic_id
+      WHERE x.state = 'active'
+      ORDER BY e.ordinal DESC
+    `).all() as unknown as EntryRow[]
+    return rows.map(row => this.entryView(row))
+  }
+
+  /** Export public learning fields with best-effort sensitive-text filtering. */
   exportData(exportedAt = Date.now()): ExplainDataExportV3 {
     const rows = this.database.prepare(`
       SELECT e.entry_id, e.ordinal, e.kind, e.explanation_id,
              x.state AS explanation_state, e.topic_id,
-             t.topic_key, t.title AS topic_title, t.state AS topic_state,
+             t.topic_key, t.title AS topic_title, ${TOPIC_LEARNING_STATE} AS topic_state,
              t.topic_revision, e.revision, e.source_session_id, e.source_turn,
              e.payload_json, e.created_at
       FROM entries e
@@ -923,7 +948,7 @@ export class ExplainStore {
       LEFT JOIN explanations x ON x.explanation_id = e.explanation_id
       ORDER BY e.ordinal ASC
     `).all() as unknown as EntryRow[]
-    return {
+    return redactLearningData({
       format: 'dsh-explain-backup',
       version: 3,
       exportedAt,
@@ -938,7 +963,7 @@ export class ExplainStore {
         },
         profileAudit: this.profileAudit(),
       },
-    }
+    })
   }
 
   /** Read due counts, the durable active question, and recent outcomes. */
@@ -956,6 +981,7 @@ export class ExplainStore {
         SELECT COUNT(*) AS count FROM review_state rs
         JOIN topics t ON t.topic_id = rs.topic_id
         WHERE t.state = 'mastered' AND rs.next_review_at <= ?
+          AND NOT EXISTS(SELECT 1 FROM explanations x WHERE x.topic_id = t.topic_id AND x.state = 'active')
       `, now),
       weakCount: this.count(`
         SELECT COUNT(*) AS count FROM review_state rs
@@ -992,6 +1018,7 @@ export class ExplainStore {
         SELECT t.topic_id
         FROM review_state rs JOIN topics t ON t.topic_id = rs.topic_id
         WHERE t.state = 'mastered' AND rs.next_review_at <= ?
+          AND NOT EXISTS(SELECT 1 FROM explanations x WHERE x.topic_id = t.topic_id AND x.state = 'active')
         ORDER BY rs.next_review_at ASC, t.updated_at ASC, t.topic_id ASC
         LIMIT 3
       `).all(now) as unknown as { topic_id: string }[]
@@ -1000,10 +1027,17 @@ export class ExplainStore {
       this.database.prepare(`
         INSERT INTO review_batches(batch_id, state, created_at) VALUES (?, 'active', ?)
       `).run(batchId, now)
-      const kinds: readonly ReviewQuestionKind[] = ['recall', 'application', 'distinction']
       for (const [index, item] of due.entries()) {
         const source = this.reviewSource(item.topic_id)
-        const kind = kinds[index]!
+        const previous = this.database.prepare(`
+          SELECT question_kind, result FROM review_attempts
+          WHERE topic_id = ? AND completed_at IS NOT NULL
+          ORDER BY completed_at DESC, created_at DESC, review_id DESC LIMIT 1
+        `).get(item.topic_id) as { question_kind: ReviewQuestionKind; result: ReviewResult } | undefined
+        const kind = previous === undefined ? 'recall'
+          : previous.result !== 'mastered' ? previous.question_kind
+          : previous.question_kind === 'recall' ? 'application'
+          : previous.question_kind === 'application' ? 'distinction' : 'recall'
         this.database.prepare(`
           INSERT INTO review_attempts(
             review_id, batch_id, position, topic_id, explanation_id, explanation_revision,
@@ -1111,6 +1145,10 @@ export class ExplainStore {
         WHERE topic_id = (SELECT topic_id FROM review_attempts WHERE review_id = ?)
       `).run(next.stage, next.streak, next.nextReviewAt, now, evaluation.result, now, request.reviewId)
       this.database.prepare(`
+        UPDATE topics SET topic_revision = topic_revision + 1, updated_at = ?
+        WHERE topic_id = (SELECT topic_id FROM review_attempts WHERE review_id = ?)
+      `).run(now, request.reviewId)
+      this.database.prepare(`
         INSERT INTO review_mutation_requests(request_id, fingerprint, review_id, created_at)
         VALUES (?, ?, ?, ?)
       `).run(request.requestId, reviewFingerprint(request.reviewId, answer), request.reviewId, now)
@@ -1124,7 +1162,8 @@ export class ExplainStore {
       `).run(now, request.reviewId)
       this.database.prepare(`
         UPDATE runtime_state
-        SET activity_generation = activity_generation + 1, last_user_action_at = ?
+        SET activity_generation = activity_generation + 1,
+            context_generation = context_generation + 1, last_user_action_at = ?
         WHERE singleton = 1
       `).run(now)
       this.advanceStoreRevision()
@@ -1871,7 +1910,7 @@ export class ExplainStore {
 
   private topicHints(limit: number): readonly TopicHint[] {
     const rows = this.database.prepare(`
-      SELECT t.topic_id, t.topic_key, t.title, t.state, t.topic_revision,
+      SELECT t.topic_id, t.topic_key, t.title, ${TOPIC_LEARNING_STATE} AS state, t.topic_revision,
              EXISTS(SELECT 1 FROM explanations e
                WHERE e.topic_id = t.topic_id AND e.state = 'active') AS active
       FROM topics t ORDER BY t.updated_at DESC LIMIT ?
@@ -1903,16 +1942,15 @@ export class ExplainStore {
     }))
   }
 
-  private explanationContexts(state: 'active' | 'closed'):
-  readonly (ActiveExplanationContext | ClosedExplanationContext)[] {
+  private closedExplanationContexts(): readonly ClosedExplanationContext[] {
     const rows = this.database.prepare(`
       SELECT x.explanation_id, t.topic_key, t.title AS topic_title,
              x.source_session_id, x.active_revision, x.state
       FROM explanations x JOIN topics t ON t.topic_id = x.topic_id
       LEFT JOIN context_coverage c ON c.explanation_id = x.explanation_id
-      WHERE x.state = ? AND (? = 'active' OR c.explanation_id IS NULL)
+      WHERE x.state = 'closed' AND c.explanation_id IS NULL
       ORDER BY x.created_at, x.explanation_id
-    `).all(state, state) as unknown as ExplanationContextRow[]
+    `).all() as unknown as ExplanationContextRow[]
     return rows.map((row) => {
       const entries = this.contextEntries(row.explanation_id)
       const revisions = entries.flatMap(entry => entry.kind === 'explanation'
@@ -1929,13 +1967,7 @@ export class ExplainStore {
         revisions,
         feedback,
       }
-      return state === 'active'
-        ? {
-            ...base,
-            sourceSessionId: SessionId(row.source_session_id),
-            activeRevision: row.active_revision,
-          }
-        : base
+      return base
     })
   }
 
@@ -2041,8 +2073,8 @@ export class ExplainStore {
 
   private contextStats(): ExplainContextStats {
     return {
-      learningTopics: this.count('SELECT COUNT(*) AS count FROM topics WHERE state = \'learning\''),
-      masteredTopics: this.count('SELECT COUNT(*) AS count FROM topics WHERE state = \'mastered\''),
+      learningTopics: this.count(`SELECT COUNT(*) AS count FROM topics t WHERE (${TOPIC_LEARNING_STATE}) = 'learning'`),
+      masteredTopics: this.count(`SELECT COUNT(*) AS count FROM topics t WHERE (${TOPIC_LEARNING_STATE}) = 'mastered'`),
       activeExplanations: this.activeExplanationCount(),
       understoodFeedback: this.count(`
         SELECT COUNT(*) AS count FROM entries
@@ -2182,7 +2214,7 @@ export class ExplainStore {
     return this.database.prepare(`
       SELECT e.entry_id, e.ordinal, e.kind, e.explanation_id,
              x.state AS explanation_state, e.topic_id,
-             t.topic_key, t.title AS topic_title, t.state AS topic_state,
+             t.topic_key, t.title AS topic_title, ${TOPIC_LEARNING_STATE} AS topic_state,
              t.topic_revision, e.revision, e.source_session_id, e.source_turn,
              e.payload_json, e.created_at
       FROM entries e
@@ -2383,7 +2415,7 @@ function persistedSourceSummary(value: string): PersistedSourceSummary {
 }
 
 function sourceSummary(capsule: SourceCapsule): PersistedSourceSummary {
-  const normalized = capsule.userText.replace(/\s+/g, ' ').trim()
+  const normalized = redactSensitiveText(capsule.userText).replace(/\s+/g, ' ').trim()
   const user = privateBound(normalized, 2_000)
   const toolNames = [...new Set(capsule.tools.map(tool => tool.name.trim()).filter(name => name !== ''))]
   const boundedNames = toolNames.slice(0, 32).map(name => privateBound(name, 160).text)

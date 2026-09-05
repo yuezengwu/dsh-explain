@@ -1,7 +1,7 @@
 # dsh-explain PRD（P0 定稿）
 
-> 状态：**P0 定稿；M9 可校正学习画像实现**（2026-09-02）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
-> 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v12 同步。
+> 状态：**学习闭环修复与 DSH 双版本兼容完成**（2026-09-05）。实现证据见 [验收矩阵](./ACCEPTANCE.md)。
+> 技术方案见 [ARCHITECTURE.md](./ARCHITECTURE.md)；本文档与架构 v13 同步。
 
 ## 定位
 
@@ -58,7 +58,7 @@ explain 维护一份不进入主 Agent 的全局 `ExplainContext`，用来判断
 | ✗ 没懂 | 保持同一 `ExplanationId`、`TopicId` 和来源 Session，生成 `revision + 1` |
 | 撤销掌握 | 已掌握状态提供「撤销」操作；撤销不自动生成讲解，只允许未来再次命中该 Topic |
 | 本地持久化 | 学习历史、反馈、Topic 状态、来源活跃状态、压缩检查点、`ExplainContext` 和全局顺序写入 `$DSH_HOME/dsh-explain/v1/thread.sqlite` |
-| 复习闭环（M8） | 新掌握概念次日进入复习；每轮最多三道回忆/应用/辨析题，评估为掌握/模糊/遗忘，按确定性间隔排期并回链来源 |
+| 复习闭环（M8） | 新掌握概念次日进入复习；每轮最多三题；按概念独立推进回忆→应用→辨析，失败重复当前题型。评估为模糊/遗忘后恢复 learning，保留复习排期；补充讲解会取消旧题并暂停该概念测验，直到新讲解关闭 |
 | 数据管理（M7–M9） | 设置页导出版本化、脱敏的 `dsh-explain-backup-v3.json`，包含复习历史、有效学习画像及修改审计；输入 `CLEAR` 并通过 store revision CAS 后原子清除学习内容，同时保留 settings、运行租约和滚动自主额度计数 |
 | UI 依赖 | 只使用 DSH 第一方 `conversation.view`、`conversation.input.left` 和 `conversation.chat.assistant-actions` 槽位；P0/P1 不引入外部 UI 插件 |
 
@@ -80,10 +80,10 @@ explain 维护一份不进入主 Agent 的全局 `ExplainContext`，用来判断
 - **不活跃触发**：存在尚未纳入检查点的 context observation 或已关闭讲解，且距离最近一次 explain 操作已满 30 分钟时，调度器安排一次后台压缩。若用户从未操作，使用第一条产生可持久数据的 explain 决策提交时间作为基线。
 - **压力触发**：主动讲解、自主讲解或重讲请求完整渲染后，预计上下文占用大于 50% 时，必须先压缩可压缩内容，再重新估算请求。
 - **无内容时不调用**：没有新的 observation 或已关闭讲解可压缩时，触发检查是 no-op，不产生模型请求，也不反复轮询。
-- **活跃内容不压缩**：任何仍等待反馈的 Explanation 及其 revisions 保持逐字可用，直到关闭后才进入后续压缩批次。
+- **活跃内容不压缩**：任何仍等待反馈的 Explanation 及其 revisions 保留在本地历史；全局模型请求只携带有界 Topic 提示。重讲按需携带目标最新正文和有限旧标题，关闭后才进入后续压缩批次。
 - **失败不丢数据**：压缩失败不标记任何内容为已覆盖；不活跃压缩等待下次触发，压力压缩则阻止当前辅助请求并显示稳定错误。
 
-上下文占用基于 DSH 的固定 token 估算和所选模型的 `contextWindow`，计算范围包括固定 prompt、当前 `SourceCapsule`、最新 `ExplainContext`、尚未压缩的 observations/学习内容、所有活跃讲解和 `maxOutputTokens` 预留。provider/model 的 adapter 未公开也未配置容量时，`/explain on` 明确失败，因为 50% 阈值没有可计算的分母。
+上下文占用基于 DSH 的固定 token 估算和所选模型的 `contextWindow`，计算范围包括固定 prompt、当前 `SourceCapsule`、最新 `ExplainContext`、尚未压缩的 observations/学习内容、有界 Topic 提示、按需重讲目标和 `maxOutputTokens` 预留。provider/model 的 adapter 未公开也未配置容量时，`/explain on` 明确失败，因为 50% 阈值没有可计算的分母。
 
 ### `ExplainContext` 内容
 
@@ -159,14 +159,14 @@ P0 不自动切换或抢占 `conversation.view`。用户在当前工作 Session 
 ## 数据与隐私
 
 - 持久层保存讲解、反馈、来源坐标、模型路由、usage、自主调用占额、Topic 状态、各来源活跃指针、压缩检查点、`ExplainContext` 和 explain 操作时间。
-- 每个 Explanation 的首个 entry 额外保存一份重讲来源摘要：自主讲解保存当前 turn 用户文本，主动讲解保存有界命令请求；两者经标准化后最多 2,000 字符，并可保存最多 32 个去重工具名、可选 `cwdLabel` 和截断标记。它不包含 assistant 全文、工具参数、工具结果、reasoning、绝对路径或其他 turn；typed Remote 不向学习视图返回该内部字段。
+- 每个 Explanation 的首个 entry 额外保存一份重讲来源摘要：自主讲解保存当前 turn 用户文本，主动讲解保存有界命令请求；两者经过常见凭证/路径格式过滤和标准化后最多 2,000 字符，并可保存最多 32 个去重工具名、可选 `cwdLabel` 和截断标记。它不包含 assistant 全文、工具参数、工具结果、reasoning 或其他 turn 的独立字段；任意私密自由文本无法完全识别。typed Remote 不向学习视图返回该内部字段。
 - 完整工作转录、工具输出、system prompt 和待处理候选默认不持久化。
-- 自主生成请求使用当前来源回合的有界素材；重讲只读取首个 explanation entry 中的来源摘要、该 Explanation 的 revisions 与反馈，不重新读取来源 Session。来源 Session 删除后仍可重讲。
-- 压缩请求不读取重讲来源摘要；Explanation 关闭后摘要只随 append-only entry 留在本地数据库，P0 不提供单项删除或导出接口。
+- 自主生成请求使用当前来源回合的有界素材；重讲只读取首个 explanation entry 中的来源摘要、该 Explanation 的最新 revision 与最多三个旧标题，不重新读取来源 Session。来源 Session 删除后仍可重讲。
+- 压缩请求不读取重讲来源摘要；Explanation 关闭后摘要只随 append-only entry 留在本地数据库，不提供单项删除或私有来源摘要导出接口。
 - `topics.title` 始终取该 Topic 最近一次成功提交的 explanation revision 标题；更新在同一事务中提高 `topicRevision`，历史 entries 的标题保持不变。
 - 压缩检查点只影响辅助模型上下文；历史分页始终从原始 entries 读取。
 - 来源 Session 被删除、归档或不可读取时，既有学习记录保留，来源只显示为不可访问。
-- 清空、导出或手工编辑整条学习线程与 `ExplainContext` 不在 P0；停止 DSH 后删除插件数据目录是 P0 的运维兜底。
+- 设置页已经提供全量公开数据导出与 `CLEAR` 清除；导出过滤常见凭证/路径格式，但分享前仍需检查自由文本。导入、逐条删除和任意数据库编辑不在当前范围。
 
 ## 非目标
 
@@ -189,7 +189,7 @@ P0 不自动切换或抢占 `conversation.view`。用户在当前工作 Session 
 4. **反馈隔离**：对 A 点 ✓ 或 ✗ 只改变 A 的活跃讲解；B 的 ExplanationId、revision 和状态不变。
 5. **跨会话掌握**：在 Session A 点 ✓ 后，Session B 命中的同一 `TopicKey` 被全局抑制；同一 TopicKey 不能在 A/B 同时活跃。
 6. **重讲一致**：点 ✗ 后保留同一来源、`ExplanationId` / `TopicId`，revision 严格加一。
-7. **来源摘要可恢复**：来源 Session 删除或不可读取后，✗ 仍能仅用首个 explanation entry 的有界来源摘要产生下一 revision；摘要不包含禁止持久化的工具结果、绝对路径或其他 turn。
+7. **来源摘要可恢复**：来源 Session 删除或不可读取后，✗ 仍能仅用首个 explanation entry 的有界来源摘要产生下一 revision；摘要排除工具结果和其他 turn，常见凭证与绝对路径格式经过过滤。
 8. **自主预算**：第 50 次自主请求发送后的滚动 24 小时内不发送第 51 次；失败与重试消耗额度，重启不能清零，额度恢复后保留的 latest-wins 候选继续处理；主动讲解、重讲和压缩不计数。
 9. **Topic 标题新鲜度**：同一 Topic 的新 Explanation 或重讲 revision 成功后，`topics.title` 等于最新标题且 `topicRevision` 前进；旧 entry 标题不改写。
 10. **不活跃压缩**：有新的 observation 或已关闭内容且 30 分钟没有成功 explain 操作时只触发一次压缩；阅读视图不延时，成功反馈会重新计时，无新内容时不调用模型。

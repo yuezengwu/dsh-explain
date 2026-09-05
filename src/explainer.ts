@@ -1,3 +1,4 @@
+import { redactLearningData } from './privacy.ts'
 import {
   BlockAssembler,
   createMessage,
@@ -144,7 +145,8 @@ export function renderRephraseRequest(
       learningContext: context,
       target: {
         topicKey: target.topicKey,
-        revisions: target.revisions,
+        revisions: target.revisions.slice(-1),
+        previousTitles: target.revisions.slice(-4, -1).map(revision => revision.title),
         sourceSummary: target.sourceSummary,
       },
     })],
@@ -360,7 +362,7 @@ export class ExplainRouteError extends Error {
 function jsonMessage(value: unknown): Message {
   return createUserMessage({
     source: { kind: 'plugin', plugin: 'dsh-explain' },
-    content: [{ type: 'text', text: JSON.stringify(value) }],
+    content: [{ type: 'text', text: JSON.stringify(redactLearningData(value)) }],
   })
 }
 
@@ -546,7 +548,7 @@ function jsonObject(text: string, label: string): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`dsh-explain: ${label} must be one object`)
   }
-  return value as Record<string, unknown>
+  return redactLearningData(value as Record<string, unknown>)
 }
 
 function exactKeys(value: Record<string, unknown>, expected: readonly string[], label: string): void {

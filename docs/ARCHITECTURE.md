@@ -1,7 +1,7 @@
-# dsh-explain 技术架构 v12
+# dsh-explain 技术架构 v13
 
-> 状态：**v12 M7 本地数据治理实现与验收完成**（2026-08-30）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
-> v12 增加版本化脱敏导出和并发隔离的原子清除。SQLite schema 仍为 2；设置、运行租约和滚动自主额度不会因清除而重置。
+> 状态：**v13 学习闭环修复与 DSH 双版本兼容完成**（2026-09-05）。产品需求见 [PRD.md](./PRD.md)，实现证据见 [验收矩阵](./ACCEPTANCE.md)。
+> SQLite schema 为 4，导出格式为 3；本轮无需数据迁移。DSH 精确版本和兼容边界见 [COMPATIBILITY.md](./COMPATIBILITY.md)。
 
 ## 架构结论
 
@@ -97,7 +97,7 @@ v6 不包含 `events.ts`、Session projection、ConversationNodeDefinition 或 t
 
 ### 导出与清除边界
 
-`exportData()` 只组装 typed Remote 已允许浏览器读取的 `ThreadEntryView`、`ExplainContextView`、公开复习投影与画像修改审计。导出信封固定为 `format: dsh-explain-backup`、`version: 3`，同时记录导出时间、SQLite schema version 与 store revision。它不读取或序列化 revision-one 私有 `sourceSummary`、完整 Session 转录、credentials、工具原始参数/结果或绝对路径；当前只承诺导出，不提供未经验证的导入路径。
+`exportData()` 只组装 typed Remote 已允许浏览器读取的 `ThreadEntryView`、`ExplainContextView`、公开复习投影与画像修改审计。导出信封固定为 `format: dsh-explain-backup`、`version: 3`，同时记录导出时间、SQLite schema version 与 store revision。它不读取或序列化 revision-one 私有 `sourceSummary`、完整 Session 转录、凭证配置或工具原始参数/结果；公开文本经过 `redactLearningData()` 过滤常见凭证与本地路径格式，但不保证识别任意隐私文字，分享前需要检查。当前只承诺导出，不提供未经验证的导入路径。
 
 ### 可校正学习画像
 
@@ -107,7 +107,7 @@ SQLite schema v4 增加 `learner_profile_overrides`、`learner_profile_suppressi
 
 SQLite schema v3 增加 `review_state`、`review_batches`、`review_attempts` 与复习幂等请求表。v2 启动时在单一事务中原位迁移，既有 mastered Topic 立即到期；新 mastered Topic 的首次到期时间为次日。题目在模型评估前持久化，因此刷新或重启不会改变一轮内容。
 
-复习评估进入 Scheduler 的显式队列，与其他辅助模型工作维持全局单飞但不写 `auto_request_usage`。模型只决定 `mastered | partial | forgotten` 与反馈；Host 根据固定的 1/3/7/14/30/60 天序列计算下一到期时间，避免让模型控制排期。答题结果不反向改写 Topic 的 mastered 状态，记忆强度是独立投影。
+复习评估进入 Scheduler 的显式队列，与其他辅助模型工作维持全局单飞但不写 `auto_request_usage`。模型只决定 `mastered | partial | forgotten` 与反馈；Host 根据固定的 1/3/7/14/30/60 天序列计算下一到期时间。每个 Topic 根据自身最近完成的题目推进回忆→应用→辨析，失败时重复当前题型。答题事务提高 topic revision 和 context generation；partial/forgotten 覆盖为有效 learning 状态，贯穿 UI、统计、模型提示与自主选题。底层 mastered 保留复习资格及排期；重新教学取消旧题，存在活跃讲解时暂不排题，再次「懂了」后重置复习计划。
 
 `clearLearningData()` 需要精确确认词 `CLEAR` 与页面所见 `expectedStoreRevision`。Runtime 串行化清除；Scheduler 先进入 resetting 状态、提升 epoch、abort 当前模型调用、结算手动队列、清空 timers/candidates，并等待既有 drain 完全退出。只有在生产者静默后，Store 才执行一次 `BEGIN IMMEDIATE` 事务和 revision CAS；在途迟到结果不能重新落库。
 
@@ -238,7 +238,7 @@ interface ExplanationEntryPayload {
 }
 ```
 
-`sourceSummary` 在 revision 1 必需、在 revision 2 及以后禁止；后续 revision 通过 `ExplanationId` 读取首个 entry。自主讲解的 `userText` 来自当前来源 turn；显式讲解的 `userText` 来自命令请求。两者先规范化空白，再按首尾保留截断到固定 2,000 字符；`toolNames` 只保留调用名，按首次出现去重且最多 32 个；`cwdLabel` 沿用 capsule 中不含绝对路径的显示值，最长 160 字符。三项上限是持久化隐私格式约束，不接受 Config/settings 放宽。`truncated` 表示 userText 或工具名列表发生截断。摘要不包含 assistant 全文、工具参数、工具结果、reasoning、system prompt、绝对路径或其他 turn。来源 Session 删除后该读取路径仍然成立。`threadPage` 的客户端 DTO 必须剥离 `sourceSummary`，P0 不在 UI、Remote 或日志中回显它。Compactor 构造 closed Explanation 输入时也必须剥离该字段；它只用于活跃 Explanation 的 rephrase。新的非自主 `origin` 为 `manual | selection | answer`；旧 `suggested` entry 保持可读并随后续 revision 保留，缺失 origin 仍解释为自主来源，不需要 schema 迁移。
+`sourceSummary` 在 revision 1 必需、在 revision 2 及以后禁止；后续 revision 通过 `ExplanationId` 读取首个 entry。自主讲解的 `userText` 来自当前来源 turn；显式讲解的 `userText` 来自命令请求。两者先过滤常见凭证与本地路径格式、规范化空白，再按首尾保留截断到固定 2,000 字符；`toolNames` 只保留调用名，按首次出现去重且最多 32 个；`cwdLabel` 沿用 capsule 中不含绝对路径的显示值，最长 160 字符。三项上限是持久化隐私格式约束，不接受 Config/settings 放宽。`truncated` 表示 userText 或工具名列表发生截断。摘要不包含 assistant 全文、工具参数、工具结果、reasoning、system prompt 或其他 turn 的独立字段。来自用户原文的自由文本仅提供常见格式过滤，不承诺完整匿名化。来源 Session 删除后该读取路径仍然成立。`threadPage` 的客户端 DTO 必须剥离 `sourceSummary`，P0 不在 UI、Remote 或日志中回显它。Compactor 构造 closed Explanation 输入时也必须剥离该字段；它只用于活跃 Explanation 的 rephrase。新的非自主 `origin` 为 `manual | selection | answer`；旧 `suggested` entry 保持可读并随后续 revision 保留，缺失 origin 仍解释为自主来源，不需要 schema 迁移。
 
 ### 主动命令捕获
 
@@ -339,11 +339,11 @@ Scheduler 全局最多持有一个 `AbortController` 和一个模型 promise。�
 
 1. 固定 explain system prompt 与严格 JSON 输出 schema。
 2. 最新压缩检查点的 `ExplainContext`；没有检查点时使用空基线。
-3. 数据库实时覆盖层：所有来源活跃讲解摘要、最近更新的 `maxTopicHints` 个 TopicKey 与权威状态、掌握/学习/重复没懂计数。
+3. 数据库实时覆盖层：最近更新的 `maxTopicHints` 个 TopicKey、标题、有效学习状态、活跃标志和 revision。有效状态将仍有活跃讲解、或最近复习为 partial/forgotten 的 Topic 视为 learning；UI 统计使用相同判定。
 4. 尚未纳入检查点的结构化 context observations、已关闭讲解和反馈尾部。
 5. 当前 `SourceCapsule`。
 
-一次重讲请求使用同一全局基线和实时覆盖层，再加入目标讲解的全部 revisions、该目标的 `not-understood` 反馈和 revision 1 entry 持久化的 `sourceSummary`；不读取来源 Session。缺少或无法解析摘要属于数据库不变量破坏，返回 `EXPLAIN_SOURCE_SUMMARY_INVALID`，不能降级成无来源重讲。实时覆盖层按结构化字段拼接，永远覆盖旧检查点中相冲突的 Topic 状态。
+一次重讲请求使用同一全局基线和实时覆盖层，再加入目标讲解的最新 revision、至多三个较早 revision 的标题和 revision 1 entry 持久化的 `sourceSummary`；不读取来源 Session。缺少或无法解析摘要属于数据库不变量破坏，返回 `EXPLAIN_SOURCE_SUMMARY_INVALID`，不能降级成无来源重讲。实时覆盖层按结构化字段拼接，永远覆盖旧检查点中相冲突的 Topic 状态。
 
 一次显式请求使用同一全局基线和实时覆盖层，再加入规范化的 `manualRequest`、`requestOrigin` 与已按上述规则定位的有界 capsule。prompt 要求输出语言跟随 `manualRequest`，并禁止 `skip` 与 context observation；生成只回答用户显式学习目标，不利用命令去修改主 Agent。完整渲染后与自主/重讲一样计价和执行压力压缩。
 
@@ -353,7 +353,7 @@ Scheduler 全局最多持有一个 `AbortController` 和一个模型 promise。�
 
 ### 可压缩集合
 
-只有 `state = 'closed'` 且在 `context_coverage` 中不存在记录的 Explanation，以及在 `observation_coverage` 中不存在记录的 context observation 可压缩。活跃 Explanation 的所有 revisions 与反馈始终逐字进入实时覆盖层，不受其创建时间影响。原始 entries 从不删除或改写；`threadPage` 也不读取 checkpoint 代替历史。
+只有 `state = 'closed'` 且在 `context_coverage` 中不存在记录的 Explanation，以及在 `observation_coverage` 中不存在记录的 context observation 可压缩。活跃 Explanation 的完整 revisions 与反馈保留在 SQLite 和历史分页中；全局请求只携带有界 Topic 提示，重讲只按需读取目标的最新正文与有限标题历史。原始 entries 从不删除或改写；`threadPage` 也不读取 checkpoint 代替历史。
 
 Compactor 的输入是上一检查点、按时间排序的一批未覆盖 observations/Explanation，以及数据库生成的最新权威统计。批次按“完整压缩请求 + `maxCompactionOutputTokens` 不超过 `contextThresholdRatio`”动态选取；一次无法容纳时分批生成中间检查点，直到目标 explain 请求降到阈值以内或没有可压缩项。新检查点是完整快照而非增量补丁，成功后替代旧检查点进入模型请求。
 
@@ -486,6 +486,7 @@ interface FeedbackRequest {
 
 | 方法 | 作用 |
 |---|---|
+| `explain.activeEntries()` | 独立查询所有活跃讲解的最新 revision，剥离私有来源摘要；不受历史分页游标影响 |
 | `explain.status()` | 全局开关、模型路由/容量完备性、runtime 状态、活跃来源数、候选数、自主额度已用/上限/最早恢复时间、最近操作/压缩时间、当前压力、store revision 和 view cursor |
 | `explain.threadPage({ beforeOrdinal, limit })` | 按 ordinal 倒序分页，limit 默认 30、最大 100；返回读取时的 store revision |
 | `explain.context()` | 最新 `ExplainContext`、生成时间、推断标记和数据库实时学习统计 |

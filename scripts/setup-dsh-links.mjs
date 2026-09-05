@@ -62,9 +62,9 @@ function collectPackages(sourceRoot) {
   return packages
 }
 
-function requiredPeers() {
+function requiredDshPackages() {
   const manifest = JSON.parse(readFileSync(join(repository, 'package.json'), 'utf8'))
-  return Object.keys(manifest.peerDependencies ?? {})
+  return [...new Set([...Object.keys(manifest.peerDependencies ?? {}), ...Object.keys(manifest.devDependencies ?? {})])]
     .filter(name => name.startsWith('@deepseek-ai/') && name !== '@deepseek-ai/cordis')
     .sort()
 }
@@ -131,10 +131,14 @@ function reactIdentity(sourceRoot) {
 
 function main() {
   const sourceRoot = resolveSourceRoot()
+  const version = JSON.parse(readFileSync(join(sourceRoot, 'package.json'), 'utf8')).version
+  if (!['0.1.2-rc.1', '0.1.3-alpha.1'].includes(version)) {
+    throw new Error(`unsupported DSH source ${String(version)}; expected 0.1.2-rc.1 or 0.1.3-alpha.1`)
+  }
   const available = collectPackages(sourceRoot)
-  const missing = requiredPeers().filter(name => !available.has(name))
+  const missing = requiredDshPackages().filter(name => !available.has(name))
   if (missing.length > 0) throw new Error(`DSH source tree is missing peers: ${missing.join(', ')}`)
-  const links = new Map(requiredPeers().map(name => [name, available.get(name)]))
+  const links = new Map(requiredDshPackages().map(name => [name, available.get(name)]))
   for (const identity of reactIdentity(sourceRoot)) links.set(...identity)
 
   if (checkOnly) {

@@ -507,6 +507,33 @@ describe('keyless assembled DSH Web learning view', () => {
     expect(pageErrors).toEqual([])
   })
 
+  it('shows active cards older than the first history page', async () => {
+    if (page === undefined) throw new Error('web page is not initialized')
+    const store = new ExplainStore(join(dshHome, 'dsh-explain/v1/thread.sqlite'))
+    try {
+      store.addFixtureExplanation({
+        topicKey: 'pagination/active', title: '仍在等待反馈的旧讲解',
+        sourceSessionId: SOURCE_SESSION_ID, sourceTurn: 1,
+      })
+      for (let index = 0; index < 31; index += 1) {
+        store.addFixtureExplanation({
+          topicKey: `pagination/closed-${index}`, title: `较新的历史 ${index}`,
+          sourceSessionId: SessionId(`pagination-${index}`), sourceTurn: 1,
+          state: 'closed', topicState: 'mastered',
+        })
+      }
+    } finally {
+      store.close()
+    }
+    await page.reload({ waitUntil: 'load' })
+    await page.getByRole('tab', { name: '学习', exact: true }).click()
+    const view = page.getByTestId('dsh-explain-learning-view')
+    await view.getByRole('heading', { name: '仍在等待反馈的旧讲解', exact: true }).waitFor({ timeout: 15_000 })
+    expect(await view.getByRole('button', { name: '✓ 懂了', exact: true }).count()).toBe(1)
+    expect(await view.getByRole('button', { name: '加载更早记录', exact: true }).isVisible()).toBe(true)
+    expect(pageErrors).toEqual([])
+  })
+
   it('keeps the fixture inventory closed', async () => {
     expect((await readdir(SNAPSHOT_DIRECTORY)).sort()).toEqual([
       'session.jsonl', 'settings.expected.md', 'ui.expected.md',

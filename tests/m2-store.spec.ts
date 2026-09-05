@@ -325,7 +325,7 @@ describe('autonomous, rephrase, and checkpoint persistence', () => {
     expect(JSON.stringify(store.threadPage({}).entries)).not.toContain('sourceSummary')
     expect(JSON.stringify(store.threadPage({}).entries)).not.toContain('private tool output')
     expect(store.auxiliaryContext(10)).toMatchObject({
-      activeExplanations: [{ topicKey: 'typescript/discriminated-unions', activeRevision: 1 }],
+      topicHints: [expect.objectContaining({ topicKey: 'typescript/discriminated-unions', active: true })],
       uncoveredObservations: [{ observation: { kind: 'dialogue-preference', dimension: 'examples' } }],
     })
 

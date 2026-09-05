@@ -45,7 +45,7 @@ export function LearningView({
   useEffect(() => activate(), [activate])
   const snapshot = useLearning(value => value)
   const sources = useSessions(value => value.byId)
-  const active = useMemo(() => latestActiveExplanations(snapshot.entries), [snapshot.entries])
+  const active = useMemo(() => latestActiveExplanations(snapshot.activeEntries), [snapshot.activeEntries])
   const current = active.filter(entry => entry.sourceSessionId === sessionId)
   const other = active.filter(entry => entry.sourceSessionId !== sessionId)
   const activeIds = new Set(active.map(entry => entry.entryId))

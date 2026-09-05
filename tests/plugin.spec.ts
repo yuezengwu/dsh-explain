@@ -1,3 +1,4 @@
+import { settledAssistant } from './session-fixture.ts'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -74,14 +75,14 @@ function appendCompletedTurn(session: Session, assistantText: string): void {
     source: { kind: 'user' },
     content: [{ type: 'text', text: 'What should I learn?' }],
   }), { surfaceOp: 'append' })
-  session.append('assistant/message', {
+  session.append('assistant/message', settledAssistant({
     turn: 1,
     step: 1,
     message: createAssistantMessage({
       source: { provider: 'test', model: 'test' },
       content: [{ type: 'text', text: assistantText }],
     }),
-  }, { surfaceOp: 'append' })
+  }), { surfaceOp: 'append' })
   session.append('step/end', { turn: 1, step: 1 })
   session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
 }
@@ -118,6 +119,7 @@ describe('dsh-explain plugin lifecycle', () => {
         { method: 'modelCatalog', invocation: { kind: 'direct' } },
         { method: 'updateConfiguration', invocation: { kind: 'direct' } },
         { method: 'threadPage', invocation: { kind: 'direct' } },
+        { method: 'activeEntries', invocation: { kind: 'direct' } },
         { method: 'context', invocation: { kind: 'direct' } },
         { method: 'exportData', invocation: { kind: 'direct' } },
         { method: 'updateLearnerProfile', invocation: { kind: 'direct' } },
@@ -188,13 +190,14 @@ describe('dsh-explain plugin lifecycle', () => {
         description: 'Request a learning explanation or control the global learning thread',
         input: { hint: '<request> | on | off | status' },
       })
+      const images = [{ type: 'image' as const, mediaType: 'image/png' as const, data: '' }]
       await expect(ctx.commands.execute(
         agent,
         '/explain Explain the attached image',
-        [{ mediaType: 'image/png', data: '' }],
+        images,
         new AbortController().signal,
       )).resolves.toMatchObject({
-        result: { kind: 'error', text: '/explain does not accept image attachments' },
+        result: { kind: 'error', text: expect.stringMatching(/does not accept (?:image )?attachments/) },
       })
       await expect(ctx.commands.execute(
         agent,

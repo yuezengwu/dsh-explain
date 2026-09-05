@@ -146,12 +146,6 @@ export interface ClosedExplanationContext {
   readonly feedback: readonly { readonly ordinal: number; readonly action: 'understood' | 'not-understood' }[]
 }
 
-/** Latest active explanation state that must remain verbatim in every request. */
-export interface ActiveExplanationContext extends ClosedExplanationContext {
-  readonly sourceSessionId: SessionId
-  readonly activeRevision: number
-}
-
 /** Latest full model-authored global context checkpoint. */
 export interface ExplainContextSnapshot {
   readonly dialogueProfile: readonly {
@@ -189,6 +183,7 @@ export interface CompactionBatch {
 export interface TopicHint {
   readonly topicKey: string
   readonly title: string
+  /** Active explanations and partial/forgotten reviews override earlier mastery. */
   readonly state: 'learning' | 'mastered'
   readonly active: boolean
   readonly topicRevision: number
@@ -198,7 +193,6 @@ export interface TopicHint {
 export interface AuxiliaryContext {
   readonly checkpoint?: StoredCheckpoint
   readonly topicHints: readonly TopicHint[]
-  readonly activeExplanations: readonly ActiveExplanationContext[]
   readonly uncoveredObservations: readonly StoredContextObservation[]
   readonly uncoveredClosedExplanations: readonly ClosedExplanationContext[]
   readonly learnerProfileControls: readonly LearnerProfileControl[]
