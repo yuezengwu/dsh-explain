@@ -21,6 +21,7 @@ import type {
   StartReviewResult,
   SubmitReviewAnswerRequest,
   SubmitReviewAnswerResult,
+  ThreadEntryView,
   ThreadPageRequest,
   ThreadPageResult,
   UpdateConfigurationRequest,
@@ -104,6 +105,12 @@ export class ExplainGateway extends TypertRemoteService {
   @Remote
   threadPage(request: ThreadPageRequest): ThreadPageResult {
     return this.store.threadPage(request)
+  }
+
+  /** Read all active revisions without loading historical pages. */
+  @Remote
+  activeEntries(): readonly ThreadEntryView[] {
+    return this.store.activeEntries()
   }
 
   /** Read the latest ExplainContext projection and authoritative statistics. */

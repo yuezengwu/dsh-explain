@@ -1,3 +1,4 @@
+import { settledAssistant } from './session-fixture.ts'
 import { describe, expect, it } from 'vitest'
 import {
   ToolCallId,
@@ -24,7 +25,6 @@ import { CandidateQueue } from '../src/queue.ts'
 
 const EMPTY_CONTEXT: AuxiliaryContext = {
   topicHints: [],
-  activeExplanations: [],
   uncoveredObservations: [],
   uncoveredClosedExplanations: [],
   learnerProfileControls: [],
@@ -67,7 +67,7 @@ describe('completed-turn source observation', () => {
         isError: false,
       }),
     }, { surfaceOp: 'append' })
-    session.append('assistant/message', {
+    session.append('assistant/message', settledAssistant({
       turn: 1,
       step: 1,
       message: createAssistantMessage({
@@ -77,7 +77,7 @@ describe('completed-turn source observation', () => {
           { type: 'text', text: 'A union narrows after a discriminant check.' },
         ],
       }),
-    }, { surfaceOp: 'append' })
+    }), { surfaceOp: 'append' })
     session.append('step/end', { turn: 1, step: 1 })
     const end = session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
     const messagesBeforeObservation = session.deriveMessages()
@@ -120,14 +120,14 @@ describe('completed-turn source observation', () => {
       source: { kind: 'user' },
       content: [{ type: 'text', text: 'What does this branch do?' }],
     }), { surfaceOp: 'append' })
-    session.append('assistant/message', {
+    session.append('assistant/message', settledAssistant({
       turn: 1,
       step: 1,
       message: createAssistantMessage({
         source: { provider: 'test', model: 'test' },
         content: [{ type: 'text', text: 'It narrows the union.' }],
       }),
-    }, { surfaceOp: 'append' })
+    }), { surfaceOp: 'append' })
     session.append('step/end', { turn: 1, step: 1 })
     session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
 
@@ -156,14 +156,14 @@ describe('completed-turn source observation', () => {
       source: { kind: 'user' },
       content: [{ type: 'text', text: 'Explain the repeated marker.' }],
     }), { surfaceOp: 'append' })
-    session.append('assistant/message', {
+    session.append('assistant/message', settledAssistant({
       turn: 1,
       step: 1,
       message: createAssistantMessage({
         source: { provider: 'test', model: 'test' },
         content: [{ type: 'text', text: 'The repeated marker first appeared here.' }],
       }),
-    }, { surfaceOp: 'append' })
+    }), { surfaceOp: 'append' })
     session.append('step/end', { turn: 1, step: 1 })
     session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
     session.append('user/message', createUserMessage({
@@ -188,14 +188,14 @@ describe('completed-turn source observation', () => {
         isError: false,
       }),
     }, { surfaceOp: 'append' })
-    session.append('assistant/message', {
+    session.append('assistant/message', settledAssistant({
       turn: 2,
       step: 1,
       message: createAssistantMessage({
         source: { provider: 'test', model: 'test' },
         content: [{ type: 'text', text: 'The repeated marker is newer in this answer.' }],
       }),
-    }, { surfaceOp: 'append' })
+    }), { surfaceOp: 'append' })
     session.append('step/end', { turn: 2, step: 1 })
     session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
 
@@ -219,14 +219,14 @@ describe('completed-turn source observation', () => {
     const session = Session.create(SessionId('max-token-source'))
     session.append('turn/start', { turn: 1 })
     session.append('step/start', { turn: 1, step: 1 })
-    session.append('assistant/message', {
+    session.append('assistant/message', settledAssistant({
       turn: 1,
       step: 1,
       message: createAssistantMessage({
         source: { provider: 'test', model: 'test' },
         content: [{ type: 'text', text: 'A partial but visible answer.' }],
       }),
-    }, { surfaceOp: 'append' })
+    }), { surfaceOp: 'append' })
     session.append('step/end', { turn: 1, step: 1 })
     const end = session.append('turn/end', { turn: 1, reason: { kind: 'max-tokens' } })
 

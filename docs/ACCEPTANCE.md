@@ -2,6 +2,22 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M13 当前修复与兼容门禁（2026-09-05）
+
+| 问题 | 当前证据 |
+|---|---|
+| idle 压缩失败后反复空转 | `learning-regressions.spec.ts` 断言失败后读取次数不持续增长，新活动后可以成功重试 |
+| 历史分页隐藏待反馈卡 | store、client 与真实 Web 覆盖活跃卡早于 31 条关闭历史，不点击加载更多也可见 |
+| 无关活跃内容或重讲 revisions 挤满上下文 | 在 8k 容量下，20 条长活跃讲解仍允许新主动请求；40 个旧 revision 后仍能成功生成第 41 个，原记录保留 |
+| partial/forgotten 未反映学习状态 | 两种结果分别验证提示、卡片、统计、自主重新教学、旧题失效和再次掌握恢复 |
+| 敏感自由文本过滤缺口 | `privacy.spec.ts` 覆盖模型请求、生成文本、私有摘要和旧数据导出；普通 URL/相对路径保留，旧库不被改写 |
+| 单一概念只出回忆题 | 同一概念连续复习得到 recall→application→application→distinction，成功推进、失败重复 |
+| 最新宿主兼容 | rc.1 发布包；rc.1/alpha.1 固定源码提交各 80 单元/集成、7 Web、3 M6，以及类型检查/生产构建；精确 SHA 见 [兼容约定](./COMPATIBILITY.md) |
+
+以上是本地已执行证据；新增 CI 矩阵在推送后运行。无密钥组装与确定性模型替身证明控制流和宿主兼容，不作为真实模型教学效果结论。
+
+## 原始 P0 验收映射
+
 | # | 标准 | 自动化证据 |
 |---:|---|---|
 | 1 | 关闭零成本 | `scheduler.spec.ts` disabled 测试；assembled Web snapshot 验证 off 时历史只读和反馈按钮禁用 |

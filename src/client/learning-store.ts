@@ -33,6 +33,7 @@ export interface LearningSnapshot {
   readonly context: ExplainContextView | undefined
   readonly review?: ReviewDashboardView | undefined
   readonly entries: readonly ThreadEntryView[]
+  readonly activeEntries: readonly ThreadEntryView[]
   readonly hasMore: boolean
   readonly pendingEntryIds: readonly string[]
   readonly profilePendingKeys: readonly string[]
@@ -61,6 +62,7 @@ const INITIAL: LearningSnapshot = {
   context: undefined,
   review: undefined,
   entries: [],
+  activeEntries: [],
   hasMore: false,
   pendingEntryIds: [],
   profilePendingKeys: [],
@@ -434,11 +436,12 @@ export class GlobalLearningStore {
   private async refreshNow(): Promise<void> {
     try {
       const desired = Math.max(PAGE_SIZE, this.store.getSnapshot().entries.length)
-      const [statusResult, configurationResult, contextResult, reviewResult, initialPages] = await Promise.all([
+      const [statusResult, configurationResult, contextResult, reviewResult, activeResult, initialPages] = await Promise.all([
         this.ctx.remote.explain.status(),
         this.ctx.remote.explain.configuration(),
         this.ctx.remote.explain.context(),
         this.ctx.remote.explain.reviewDashboard(),
+        this.ctx.remote.explain.activeEntries(),
         this.readPages(desired),
       ])
       const status = unwrapRemote(statusResult)
@@ -459,6 +462,7 @@ export class GlobalLearningStore {
         context,
         review,
         entries: pages.entries,
+        activeEntries: unwrapRemote(activeResult),
         hasMore: pages.hasMore,
         pendingEntryIds: [...this.pendingEntries],
         profilePendingKeys: this.store.getSnapshot().profilePendingKeys ?? [],

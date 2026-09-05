@@ -140,6 +140,7 @@ export interface ThreadEntryView {
   readonly topicId: TopicId
   readonly topicKey: string
   readonly topicTitle: string
+  /** Effective learning state, including the latest review evidence. */
   readonly topicState: 'learning' | 'mastered'
   readonly topicRevision: number
   readonly revision?: number

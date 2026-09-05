@@ -748,6 +748,7 @@ export class ExplainScheduler {
     this.idleTimer = undefined
     if (!this.settings.enabled || this.resetting || this.store.compactionBatch() === undefined) return
     const state = this.store.runtimeState()
+    if (this.idleAttempted === `${state.contextGeneration}:${state.activityGeneration}`) return
     const baseline = state.lastUserActionAt ?? state.firstExplainOutputAt
     if (baseline === undefined) return
     const delay = Math.max(0, baseline + this.settings.idleCompactMs - Date.now())
