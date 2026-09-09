@@ -132,8 +132,8 @@ function reactIdentity(sourceRoot) {
 function main() {
   const sourceRoot = resolveSourceRoot()
   const version = JSON.parse(readFileSync(join(sourceRoot, 'package.json'), 'utf8')).version
-  if (!['0.1.2-rc.1', '0.1.3-alpha.1', '0.1.3-alpha.2'].includes(version)) {
-    throw new Error(`unsupported DSH source ${String(version)}; expected 0.1.2-rc.1, 0.1.3-alpha.1 or 0.1.3-alpha.2`)
+  if (!['0.1.2-rc.1', '0.1.3-alpha.1', '0.1.3-alpha.2', '0.1.5-alpha.1'].includes(version)) {
+    throw new Error(`unsupported DSH source ${String(version)}; expected 0.1.2-rc.1, 0.1.3-alpha.1, 0.1.3-alpha.2 or 0.1.5-alpha.1`)
   }
   const available = collectPackages(sourceRoot)
   const missing = requiredDshPackages().filter(name => !available.has(name))

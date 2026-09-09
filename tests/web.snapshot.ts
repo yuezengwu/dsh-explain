@@ -1,3 +1,4 @@
+import { COMPOSER_LABEL } from './web-locators.ts'
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createServer } from 'node:net'
 import { existsSync, realpathSync } from 'node:fs'
@@ -21,7 +22,6 @@ const SOURCE_SESSION_ID = SessionId('fixture-source')
 const MISSING_SOURCE_SESSION_ID = SessionId('missing-source')
 const FIXED_TIME = Date.UTC(2026, 0, 2, 3, 4, 5)
 const DAY_MS = 86_400_000
-const COMPOSER_LABEL = '发消息或做任务… / 调用指令 @ 文件或对话'
 
 type SnapshotMode = 'replay' | 'refresh'
 

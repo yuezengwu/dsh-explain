@@ -1,3 +1,4 @@
+import { COMPOSER_LABEL } from './web-locators.ts'
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createServer } from 'node:net'
 import { existsSync, realpathSync } from 'node:fs'
@@ -11,7 +12,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 const REPOSITORY = fileURLToPath(new URL('..', import.meta.url))
 const SESSION_FIXTURE = join(REPOSITORY, 'tests/snapshots/learning-view/session.jsonl')
 const SESSION_ID = 'm6-combination-session'
-const COMPOSER_LABEL = '发消息或做任务… / 调用指令 @ 文件或对话'
 
 interface PluginSpec {
   readonly marker: string
