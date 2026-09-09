@@ -1,4 +1,4 @@
-import { settledAssistant } from './session-fixture.ts'
+import { appendSystemContext, settledAssistant } from './session-fixture.ts'
 import { describe, expect, it } from 'vitest'
 import {
   ToolCallId,
@@ -48,6 +48,7 @@ describe('completed-turn source observation', () => {
     const session = Session.create(SessionId('source-a'))
     session.append('turn/start', { turn: 1 })
     session.append('step/start', { turn: 1, step: 1 })
+    appendSystemContext(session, 'private system instructions')
     session.append('user/message', createUserMessage({
       source: { kind: 'user' },
       content: [{ type: 'text', text: 'How does narrowing work?' }],
@@ -86,11 +87,13 @@ describe('completed-turn source observation', () => {
     expect(captured).toMatchObject({
       sourceSessionId: SessionId('source-a'),
       turn: 1,
+      endSeq: end.seq,
       userText: 'How does narrowing work?',
       assistantText: 'A union narrows after a discriminant check.',
       tools: [{ name: 'read', resultPreview: 'result preview' }],
       truncated: false,
     })
+    expect(JSON.stringify(captured)).not.toContain('private system instructions')
     expect(JSON.stringify(captured)).not.toContain('private synthetic context')
     expect(JSON.stringify(captured)).not.toContain('hidden chain')
     expect(JSON.stringify(captured)).not.toContain('secret')

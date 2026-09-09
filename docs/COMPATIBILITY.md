@@ -1,32 +1,35 @@
 # DSH 兼容约定
 
-核验日期：2026-09-08。
+核验日期：2026-09-09。
 
 | 来源 | 版本 | 精确提交 | 本轮验证 |
 |---|---|---|---|
-| npm alpha 发布包 | `0.1.3-alpha.2` | 发布包安装与锁文件 | 类型检查、80 项单元/集成测试、生产构建、pack dry-run |
+| npm alpha 发布包 | `0.1.5-alpha.1` | 发布包安装与锁文件 | 类型检查、80 项单元/集成测试、生产构建、pack dry-run |
 | DSH rc.1 源码 | `0.1.2-rc.1` | `a66e4702047846cdaa10c66c9d3df3951f5ea70d` | 类型检查、80 项测试、7 个 Web 场景、3 个 M6 场景 |
 | DSH alpha.1 源码 | `0.1.3-alpha.1` | `d347e703908d0406b7a7ef80e3a0e594d86b2215` | 类型检查、80 项测试、7 个 Web 场景、3 个 M6 场景 |
-| 最新 DSH 源码发布 | `0.1.3-alpha.2` | `82a5fd61a7cf5c293cec4bdff68f455398d685e9` | 类型检查、80 项测试、7 个 Web 场景、3 个 M6 场景 |
+| DSH alpha.2 源码 | `0.1.3-alpha.2` | `82a5fd61a7cf5c293cec4bdff68f455398d685e9` | 类型检查、80 项测试、7 个 Web 场景、3 个 M6 场景 |
+| 最新 DSH 源码发布 | `0.1.5-alpha.1` | `5dda764ed3aa172535a7967b06ff95d9cbfe536a` | 类型检查、80 项测试、7 个 Web 场景、3 个 M6 场景 |
 
-[官方 0.1.3-alpha.2 发布页](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.3-alpha.2)的发布时间为 2026-09-07 13:59:29 UTC。该版本的 CLI/API 包已在 npm 发布，`alpha` 指向 alpha.2；`latest` / `next` 仍为 rc.1。开发依赖和锁文件精确固定 alpha.2，peerDependencies 显式接受三个已验证的预发布版本。
+[官方 0.1.5-alpha.1 发布页](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-alpha.1)的发布时间为 2026-09-08 16:16:04 UTC。CLI/API 包已在 npm 发布，`alpha` 指向 `0.1.5-alpha.1`；`latest` / `next` 仍为 rc.1。开发依赖和锁文件精确固定 `0.1.5-alpha.1`，peerDependencies 显式接受四个已验证的预发布版本。
 
-alpha.2 改善长会话加载、Web 断线恢复和自动滚动，调整消息队列及反馈界面。破坏性变更涉及 persona 注入字段、常量和普通 subprocess handle 的 `pid`；Explain 不使用这些接口。Session 的持久化种子所有权类型也有调整，但 Explain 只消费公开事件读取接口、夹具通过宿主持久化 API 写入，无需另加运行时兼容分支。这些上游改进不等同于 Explain 已做性能或真实教学效果评测。
+本次上游升级 Session format 3，将系统提示词放入消息历史；同时移除 `ctx.agent`、可构造的 `Inbox` 类与旧 Detail 面板。Explain 已使用显式 `invocation.agent`，不构造 Inbox 或注册 Detail 插槽；读取来源时只保留人类输入、已完成回答和有界工具结果，新增 V3 回归证明系统提示词不会进入学习 capsule，来源结束坐标和主会话消息不变。产品运行时无需新增版本分支。
+
+Web 夹具的合成旧日志调整为先 `step/start`、再 `user/message`，使官方 V0→V3 迁移器可以按原时间顺序生成 system head；没有改写用户日志或绕过迁移器。Web 定位器精确接受升级前后的两种输入框文案，学习视图与快捷入口在四个宿主分别验证。
 
 ## 安装
 
 ```sh
-npx @deepseek-ai/dsh@0.1.3-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain
-npx @deepseek-ai/dsh@0.1.3-alpha.2 --profile web
+npx @deepseek-ai/dsh@0.1.5-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.5-alpha.1 --profile web
 ```
 
-如继续使用 npm 默认渠道的 rc.1，将两条命令中的版本均替换为 `0.1.2-rc.1`。Explain 当前 GitHub 安装使用 `main`；最新标签仍为 `v0.2.0`，尚未发布 `v0.3.0`。宿主的 Session 格式迁移与插件 SQLite 分开管理：升级前保留 DSH 数据备份；三个版本的独立验收不表示新版 Session 文件能降级给旧宿主读取。
+如继续使用 npm 默认渠道的 rc.1，将两条命令中的版本均替换为 `0.1.2-rc.1`。Explain 当前 GitHub 安装使用 `main`；最新标签仍为 `v0.2.0`，尚未发布 `v0.3.0`。宿主的 Session 格式迁移与插件 SQLite 分开管理：升级前保留 DSH 数据备份；四个版本的独立验收不表示新版 Session 文件能降级给旧宿主读取。
 
 ## 兼容实现
 
 - Explain 继续只消费 `Session.seq`、`eventAt()`、`snapshotEvents()` 和 settled `assistant/message`，不依赖已移除的 durable chunk 事件。
-- alpha.1/alpha.2 使用 Session format 2。测试中的合成 settled assistant 事件补充 `stream: []`；旧版宿主兼容此额外字段。
-- 真实 Web 夹具通过对应宿主自己的 `llm-replay` 解析和迁移旧日志。format 2 写入使用 `SessionHandle.append/flush/close`，rc.1 使用原持久化接口。这层分支仅在测试夹具中。
+- 0.1.3-alpha.1/alpha.2 使用 Session format 2，0.1.5-alpha.1 使用 format 3。测试中的合成 settled assistant 事件补充 `stream: []`；旧版宿主兼容此额外字段。
+- 真实 Web 夹具通过对应宿主自己的 `llm-replay` 解析和迁移旧日志。format 2/3 写入使用 `SessionHandle.append/flush/close`，rc.1 使用原持久化接口。这层分支仅在测试夹具中。
 - 源码链接覆盖所有直接开发依赖和 peer 包，并共用宿主 React/Cordis 实例，避免源码包和 npm 包混装导致对象身份不一致。链接脚本拒绝未经验证的源码版本。
 - Explain SQLite 保持 schema 4、backup v3，不改写旧记录。薄弱概念通过当前有效状态投影恢复 learning，同时保留原有复习排期。
 
@@ -55,7 +58,7 @@ node --import tsx/esm apps/cli/src/bin.ts plugin --profile web add /absolute/pat
 node --import tsx/esm apps/cli/src/bin.ts --profile web --no-open
 ```
 
-CI 检查锁定的 alpha.2 发布包，并对三个固定源码提交运行完整组装矩阵。上表是本地运行证据；对应提交的 CI 结果见 [Actions](https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml)。Web/M6 使用临时 Session、数据库和无密钥夹具；本轮不构成真实模型教学效果评估。现有 Demo 媒体仍明确标注 rc.1。
+CI 检查锁定的 0.1.5-alpha.1 发布包，并对四个固定源码提交运行完整组装矩阵。上表是本地运行证据；对应提交的 CI 结果见 [Actions](https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml)。Web/M6 使用临时 Session、数据库和无密钥夹具；本轮不构成真实模型教学效果评估。现有 Demo 媒体仍明确标注 rc.1。
 
 ## 修复后的学习行为
 

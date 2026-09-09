@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img alt="DSH 0.1.3-alpha.2" src="https://img.shields.io/badge/DSH-0.1.3--alpha.2-4c8bf5">
+  <img alt="DSH 0.1.5-alpha.1" src="https://img.shields.io/badge/DSH-0.1.5--alpha.1-4c8bf5">
   <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="本地优先" src="https://img.shields.io/badge/数据-本地优先-2ea44f">
@@ -37,18 +37,18 @@
 
 ## 快速开始
 
-当前开发与安装基线为 DSH `0.1.3-alpha.2`，截至 2026-09-08 已在 npm 发布。npm 的 `latest` / `next` 仍指向 `0.1.2-rc.1`；本插件继续兼容 rc.1 和 `0.1.3-alpha.1`。安装时显式指定版本，精确源码提交与验证记录见[兼容约定](docs/COMPATIBILITY.md)。
+当前开发与安装基线为 DSH `0.1.5-alpha.1`，截至 2026-09-09 已在 npm 发布。npm 的 `latest` / `next` 仍指向 `0.1.2-rc.1`；本插件继续兼容 rc.1、`0.1.3-alpha.1` 和 `0.1.3-alpha.2`。安装时显式指定版本，精确源码提交与验证记录见[兼容约定](docs/COMPATIBILITY.md)。
 
 ```sh
-npx @deepseek-ai/dsh@0.1.3-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain
-npx @deepseek-ai/dsh@0.1.3-alpha.2 --profile web
+npx @deepseek-ai/dsh@0.1.5-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.5-alpha.1 --profile web
 ```
 
 启动后进入「**设置 → 学习**」，选择辅助模型的 provider 和 model，启用学习模式并保存。Explain 只观察此后完成的顶层工作回合，不补扫已有历史。
 
 Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按提示把 `dsh-explain` 加入该 profile 的 `pnpm-workspace.yaml`，然后重新执行安装命令。自动化运行不应打开浏览器时，可在启动 DSH 时加上 `--no-open`。
 
-> Explain 最新标签版本仍是 `v0.2.0`，`v0.3.0` 尚未发布；从 GitHub 安装会使用当前兼容 rc.1、alpha.1 和 alpha.2 的 `main` 分支。
+> Explain 最新标签版本仍是 `v0.2.0`，`v0.3.0` 尚未发布；从 GitHub 安装会使用当前兼容下表四个版本的 `main` 分支。
 
 ## 从正在做的工作开始学习
 
@@ -93,9 +93,9 @@ Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 s
 
 | 检查 | 当前结果 |
 |---|---|
-| DSH 兼容 | `0.1.3-alpha.2` 发布包；`0.1.2-rc.1`、`0.1.3-alpha.1` 与 `0.1.3-alpha.2` 组装源码 |
-| 单元与集成 | 三个源码版本各 80 项测试 |
-| DSH Web 组装验收 | 三个源码版本各 7 个场景 |
+| DSH 兼容 | `0.1.5-alpha.1` 发布包；`0.1.2-rc.1`、`0.1.3-alpha.1`、`0.1.3-alpha.2` 与 `0.1.5-alpha.1` 组装源码 |
+| 单元与集成 | 四个源码版本各 80 项测试 |
+| DSH Web 组装验收 | 四个源码版本各 7 个场景 |
 | Explain 自有快捷入口 | 3 个 M6 场景 |
 | 生产包 | 构建与 pack dry-run |
 
@@ -103,7 +103,7 @@ Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 s
 
 ## 本地开发
 
-默认开发安装使用已发布的 `0.1.3-alpha.2` API 包。组装 Web 测试支持已构建的 DSH `0.1.2-rc.1`、`0.1.3-alpha.1` 或 `0.1.3-alpha.2` 源码 checkout；现有 Demo 录制仍使用 rc.1：
+默认开发安装使用已发布的 `0.1.5-alpha.1` API 包。组装 Web 测试支持已构建的 DSH `0.1.2-rc.1`、`0.1.3-alpha.1`、`0.1.3-alpha.2` 或 `0.1.5-alpha.1` 源码 checkout；现有 Demo 录制仍使用 rc.1：
 
 ```sh
 pnpm install
