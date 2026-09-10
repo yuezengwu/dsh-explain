@@ -1,8 +1,14 @@
 # dsh-explain 迭代计划
 
+## M16：DSH 0.1.5-alpha.2 兼容与发布包依赖修复
+
+> 状态：**实现与本地验收完成**（2026-09-10）。
+
+开发依赖和锁文件升级至 `0.1.5-alpha.2`，保留四个既有宿主，CI 使用五个精确源码提交。修复新发布的 client-store 遗漏 Zustand/Immer 运行依赖导致的干净安装测试失败，只对该版本扩展依赖声明；独立复现已反馈上游 [Discussion #6082](https://github.com/deepseek-ai/deepseek-harness/discussions/6082)。发布包检查及五个宿主的 80 项测试、7 Web、3 M6 均通过。外层 Web 面板变更不影响现有内部插槽，Explain 运行时、SQLite schema 4 和 backup v3 保持不变；细节见 [兼容约定](./COMPATIBILITY.md)。
+
 ## M15：DSH 0.1.5-alpha.1 / Session V3 兼容
 
-> 状态：**实现与本地验收完成**（2026-09-09）。
+> 状态：**已合入 `main`（PR #35），尚未发布 v0.3.0**（2026-09-09）。
 
 开发依赖和锁文件升级至 `0.1.5-alpha.1`；保留 rc.1、0.1.3-alpha.1、0.1.3-alpha.2，CI 使用四个精确源码提交。补充 V3 系统提示词隔离回归，修复合成旧日志的 step/message 顺序，并适配新版输入框文案。四个宿主分别通过类型检查、80 项测试、7 Web 和 3 M6；发布包通过类型检查、80 项测试、构建与打包检查。产品运行时和 Explain 数据格式保持兼容，具体证据见 [COMPATIBILITY.md](./COMPATIBILITY.md)。
 
