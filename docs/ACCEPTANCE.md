@@ -2,7 +2,11 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
-## M15 当前宿主兼容门禁（2026-09-09）
+## M16 当前宿主兼容门禁（2026-09-10）
+
+0.1.5-alpha.2 发布包在补齐该版本 store 遗漏的运行依赖后，通过 frozen install、类型检查、80 项单元/集成、生产构建和 pack dry-run；rc.1、0.1.3-alpha.1、0.1.3-alpha.2、0.1.5-alpha.1、0.1.5-alpha.2 五个固定源码宿主分别通过类型检查、80 项测试、7 Web 和 3 M6。最新宿主的外层面板重组与设置可访问名称更新均通过真实 Web 场景，无需修改 Explain 运行时或快照期望。独立 npm 最小复现对比 alpha.1 导入成功、alpha.2 导入失败，上游依赖缺失已报 [Discussion #6082](https://github.com/deepseek-ai/deepseek-harness/discussions/6082)。精确提交与修复范围见 [兼容约定](./COMPATIBILITY.md)。
+
+## M15 宿主兼容门禁（2026-09-09）
 
 0.1.5-alpha.1 发布包通过类型检查、80 项单元/集成、生产构建和 pack dry-run；rc.1、0.1.3-alpha.1、0.1.3-alpha.2、0.1.5-alpha.1 四个固定源码宿主分别通过类型检查、80 项测试、7 Web 和 3 M6。V3 来源回归在真实 Session 中追加系统提示词，断言其不进入 capsule、结束坐标一致且主会话消息不变；低版本继续运行原来源隔离断言。合成 V0 Web 日志通过宿主迁移器迁移，输入框定位明确覆盖两版原生文案。精确提交见 [兼容约定](./COMPATIBILITY.md)。
 
