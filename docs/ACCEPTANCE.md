@@ -2,7 +2,11 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
-## M16 当前宿主兼容门禁（2026-09-10）
+## M17 当前宿主兼容门禁（2026-09-11）
+
+0.1.5-rc.2 发布包在精确版本依赖修复后，通过 frozen install、类型检查、80 项单元/集成、构建和 pack dry-run。七个固定源码宿主（0.1.2-rc.1、0.1.3-alpha.1/alpha.2、0.1.5-alpha.1/alpha.2/rc.1/rc.2）分别通过类型检查、80 项测试、7 Web 和 3 M6；既有视图和快捷入口保持原验收期望。独立 npm import 对照确认 store 依赖缺失在两个新 rc 仍存在，原 alpha.1 对照成功。精确提交和修复范围见 [兼容约定](./COMPATIBILITY.md)。
+
+## M16 宿主兼容门禁（2026-09-10）
 
 0.1.5-alpha.2 发布包在补齐该版本 store 遗漏的运行依赖后，通过 frozen install、类型检查、80 项单元/集成、生产构建和 pack dry-run；rc.1、0.1.3-alpha.1、0.1.3-alpha.2、0.1.5-alpha.1、0.1.5-alpha.2 五个固定源码宿主分别通过类型检查、80 项测试、7 Web 和 3 M6。最新宿主的外层面板重组与设置可访问名称更新均通过真实 Web 场景，无需修改 Explain 运行时或快照期望。独立 npm 最小复现对比 alpha.1 导入成功、alpha.2 导入失败，上游依赖缺失已报 [Discussion #6082](https://github.com/deepseek-ai/deepseek-harness/discussions/6082)。精确提交与修复范围见 [兼容约定](./COMPATIBILITY.md)。
 
