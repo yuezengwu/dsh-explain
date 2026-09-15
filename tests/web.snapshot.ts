@@ -274,7 +274,7 @@ async function openWorkspaceSession(page: Page, workspaceLabel: string): Promise
   const workspace = page.getByRole('treeitem', { name: workspaceLabel, exact: true })
   await workspace.waitFor({ timeout: 15_000 })
   if (await workspace.getAttribute('aria-expanded') !== 'true') await workspace.click()
-  const session = page.locator('[role="treeitem"][aria-selected="false"]').filter({ hasText: workspaceLabel })
+  const session = page.locator('[role="treeitem"][aria-selected]').filter({ hasText: workspaceLabel })
   await session.waitFor({ timeout: 15_000 })
   await session.click()
 }

@@ -1,0 +1,69 @@
+- main:
+  - heading "全局学习线程" [level=1]
+  - text: 运行正常，正在等待合格回合 当前上下文压力 0.2%
+  - strong: "1"
+  - text: 学习中
+  - strong: "0"
+  - text: 已掌握
+  - strong: "1"
+  - text: 待反馈
+  - strong: 1/5
+  - text: 自主额度
+  - heading "今日复习" [level=2]
+  - paragraph: 用回忆、应用和辨析把“看懂了”变成“真正记住了”。
+  - button "开始复习" [disabled]
+  - strong: "0"
+  - text: 待复习
+  - strong: "0"
+  - text: 薄弱概念
+  - strong: "0"
+  - text: 首次复习
+  - strong: "0"
+  - text: 今日完成 暂无待复习概念。标记“懂了”的概念会在次日进入复习。
+  - heading "学习概况 模型推断" [level=2]
+  - heading "知识概况" [level=3]
+  - paragraph: 正在学习 TypeScript 的可辨识联合类型收窄（discriminated union narrowing），目前处于入门阶段，尚未掌握。
+  - heading "学习进展" [level=3]
+  - paragraph: 初次接触该主题，以入门水平起步，需要具体代码示例与常见错误示例辅助理解。
+  - heading "讲解偏好" [level=3]
+  - paragraph: 这是 Explain 当前采用的学习画像。显式偏好优先于修正，修正优先于模型推断。
+  - strong: 讲解长度
+  - text: 偏好简短解释，避免冗长展开。 模型推断 信心 高 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - strong: 内容结构
+  - text: 尚无判断
+  - button "设置偏好"
+  - strong: 示例方式
+  - text: 使用两个对比代码示例，先展示错误，再展示正确写法。 用户修正 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - strong: 术语习惯
+  - text: 使用中文术语进行讲解。 模型推断 信心 中 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - heading "主题熟悉度" [level=3]
+  - strong: typescript-discriminated-union-narrowing
+  - text: 入门 模型推断 信心 中 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - group: 最近的画像修改记录
+  - heading "当前会话" [level=2]
+  - article:
+    - heading "TypeScript 可辨识联合与类型收窄" [level=3]
+    - text: 来源 real-v03… · 当前 回合 1
+    - time: 2026/9/15 17:23:38
+    - text: 当前
+    - heading "是什么" [level=4]
+    - paragraph: 把 Result 想成一个快递包裹：外包装上贴了一个标签 kind，要么是 "ok"，要么是 "error"。包裹里面装的东西取决于标签——"ok" 包裹里是 value，"error" 包裹里是 message。代码里检查 if (r.kind === "ok")，就像先看标签再拆包；只有确认标签是 "ok"，TypeScript 才让你伸手拿 value。
+    - heading "为什么" [level=4]
+    - paragraph: "TypeScript 不会猜测包裹里有什么。用 kind 这个字面量字段做标签后，一次 === 比较就等于告诉编译器“我已经看过标签了”，编译器才敢把 r 从联合类型缩成具体的 { kind: \"ok\"; value: number }，从而允许访问 value。"
+    - heading "常见坑" [level=4]
+    - paragraph: "别在没看标签前就拆包。下面这样会报错： ```ts type Result = | { kind: \"ok\"; value: number } | { kind: \"error\"; message: string }; function bad(r: Result) { return r.value; // 报错：Property 'value' does not exist } ``` 正确做法是在对应分支内访问： ```ts function good(r: Result) { if (r.kind === \"ok\") return r.value; return r.message; } ```"
+    - button "✓ 懂了"
+    - button "✗ 没懂"
+  - heading "学习历史" [level=2]
+  - text: 请求换一种讲法 来源 real-v03…
+  - time: 2026/9/15 17:23:35
+  - text: TypeScript 可辨识联合与类型收窄 来源 real-v03… 回合 1
+  - time: 2026/9/15 17:23:01

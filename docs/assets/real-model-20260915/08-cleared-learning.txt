@@ -1,0 +1,44 @@
+- main:
+  - heading "全局学习线程" [level=1]
+  - text: 运行正常，正在等待合格回合
+  - strong: "0"
+  - text: 学习中
+  - strong: "0"
+  - text: 已掌握
+  - strong: "0"
+  - text: 待反馈
+  - strong: 1/5
+  - text: 自主额度
+  - heading "今日复习" [level=2]
+  - paragraph: 用回忆、应用和辨析把“看懂了”变成“真正记住了”。
+  - button "开始复习" [disabled]
+  - strong: "0"
+  - text: 待复习
+  - strong: "0"
+  - text: 薄弱概念
+  - strong: "0"
+  - text: 首次复习
+  - strong: "0"
+  - text: 今日完成 暂无待复习概念。标记“懂了”的概念会在次日进入复习。
+  - heading "学习概况" [level=2]
+  - text: 尚未生成全局学习概况
+  - heading "讲解偏好" [level=3]
+  - paragraph: 这是 Explain 当前采用的学习画像。显式偏好优先于修正，修正优先于模型推断。
+  - strong: 讲解长度
+  - text: 尚无判断
+  - button "设置偏好"
+  - strong: 内容结构
+  - text: 尚无判断
+  - button "设置偏好"
+  - strong: 示例方式
+  - text: 尚无判断
+  - button "设置偏好"
+  - strong: 术语习惯
+  - text: 尚无判断
+  - button "设置偏好"
+  - heading "主题熟悉度" [level=3]
+  - text: 尚无主题熟悉度判断。
+  - heading "当前会话" [level=2]
+  - text: 当前会话暂无讲解
+  - heading "学习历史" [level=2]
+  - text: 还没有讲解。完成工作回合后，explain 会在值得讲解时记录到这里。

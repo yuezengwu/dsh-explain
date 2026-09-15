@@ -189,7 +189,8 @@ describe('M6 Explain-owned shortcuts', () => {
     const workspaceItem = page.getByRole('treeitem', { name: 'workspace', exact: true })
     await workspaceItem.waitFor({ timeout: 15_000 })
     if (await workspaceItem.getAttribute('aria-expanded') !== 'true') await workspaceItem.click()
-    const session = page.locator('[role="treeitem"][aria-selected="false"]').filter({ hasText: 'workspace' })
+    // The host may restore/select the fixture before this hook opens it.
+    const session = page.locator('[role="treeitem"][aria-selected]').filter({ hasText: 'workspace' })
     await session.waitFor({ timeout: 15_000 })
     await session.click()
   }, 180_000)
@@ -203,7 +204,12 @@ describe('M6 Explain-owned shortcuts', () => {
     if (failures.length > 1) throw new AggregateError(failures, 'M6 combination cleanup failed')
   })
 
-  it('assembles one self-contained Explain layer without consumer plugins', () => {
+  it('assembles one self-contained Explain layer without consumer plugins', async () => {
+    if (page === undefined) throw new Error('Web page is not initialized')
+    // Reopening an already selected source must not depend on aria-selected=false.
+    const session = page.locator('[role="treeitem"][aria-selected]').filter({ hasText: 'workspace' })
+    await expect.poll(() => session.getAttribute('aria-selected')).toBe('true')
+    await session.click()
     const dump = runDsh(dshSource, dshHome, ['--profile', 'web', '--dump-config'])
     expect(count(dump, plugin.marker), plugin.marker).toBe(1)
     expect(dump).not.toContain('dsh-selection-chat')
