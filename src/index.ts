@@ -17,7 +17,7 @@ import {
   captureSelectionExplainTarget,
   captureSourceCapsule,
   captureAnswerExplainTarget,
-  type ObservedSession,
+  observeSession,
 } from './observer.ts'
 import { ExplainRuntime } from './runtime.ts'
 import { ExplainStore } from './store.ts'
@@ -33,7 +33,7 @@ declare module '@deepseek-ai/cordis' {
 export const name = 'dsh-explain'
 
 /** Required host services for global observation, auxiliary calls, settings, and slash commands. */
-export const inject = ['sessions', 'llm', 'tokenMeter', 'settings', 'commands']
+export const inject = ['sessions', 'llm', 'tokenMeter', 'settings', 'commands', 'sessionController']
 
 export { Config } from './config.ts'
 export type { ExplainConfig, ResolvedExplainConfig } from './config.ts'
@@ -62,6 +62,8 @@ export async function apply(ctx: Context, config: ExplainConfig): Promise<void> 
   registerExplainCommand(ctx, runtime, gateway)
   registerReviewCommand(ctx, gateway)
 
+  const observationAbort = new AbortController()
+  ctx.effect(() => () => observationAbort.abort(), 'dsh-explain: cancel history reads')
   const seenTurnEnds = new WeakMap<object, number>()
   const logger = ctx.logger('dsh-explain')
   ctx.on('session/event', (session, event) => {
@@ -69,20 +71,20 @@ export async function apply(ctx: Context, config: ExplainConfig): Promise<void> 
       || !runtime.settings().enabled || (seenTurnEnds.get(session) ?? -1) >= event.seq) return
     seenTurnEnds.set(session, event.seq)
     const generation = runtime.scheduler.generation()
-    queueMicrotask(() => {
+    const observe = async (): Promise<void> => {
       try {
         if (!runtime.scheduler.acceptsGeneration(generation)) return
-        // Source-linked validation may expose both registry and workspace identities for this exact public face.
-        const capsule = captureSourceCapsule(
-          session as unknown as ObservedSession,
+        const capsule = await captureSourceCapsule(
+          observeSession(session, ctx.sessionController, observationAbort.signal),
           event as SessionEvent<'turn/end'>,
           runtime.settings().maxSourceChars,
         )
-        if (capsule !== undefined) runtime.scheduler.enqueue(capsule)
+        if (capsule !== undefined && runtime.scheduler.acceptsGeneration(generation)) runtime.scheduler.enqueue(capsule)
       } catch (error) {
-        logger.warn('completed-turn observation failed: %s', safeMessage(error))
+        if (!observationAbort.signal.aborted) logger.warn('completed-turn observation failed: %s', safeMessage(error))
       }
-    })
+    }
+    queueMicrotask(() => { void observe() })
   }, { global: true })
 }
 
@@ -120,21 +122,23 @@ function registerExplainCommand(ctx: Context, runtime: ExplainRuntime, gateway: 
       if (action === '') return { kind: 'error', text: 'Usage: /explain <request> | on | off | status' }
       const parsed = parseExplainRequest(action)
       if (!parsed.ok) return { kind: 'error', text: `EXPLAIN_INVALID_REQUEST: ${parsed.message}` }
+      const generation = runtime.scheduler.generation()
+      const source = observeSession(invocation.agent.session, ctx.sessionController, invocation.signal)
       const target = parsed.origin === 'selection'
-        ? captureSelectionExplainTarget(
-            invocation.agent.session,
+        ? await captureSelectionExplainTarget(
+            source,
             parsed.request,
             runtime.settings().maxSourceChars,
           )
         : parsed.origin === 'answer'
-          ? captureAnswerExplainTarget(
-              invocation.agent.session,
+          ? await captureAnswerExplainTarget(
+              source,
               parsed.turn,
               parsed.request,
               runtime.settings().maxSourceChars,
             )
-          : captureManualExplainTarget(
-              invocation.agent.session,
+          : await captureManualExplainTarget(
+              source,
               parsed.request,
               runtime.settings().maxSourceChars,
             )
@@ -143,6 +147,9 @@ function registerExplainCommand(ctx: Context, runtime: ExplainRuntime, gateway: 
           kind: 'error',
           text: 'EXPLAIN_SOURCE_UNAVAILABLE: The referenced answer is no longer available as a settled turn.',
         }
+      }
+      if (generation !== runtime.scheduler.generation()) {
+        return { kind: 'error', text: 'EXPLAIN_REQUEST_CANCELLED: Learning settings or data changed while reading the source.' }
       }
       const result = await runtime.scheduler.requestManual(target, invocation.signal)
       return result.ok

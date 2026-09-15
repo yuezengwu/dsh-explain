@@ -196,7 +196,7 @@ host 在根作用域注册一个 `{ global: true }` 的 `session/event` listener
 4. 该 turn 至少有一个 step，并包含非空、非 explain 注入的 assistant 文本。
 5. `(sessionId, turn, endSeq)` 尚未被当前 runtime 接收。
 
-事件 listener 只做常数级 gate，捕获 Session 引用、不可变的 `turn/end` 事件与当前 runtime generation，并把 capsule 构造排入微任务后立即返回；不得在同步 `session/event` dispatch 中渲染全文、访问磁盘或等待模型。异步 capture 使用 DSH rc.1 的 `Session.seq`、`eventAt()` 与 `snapshotEvents()` 按需逆序定位来源，只物化截至该 `endSeq` 的 append-only 回合切片；入队前再次校验 enabled 与 generation，避免 off 或模型语义设置变化后补入旧候选。
+事件 listener 只做常数级 gate，捕获 Session 引用、不可变的 `turn/end` 事件与当前 runtime generation，并把 capsule 构造排入微任务后立即返回；不得在同步 `session/event` dispatch 中渲染全文、访问磁盘或等待模型。异步 capture 通过公开 `sessionController.page()` 固定 `throughSeq`、按 `beforeSeq` 逆序分页，只物化截至该 `endSeq` 的目标回合切片。每页使用 16 条逻辑消息的上限，旧宿主 chunk 记录仅推进游标，不复制全文历史。读取支持取消；自动观察与手动命令在等待完成后检查 generation，防止关闭学习、清空数据或更换模型后补入旧工作。
 
 `SourceCapsule` 包含：
 

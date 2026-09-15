@@ -1,3 +1,4 @@
+import { observeSession } from '../src/observer.ts'
 import { createMessage, type AssistantMessage, type Message } from '@deepseek-ai/dsh-llm'
 import { SESSION_FORMAT_VERSION, type Session } from '@deepseek-ai/dsh-session'
 
@@ -25,4 +26,20 @@ export function appendSystemContext(session: Session, text: string): void {
       content: [{ type: 'text', text }],
     }),
   }, { surfaceOp: 'append' })
+}
+
+/** Test-only in-memory transport; production always reads the host page API. */
+export function historyReader(session: Session, pageSize = 3): Pick<import('@deepseek-ai/dsh-api-session-controller').SessionController, 'page'> {
+  return { page: async (request, signal) => {
+    signal.throwIfAborted()
+    const events = session.snapshotEvents().filter(event => event.seq <= request.throughSeq && event.seq < (request.beforeSeq ?? Infinity))
+    return {
+      records: events.slice(-pageSize).map(event => ({ type: 'event' as const, event: event as unknown as import('@deepseek-ai/dsh-api-session-controller').SessionWireEvent })),
+      hasMore: events.length > pageSize,
+    }
+  } }
+}
+
+export function observedSession(session: Session): import('../src/observer.ts').ObservedSession {
+  return observeSession(session, historyReader(session), new AbortController().signal)
 }

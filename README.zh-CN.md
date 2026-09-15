@@ -27,9 +27,9 @@
 
 ## 看见完整学习闭环
 
-![在真实 DSH Web 中捕获一个已完成回答、复习概念、修正学习偏好并导出本地数据](docs/assets/dsh-explain-demo.gif)
+![在真实 DSH Web 中捕获一个已完成回答、复习概念、修正学习偏好并导出本地数据](https://raw.githubusercontent.com/yuezengwu/dsh-explain/main/docs/assets/dsh-explain-demo.gif)
 
-这段 28 秒预览运行在真实组装的 DSH Web `0.1.2-rc.1` 上，使用确定性、无隐私数据的样例环境。可以[观看高清 MP4](docs/assets/dsh-explain-demo.mp4)，或阅读[录制约束](docs/DEMO.md)。
+这段 28 秒预览运行在真实组装的 DSH Web `0.1.2-rc.1` 上，使用确定性、无隐私数据的样例环境。可以[观看高清 MP4](https://raw.githubusercontent.com/yuezengwu/dsh-explain/main/docs/assets/dsh-explain-demo.mp4)，或阅读[录制约束](https://github.com/yuezengwu/dsh-explain/blob/main/docs/DEMO.md)。
 
 | 捕获 Capture | 复习 Review | 校正 Adapt |
 |---|---|---|
@@ -37,7 +37,7 @@
 
 ## 快速开始
 
-当前开发与安装基线为 DSH `0.1.6-alpha.1`，于 2026-09-15 发布，npm `alpha` 指向该版本。npm `next` 仍为 `0.1.5-rc.2`，`latest` 仍为 `0.1.5-rc.1`；七个既有宿主继续受支持。安装时显式指定版本，精确源码提交、已弃用的 Session 历史读取接口与验证记录见[兼容约定](docs/COMPATIBILITY.md)。
+当前开发与安装基线为 DSH `0.1.6-alpha.1`，于 2026-09-15 发布，npm `alpha` 指向该版本。npm `next` 仍为 `0.1.5-rc.2`，`latest` 仍为 `0.1.5-rc.1`；七个既有宿主继续受支持。安装时显式指定版本，精确源码提交、异步 Session 历史读取方式与验证记录见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
 
 ```sh
 npx @deepseek-ai/dsh@0.1.6-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain
@@ -99,11 +99,11 @@ Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 s
 | Explain 自有快捷入口 | 3 个 M6 场景 |
 | 生产包 | 构建与 pack dry-run |
 
-完整覆盖见[验收矩阵](docs/ACCEPTANCE.md)，较早的真实模型工作流证据见 [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16)。DSH 仍处于开发者预览阶段；Explain 跟随当前公开 API 版本线，不保留更早私有预览包的兼容层。
+完整覆盖见[验收矩阵](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ACCEPTANCE.md)，较早的真实模型工作流证据见 [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16)。DSH 仍处于开发者预览阶段；Explain 跟随当前公开 API 版本线，不保留更早私有预览包的兼容层。
 
 ## 本地开发
 
-默认开发安装使用已发布的 `0.1.6-alpha.1` API 包，并仅针对已复现版本补齐[遗漏的 store 运行依赖](docs/COMPATIBILITY.md#发布包依赖修复)。组装 Web 测试支持上表八个版本中任一已构建的 DSH 源码 checkout；现有 Demo 录制仍使用 `0.1.2-rc.1`：
+默认开发安装使用已发布的 `0.1.6-alpha.1` API 包，并仅针对已复现版本补齐[遗漏的 store 运行依赖](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复)。组装 Web 测试支持上表八个版本中任一已构建的 DSH 源码 checkout；现有 Demo 录制仍使用 `0.1.2-rc.1`：
 
 ```sh
 pnpm install
@@ -128,11 +128,11 @@ dsh --profile web
 
 | 文档 | 内容 |
 |---|---|
-| [Demo 制作](docs/DEMO.md) | 分镜、隐私约束、复现命令、素材与绘图来源。 |
-| [产品需求](docs/PRD.md) | 用户模型、范围、策略和验收标准。 |
-| [技术架构](docs/ARCHITECTURE.md) | 持久化、调度、RPC、UI 集成和失败行为。 |
-| [验收矩阵](docs/ACCEPTANCE.md) | 自动化与真实流程证据。 |
-| [迭代计划](docs/NEXT.md) | 已完成里程碑与后续顺序。 |
+| [Demo 制作](https://github.com/yuezengwu/dsh-explain/blob/main/docs/DEMO.md) | 分镜、隐私约束、复现命令、素材与绘图来源。 |
+| [产品需求](https://github.com/yuezengwu/dsh-explain/blob/main/docs/PRD.md) | 用户模型、范围、策略和验收标准。 |
+| [技术架构](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ARCHITECTURE.md) | 持久化、调度、RPC、UI 集成和失败行为。 |
+| [验收矩阵](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ACCEPTANCE.md) | 自动化与真实流程证据。 |
+| [迭代计划](https://github.com/yuezengwu/dsh-explain/blob/main/docs/NEXT.md) | 已完成里程碑与后续顺序。 |
 
 ## 许可证
 

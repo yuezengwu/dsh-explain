@@ -27,9 +27,9 @@ The primary agent stays untouched. Explain uses its own model calls, scheduler, 
 
 ## See the learning loop
 
-![A real DSH Web flow that captures a completed answer, reviews a concept, corrects a learner preference, and exports local data](docs/assets/dsh-explain-demo.gif)
+![A real DSH Web flow that captures a completed answer, reviews a concept, corrects a learner preference, and exports local data](https://raw.githubusercontent.com/yuezengwu/dsh-explain/main/docs/assets/dsh-explain-demo.gif)
 
-The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with deterministic, private fixture data. [Watch the higher-quality MP4](docs/assets/dsh-explain-demo.mp4) or read the [recording contract](docs/DEMO.md).
+The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with deterministic, private fixture data. [Watch the higher-quality MP4](https://raw.githubusercontent.com/yuezengwu/dsh-explain/main/docs/assets/dsh-explain-demo.mp4) or read the [recording contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/DEMO.md).
 
 | Capture | Review | Adapt |
 |---|---|---|
@@ -37,7 +37,7 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 ## Quick start
 
-The current development and installation baseline is DSH `0.1.6-alpha.1`, published on 2026-09-15 and available through npm `alpha`. npm `next` remains `0.1.5-rc.2` and `latest` remains `0.1.5-rc.1`; all seven previously verified hosts remain supported. Pin the version explicitly; see the [compatibility contract](docs/COMPATIBILITY.md) for exact source revisions, the deprecated Session history readers, and verification.
+The current development and installation baseline is DSH `0.1.6-alpha.1`, published on 2026-09-15 and available through npm `alpha`. npm `next` remains `0.1.5-rc.2` and `latest` remains `0.1.5-rc.1`; all seven previously verified hosts remain supported. Pin the version explicitly; see the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions, asynchronous Session history reads, and verification.
 
 ```sh
 npx @deepseek-ai/dsh@0.1.6-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain
@@ -99,11 +99,11 @@ Explain uses first-party DSH conversation, composer, assistant-action, and setti
 | Explain-owned shortcuts | 3 M6 scenarios |
 | Production package | Build and pack dry-run |
 
-See the [acceptance matrix](docs/ACCEPTANCE.md) for coverage and [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16) for the earlier real-model workflow evidence. DSH remains a developer preview; Explain follows its current public API line instead of retaining compatibility layers for private-preview packages.
+See the [acceptance matrix](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ACCEPTANCE.md) for coverage and [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16) for the earlier real-model workflow evidence. DSH remains a developer preview; Explain follows its current public API line instead of retaining compatibility layers for private-preview packages.
 
 ## Local development
 
-The default development install uses published `0.1.6-alpha.1` API packages, with a version-scoped repair for their [missing store runtime dependencies](docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the eight versions above. The existing demo recording remains on `0.1.2-rc.1`:
+The default development install uses published `0.1.6-alpha.1` API packages, with a version-scoped repair for their [missing store runtime dependencies](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the eight versions above. The existing demo recording remains on `0.1.2-rc.1`:
 
 ```sh
 pnpm install
@@ -128,11 +128,11 @@ dsh --profile web
 
 | Document | Purpose |
 |---|---|
-| [Demo production](docs/DEMO.md) | Storyboard, privacy contract, commands, assets, and artwork provenance. |
-| [Product requirements](docs/PRD.md) | User model, scope, policies, and acceptance criteria. |
-| [Architecture](docs/ARCHITECTURE.md) | Persistence, scheduling, RPC, UI integration, and failure behavior. |
-| [Acceptance matrix](docs/ACCEPTANCE.md) | Automated and real-flow evidence. |
-| [Iteration plan](docs/NEXT.md) | Completed milestones and follow-up sequencing. |
+| [Demo production](https://github.com/yuezengwu/dsh-explain/blob/main/docs/DEMO.md) | Storyboard, privacy contract, commands, assets, and artwork provenance. |
+| [Product requirements](https://github.com/yuezengwu/dsh-explain/blob/main/docs/PRD.md) | User model, scope, policies, and acceptance criteria. |
+| [Architecture](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ARCHITECTURE.md) | Persistence, scheduling, RPC, UI integration, and failure behavior. |
+| [Acceptance matrix](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ACCEPTANCE.md) | Automated and real-flow evidence. |
+| [Iteration plan](https://github.com/yuezengwu/dsh-explain/blob/main/docs/NEXT.md) | Completed milestones and follow-up sequencing. |
 
 ## License
 

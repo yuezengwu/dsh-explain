@@ -1,4 +1,4 @@
-import { appendSystemContext, settledAssistant } from './session-fixture.ts'
+import { appendSystemContext, observedSession, settledAssistant } from './session-fixture.ts'
 import { describe, expect, it } from 'vitest'
 import {
   ToolCallId,
@@ -44,7 +44,7 @@ function capsule(source: string, turn: number, observedAt: number): SourceCapsul
 }
 
 describe('completed-turn source observation', () => {
-  it('captures human text, assistant text, and bounded tool results without synthetic context', () => {
+  it('captures human text, assistant text, and bounded tool results without synthetic context', async () => {
     const session = Session.create(SessionId('source-a'))
     session.append('turn/start', { turn: 1 })
     session.append('step/start', { turn: 1, step: 1 })
@@ -83,7 +83,7 @@ describe('completed-turn source observation', () => {
     const end = session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
     const messagesBeforeObservation = session.deriveMessages()
 
-    const captured = captureSourceCapsule(session, end, 10_000)
+    const captured = await captureSourceCapsule(observedSession(session), end, 10_000)
     expect(captured).toMatchObject({
       sourceSessionId: SessionId('source-a'),
       turn: 1,
@@ -100,22 +100,22 @@ describe('completed-turn source observation', () => {
     expect(session.deriveMessages()).toEqual(messagesBeforeObservation)
   })
 
-  it('rejects cancelled and step-free turns', () => {
+  it('rejects cancelled and step-free turns', async () => {
     const cancelled = Session.create(SessionId('cancelled'))
     cancelled.append('turn/start', { turn: 1 })
     const cancelledEnd = cancelled.append('turn/end', {
       turn: 1,
       reason: { kind: 'aborted', reason: { kind: 'user' } },
     })
-    expect(captureSourceCapsule(cancelled, cancelledEnd, 100)).toBeUndefined()
+    expect(await captureSourceCapsule(observedSession(cancelled), cancelledEnd, 100)).toBeUndefined()
 
     const empty = Session.create(SessionId('empty'))
     empty.append('turn/start', { turn: 1 })
     const emptyEnd = empty.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
-    expect(captureSourceCapsule(empty, emptyEnd, 100)).toBeUndefined()
+    expect(await captureSourceCapsule(observedSession(empty), emptyEnd, 100)).toBeUndefined()
   })
 
-  it('pairs a manual request with the latest completed source turn or an empty-session marker', () => {
+  it('pairs a manual request with the latest completed source turn or an empty-session marker', async () => {
     const session = Session.create(SessionId('manual-source'))
     session.append('turn/start', { turn: 1 })
     session.append('step/start', { turn: 1, step: 1 })
@@ -134,7 +134,7 @@ describe('completed-turn source observation', () => {
     session.append('step/end', { turn: 1, step: 1 })
     session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
 
-    expect(captureManualExplainTarget(session, '  请解释这个分支  ', 10_000)).toMatchObject({
+    expect(await captureManualExplainTarget(observedSession(session), '  请解释这个分支  ', 10_000)).toMatchObject({
       request: '请解释这个分支',
       capsule: {
         sourceSessionId: SessionId('manual-source'),
@@ -145,13 +145,13 @@ describe('completed-turn source observation', () => {
     })
 
     const empty = Session.create(SessionId('manual-empty'))
-    expect(captureManualExplainTarget(empty, 'Explain discriminated unions', 10_000)).toMatchObject({
+    expect(await captureManualExplainTarget(observedSession(empty), 'Explain discriminated unions', 10_000)).toMatchObject({
       request: 'Explain discriminated unions',
       capsule: { turn: 0, endSeq: 0, assistantText: '', tools: [] },
     })
   })
 
-  it('locates selected assistant, tool, and context text without guessing an unavailable source', () => {
+  it('locates selected assistant, tool, and context text without guessing an unavailable source', async () => {
     const session = Session.create(SessionId('selection-source'))
     session.append('turn/start', { turn: 1 })
     session.append('step/start', { turn: 1, step: 1 })
@@ -202,23 +202,23 @@ describe('completed-turn source observation', () => {
     session.append('step/end', { turn: 2, step: 1 })
     session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
 
-    expect(captureSelectionExplainTarget(session, 'repeated   marker', 10_000)).toMatchObject({
+    expect(await captureSelectionExplainTarget(observedSession(session), 'repeated   marker', 10_000)).toMatchObject({
       origin: 'selection',
       request: 'repeated marker',
       capsule: { turn: 2, assistantText: 'The repeated marker is newer in this answer.' },
     })
-    expect(captureSelectionExplainTarget(session, 'Tool result selected text.', 10_000))
+    expect(await captureSelectionExplainTarget(observedSession(session), 'Tool result selected text.', 10_000))
       .toMatchObject({ capsule: { turn: 2, tools: [{ resultPreview: 'Tool result selected text.' }] } })
-    expect(captureSelectionExplainTarget(session, '[advisor:nit] Prefer exact checks.', 10_000))
+    expect(await captureSelectionExplainTarget(observedSession(session), '[advisor:nit] Prefer exact checks.', 10_000))
       .toMatchObject({ capsule: { turn: 1 } })
-    expect(captureSelectionExplainTarget(session, 'text not retained in this Session', 10_000))
+    expect(await captureSelectionExplainTarget(observedSession(session), 'text not retained in this Session', 10_000))
       .toMatchObject({ capsule: { turn: 0, assistantText: '', tools: [] } })
-    expect(captureAnswerExplainTarget(session, 2, 'Explain the key concept.', 10_000))
+    expect(await captureAnswerExplainTarget(observedSession(session), 2, 'Explain the key concept.', 10_000))
       .toMatchObject({ origin: 'answer', capsule: { turn: 2 } })
-    expect(captureAnswerExplainTarget(session, 99, 'Explain the key concept.', 10_000)).toBeUndefined()
+    expect(await captureAnswerExplainTarget(observedSession(session), 99, 'Explain the key concept.', 10_000)).toBeUndefined()
   })
 
-  it('allows an explicit source to bind a max-tokens answer without admitting it to autonomous observation', () => {
+  it('allows an explicit source to bind a max-tokens answer without admitting it to autonomous observation', async () => {
     const session = Session.create(SessionId('max-token-source'))
     session.append('turn/start', { turn: 1 })
     session.append('step/start', { turn: 1, step: 1 })
@@ -233,8 +233,8 @@ describe('completed-turn source observation', () => {
     session.append('step/end', { turn: 1, step: 1 })
     const end = session.append('turn/end', { turn: 1, reason: { kind: 'max-tokens' } })
 
-    expect(captureSourceCapsule(session, end, 10_000)).toBeUndefined()
-    expect(captureAnswerExplainTarget(session, 1, 'Explain the partial answer.', 10_000))
+    expect(await captureSourceCapsule(observedSession(session), end, 10_000)).toBeUndefined()
+    expect(await captureAnswerExplainTarget(observedSession(session), 1, 'Explain the partial answer.', 10_000))
       .toMatchObject({ origin: 'answer', capsule: { turn: 1, assistantText: 'A partial but visible answer.' } })
   })
 })
