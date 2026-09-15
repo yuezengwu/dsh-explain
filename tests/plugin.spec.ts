@@ -1,4 +1,4 @@
-import { settledAssistant } from './session-fixture.ts'
+import { historyReader, settledAssistant } from './session-fixture.ts'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -21,6 +21,12 @@ import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { Config, apply, inject, name } from '../src/index.ts'
 
 const directories: string[] = []
+const sourceSessions = new Map<string, Session>()
+function createSourceSession(id: ReturnType<typeof SessionId>): Session {
+  const session = Session.create(id)
+  sourceSessions.set(id, session)
+  return session
+}
 
 class MemorySettings extends Settings {
   override readonly writable = true
@@ -108,6 +114,12 @@ describe('dsh-explain plugin lifecycle', () => {
     await settings
     const commands = ctx.plugin(CommandService)
     await commands
+    let beforePage: (() => Promise<void>) | undefined
+    ctx.provide('sessionController', { page: async (request: import('@deepseek-ai/dsh-api-session-controller').SessionPageRequest, signal: AbortSignal) => {
+      await beforePage?.()
+      if (request.address.kind !== 'session') throw new Error('expected a main Session')
+      return historyReader(sourceSessions.get(request.address.sessionId)!).page(request, signal)
+    } } as unknown as import('@deepseek-ai/dsh-api-session-controller').SessionController)
     const fiber = ctx.plugin({ name, Config, inject, apply }, { dshHome })
     await fiber.await()
     try {
@@ -182,7 +194,7 @@ describe('dsh-explain plugin lifecycle', () => {
         },
         status: { enabled: true, routeReady: true, contextWindow: 128_000 },
       })
-      const session = Session.create(SessionId('manual-command-source'))
+      const session = createSourceSession(SessionId('manual-command-source'))
       const agent = { session, ctx: new Context() } as never
       const messagesBefore = session.deriveMessages()
       expect(ctx.commands.list(agent)).toContainEqual({
@@ -246,7 +258,7 @@ describe('dsh-explain plugin lifecycle', () => {
         },
       })
 
-      const selectionSession = Session.create(SessionId('selection-command-source'))
+      const selectionSession = createSourceSession(SessionId('selection-command-source'))
       appendCompletedTurn(selectionSession, 'Selected explanation target.')
       await expect(ctx.commands.execute(
         { session: selectionSession, ctx: new Context() } as never,
@@ -262,7 +274,7 @@ describe('dsh-explain plugin lifecycle', () => {
         sourceTurn: 1,
       })
 
-      const answerSession = Session.create(SessionId('answer-command-source'))
+      const answerSession = createSourceSession(SessionId('answer-command-source'))
       appendCompletedTurn(answerSession, 'Answer explanation target.')
       await expect(ctx.commands.execute(
         { session: answerSession, ctx: new Context() } as never,
@@ -278,7 +290,7 @@ describe('dsh-explain plugin lifecycle', () => {
         sourceTurn: 1,
       })
       await expect(ctx.commands.execute(
-        { session: Session.create(SessionId('missing-answer-source')), ctx: new Context() } as never,
+        { session: createSourceSession(SessionId('missing-answer-source')), ctx: new Context() } as never,
         '/explain --suggested 9 Explain the answer.',
         [],
         new AbortController().signal,
@@ -351,6 +363,45 @@ describe('dsh-explain plugin lifecycle', () => {
         model: 'learning-model',
         maxAutoRequestsPerDay: 25,
       })
+      // A completed-turn read begun before clear must not recreate learning data.
+      let releasePage!: () => void
+      let signalPage!: () => void
+      const blockedPage = new Promise<void>(resolve => { releasePage = resolve })
+      const pageStarted = new Promise<void>(resolve => { signalPage = resolve })
+      beforePage = async () => { signalPage(); await blockedPage }
+      const delayedSession = createSourceSession(SessionId('delayed-observation'))
+      appendCompletedTurn(delayedSession, 'This source must stay cleared.')
+      const end = delayedSession.snapshotEvents().at(-1)!
+      ctx.emit('session/event', delayedSession, end)
+      await pageStarted
+      await expect(ctx.explain.clearLearningData({
+        expectedStoreRevision: ctx.explain.status().storeRevision,
+        confirmation: 'CLEAR',
+      })).resolves.toMatchObject({ ok: true })
+      releasePage()
+      await new Promise(resolve => setTimeout(resolve, 25))
+      expect(ctx.explain.threadPage({ limit: 10 }).entries).toEqual([])
+      expect(ctx.explain.status().pendingCandidateCount).toBe(0)
+
+      let releaseManualPage!: () => void
+      let signalManualPage!: () => void
+      const blockedManualPage = new Promise<void>(resolve => { releaseManualPage = resolve })
+      const manualPageStarted = new Promise<void>(resolve => { signalManualPage = resolve })
+      beforePage = async () => { signalManualPage(); await blockedManualPage }
+      const pendingCommand = ctx.commands.execute(
+        { session: delayedSession, ctx: new Context() } as never,
+        '/explain --answer 1 Explain this source.', [], new AbortController().signal,
+      )
+      await manualPageStarted
+      await expect(ctx.explain.clearLearningData({
+        expectedStoreRevision: ctx.explain.status().storeRevision,
+        confirmation: 'CLEAR',
+      })).resolves.toMatchObject({ ok: true })
+      releaseManualPage()
+      await expect(pendingCommand).resolves.toMatchObject({
+        result: { kind: 'error', text: expect.stringContaining('EXPLAIN_REQUEST_CANCELLED') },
+      })
+      expect(ctx.explain.threadPage({ limit: 10 }).entries).toEqual([])
     } finally {
       await fiber.dispose()
       await commands.dispose()

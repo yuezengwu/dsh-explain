@@ -1,38 +1,85 @@
 import { basename } from 'node:path'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import { SessionLogOffset, SessionSeq } from '@deepseek-ai/dsh-session'
+import type { SessionController } from '@deepseek-ai/dsh-api-session-controller'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { ManualExplainTarget, SourceCapsule } from './domain.ts'
 
-export type ObservedSession = Pick<Session, 'id' | 'header' | 'seq' | 'eventAt' | 'snapshotEvents'>
+export interface ObservedSession extends Pick<Session, 'id' | 'header' | 'seq'> {
+  /** Read backwards at one fixed cut through the host's asynchronous history API. */
+  eventsBefore(beforeSeq?: number): AsyncIterable<SessionEvent>
+}
+
+export function observeSession(
+  session: Pick<Session, 'id' | 'header' | 'seq'>,
+  history: Pick<SessionController, 'page'>,
+  signal: AbortSignal,
+): ObservedSession {
+  const { id, header, seq } = session
+  return {
+    id, header, seq,
+    async * eventsBefore(beforeSeq = seq) {
+      let cursor = Math.min(beforeSeq, seq)
+      while (cursor > 0) {
+        signal.throwIfAborted()
+        const page = await history.page({
+          address: { kind: 'session', sessionId: id },
+          throughSeq: seq - 1,
+          beforeSeq: cursor,
+          maxMessages: 16,
+        }, signal)
+        signal.throwIfAborted()
+        const next = page.records.reduce((min, record) => Math.min(min, record.event.seq), cursor)
+        if (page.hasMore && next >= cursor) {
+          throw new Error('dsh-explain: Session history page did not advance')
+        }
+        // Older hosts may pack stream chunks into separate records. Only settled
+        // events participate in source capture; the host owns the wire encoding.
+        for (const record of [...page.records].reverse()) {
+          if (record.type !== 'event' || record.event.seq >= cursor || record.event.seq < 0) continue
+          yield record.event as unknown as SessionEvent
+        }
+        if (!page.hasMore) return
+        cursor = next
+      }
+    },
+  }
+}
 
 /** Build one bounded capsule from a completed turn, or reject an ineligible turn. */
-export function captureSourceCapsule(
+export async function captureSourceCapsule(
   session: ObservedSession,
   end: SessionEvent<'turn/end'>,
   maxSourceChars: number,
-): SourceCapsule | undefined {
+): Promise<SourceCapsule | undefined> {
   if (end.data.reason.kind !== 'completed') return undefined
   return captureEligibleSourceCapsule(session, end, maxSourceChars)
 }
 
-function captureExplicitSourceCapsule(
+async function captureExplicitSourceCapsule(
   session: ObservedSession,
   end: SessionEvent<'turn/end'>,
   maxSourceChars: number,
-): SourceCapsule | undefined {
+): Promise<SourceCapsule | undefined> {
   if (end.data.reason.kind !== 'completed' && end.data.reason.kind !== 'max-tokens') return undefined
   return captureEligibleSourceCapsule(session, end, maxSourceChars)
 }
 
-function captureEligibleSourceCapsule(
+async function captureEligibleSourceCapsule(
   session: ObservedSession,
   end: SessionEvent<'turn/end'>,
   maxSourceChars: number,
-): SourceCapsule | undefined {
-  const start = findTurnStart(session, end.data.turn, end.seq)
-  if (start === undefined) return undefined
-  const events = session.snapshotEvents(SessionLogOffset(start), SessionLogOffset(end.seq + 1))
+): Promise<SourceCapsule | undefined> {
+  const events: SessionEvent[] = []
+  let foundStart = false
+  for await (const event of session.eventsBefore(end.seq + 1)) {
+    events.push(event)
+    if (event.type === 'turn/start' && event.data.turn === end.data.turn) {
+      foundStart = true
+      break
+    }
+  }
+  if (!foundStart) return undefined
+  events.reverse()
   if (!events.some(event => event.type === 'step/start' && event.data.turn === end.data.turn)) return undefined
 
   const userParts: string[] = []
@@ -87,20 +134,20 @@ function captureEligibleSourceCapsule(
 }
 
 /** Build one explicit request from command input and the latest eligible completed turn. */
-export function captureManualExplainTarget(
+export async function captureManualExplainTarget(
   session: ObservedSession,
   request: string,
   maxSourceChars: number,
-): ManualExplainTarget {
-  return buildManualTarget(session, request, maxSourceChars, 'manual', latestSourceCapsule(session, maxSourceChars))
+): Promise<ManualExplainTarget> {
+  return buildManualTarget(session, request, maxSourceChars, 'manual', await latestSourceCapsule(session, maxSourceChars))
 }
 
 /** Pair selected visible text with its newest reliable source coordinate. */
-export function captureSelectionExplainTarget(
+export async function captureSelectionExplainTarget(
   session: ObservedSession,
   selection: string,
   maxSourceChars: number,
-): ManualExplainTarget {
+): Promise<ManualExplainTarget> {
   const normalized = normalizeText(selection)
   if (normalized === '') throw new Error('dsh-explain: selected explanation text must not be empty')
   return buildManualTarget(
@@ -108,18 +155,18 @@ export function captureSelectionExplainTarget(
     normalized,
     maxSourceChars,
     'selection',
-    selectionSourceCapsule(session, normalized, maxSourceChars),
+    await selectionSourceCapsule(session, normalized, maxSourceChars),
   )
 }
 
 /** Pair one Explain-owned answer shortcut with its exact settled source turn. */
-export function captureAnswerExplainTarget(
+export async function captureAnswerExplainTarget(
   session: ObservedSession,
   turn: number,
   request: string,
   maxSourceChars: number,
-): ManualExplainTarget | undefined {
-  const source = sourceCapsuleForTurn(session, turn, maxSourceChars)
+): Promise<ManualExplainTarget | undefined> {
+  const source = await sourceCapsuleForTurn(session, turn, maxSourceChars)
   if (source === undefined) return undefined
   return buildManualTarget(session, request, maxSourceChars, 'answer', source)
 }
@@ -156,20 +203,19 @@ function buildManualTarget(
   }
 }
 
-function selectionSourceCapsule(
+async function selectionSourceCapsule(
   session: ObservedSession,
   selection: string,
   maxSourceChars: number,
-): SourceCapsule | undefined {
+): Promise<SourceCapsule | undefined> {
   const needle = searchableText(selection)
-  for (let index = session.seq - 1; index >= 0; index -= 1) {
-    const event = session.eventAt(SessionSeq(index))
+  for await (const event of session.eventsBefore()) {
     if (event === undefined || !searchableEventText(event).includes(needle)) continue
     if (event.type === 'assistant/message' || event.type === 'tool/result') {
       return sourceCapsuleForTurn(session, event.data.turn, maxSourceChars)
     }
     if (event.type === 'user/message') {
-      return previousSourceCapsule(session, index, maxSourceChars)
+      return previousSourceCapsule(session, event.seq, maxSourceChars)
     }
   }
   return undefined
@@ -186,47 +232,36 @@ function searchableText(text: string): string {
   return text.replace(/\s+/gu, ' ').trim()
 }
 
-function previousSourceCapsule(
+async function previousSourceCapsule(
   session: ObservedSession,
   beforeIndex: number,
   maxSourceChars: number,
-): SourceCapsule | undefined {
-  for (let index = beforeIndex - 1; index >= 0; index -= 1) {
-    const event = session.eventAt(SessionSeq(index))
+): Promise<SourceCapsule | undefined> {
+  for await (const event of session.eventsBefore(beforeIndex)) {
     if (event?.type !== 'turn/end') continue
-    const capsule = captureExplicitSourceCapsule(session, event, maxSourceChars)
+    const capsule = await captureExplicitSourceCapsule(session, event, maxSourceChars)
     if (capsule !== undefined) return capsule
   }
   return undefined
 }
 
-function sourceCapsuleForTurn(
+async function sourceCapsuleForTurn(
   session: ObservedSession,
   turn: number,
   maxSourceChars: number,
-): SourceCapsule | undefined {
-  for (let index = session.seq - 1; index >= 0; index -= 1) {
-    const event = session.eventAt(SessionSeq(index))
+): Promise<SourceCapsule | undefined> {
+  for await (const event of session.eventsBefore()) {
     if (event?.type !== 'turn/end' || event.data.turn !== turn) continue
     return captureExplicitSourceCapsule(session, event, maxSourceChars)
   }
   return undefined
 }
 
-function latestSourceCapsule(session: ObservedSession, maxSourceChars: number): SourceCapsule | undefined {
-  for (let index = session.seq - 1; index >= 0; index -= 1) {
-    const event = session.eventAt(SessionSeq(index))
+async function latestSourceCapsule(session: ObservedSession, maxSourceChars: number): Promise<SourceCapsule | undefined> {
+  for await (const event of session.eventsBefore()) {
     if (event?.type !== 'turn/end') continue
-    const capsule = captureSourceCapsule(session, event, maxSourceChars)
+    const capsule = await captureSourceCapsule(session, event, maxSourceChars)
     if (capsule !== undefined) return capsule
-  }
-  return undefined
-}
-
-function findTurnStart(session: ObservedSession, turn: number, beforeSeq: number): number | undefined {
-  for (let index = Math.min(beforeSeq, session.seq - 1); index >= 0; index -= 1) {
-    const event = session.eventAt(SessionSeq(index))
-    if (event?.type === 'turn/start' && event.data.turn === turn) return index
   }
   return undefined
 }
