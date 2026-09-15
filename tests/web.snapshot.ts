@@ -412,6 +412,8 @@ describe('keyless assembled DSH Web learning view', () => {
     await settings.getByRole('spinbutton', { name: '每 24 小时自主请求上限' }).fill('12')
     await settings.getByRole('button', { name: '保存设置' }).click()
     await settings.getByText('设置 revision 1', { exact: true }).waitFor({ timeout: 15_000 })
+    // The revision push can arrive before the save request finishes.
+    await settings.getByRole('button', { name: '保存设置', exact: true }).waitFor({ timeout: 15_000 })
     await compareOrRefresh(await stableAria(settings), SETTINGS_GOLDEN)
     await settingsDialog.getByRole('button', { name: '关闭', exact: true }).click()
 
