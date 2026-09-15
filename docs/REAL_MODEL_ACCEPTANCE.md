@@ -16,7 +16,7 @@
 | 验收配置 | `idleCompactMs: 10000`、`timeoutMs: 60000`、辅助输出上限 1600 tokens、`maxAttempts: 1` |
 | 数据格式 | SQLite schema 4，backup v3 |
 
-凭据只从已有本地配置注入测试进程，不进入截图、公开证据或仓库。日常模型设置未修改。发布收尾提交只补充文档和证据；运行时代码与上面的已合入提交相同。每个发布提交的门禁仍以其自己的 [CI](https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml) 为准。
+凭据只从已有本地配置注入测试进程，不进入截图、公开证据或仓库。日常模型设置未修改。发布收尾提交补充文档和证据，并让 Web/M6 测试兼容已经被宿主选中的会话；运行时代码与上面的已合入提交相同。每个发布提交的门禁仍以其自己的 [CI](https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml) 为准。
 
 ## 实际操作与结果
 
