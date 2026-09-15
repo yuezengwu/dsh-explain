@@ -1,5 +1,13 @@
 # dsh-explain 迭代计划
 
+## M18：DSH 0.1.6-alpha.1 兼容
+
+> 状态：**实现与本地验收完成**（2026-09-15）。
+
+开发依赖、锁文件、peer 声明和源码链接门禁新增 0.1.6-alpha.1，保留七个既有宿主；CI 固定八个源码提交。新发布包的 store 依赖缺失仍可独立复现，精确版本补丁扩展到本次 alpha。发布包通过 frozen install、类型检查、80 项测试、build / pack；八个宿主各通过类型检查、80 项测试、7 Web、3 M6 和构建。产品运行时与 SQLite schema 4、backup v3 无需变更。
+
+后续需跟进上游同步 Session 历史读取的替代入口，再迁移 Explain 的来源观察；当前接口仍可运行，不能把弃用视为已移除。上游依赖问题继续在 [Discussion #6082](https://github.com/deepseek-ai/deepseek-harness/discussions/6082) 跟进；目录资料同步、真实辅助模型教学验收和 v0.3.0 标签发布分别记录，不以自动化兼容测试替代。版本与渠道见 [兼容约定](./COMPATIBILITY.md)。
+
 ## M17：DSH 0.1.5-rc.1 / rc.2 兼容
 
 > 状态：**实现与本地验收完成**（2026-09-11）。

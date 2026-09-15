@@ -52,6 +52,8 @@ jobs:
             sha: 183f08e9c6dde7e36cd2318eaee70b0da08fb35e
           - version: 0.1.5-rc.2
             sha: fb2c4b9e698e30edb738bca4cf0618587db7d203
+          - version: 0.1.6-alpha.1
+            sha: 0a15e36e7f82b6ed45af6fa9759f29b40dcd965d
     name: DSH ${{ matrix.version }}
     env:
       DSH_SOURCE_DIR: ${{ github.workspace }}/.dsh-source
