@@ -40,7 +40,7 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 The current development and installation baseline is DSH `0.1.6-alpha.1`, published on 2026-09-15 and available through npm `alpha`. npm `next` remains `0.1.5-rc.2` and `latest` remains `0.1.5-rc.1`; all seven previously verified hosts remain supported. Pin the version explicitly; see the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions, asynchronous Session history reads, and verification.
 
 ```sh
-npx @deepseek-ai/dsh@0.1.6-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.6-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain#v0.3.0
 npx @deepseek-ai/dsh@0.1.6-alpha.1 --profile web
 ```
 
@@ -48,7 +48,7 @@ Open **Settings → Learning**, choose an auxiliary provider and model, enable l
 
 Git-hosted plugins build during installation. If pnpm requests build approval, add the printed `dsh-explain` entry to the profile's `pnpm-workspace.yaml`, then repeat the install command. For automated runs that should not open a browser, start DSH with `--no-open`.
 
-> The latest tagged Explain release is `v0.2.0`; `v0.3.0` has not been published. Installing from GitHub uses the current `main` branch with compatibility for all eight versions listed below.
+> The commands pin Explain [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0). Omit `#v0.3.0` only when you want the current `main` branch.
 
 ## Start from the work itself
 
@@ -94,12 +94,13 @@ Explain uses first-party DSH conversation, composer, assistant-action, and setti
 | Check | Current result |
 |---|---|
 | DSH compatibility | `0.1.6-alpha.1` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.6-alpha.1` assembled source |
-| Unit and integration | 80 tests on each source version |
+| Unit and integration | 84 tests on each source version |
 | Assembled DSH Web | 7 scenarios per source version |
 | Explain-owned shortcuts | 3 M6 scenarios |
 | Production package | Build and pack dry-run |
+| Real auxiliary model | DSH `0.1.6-alpha.1` + `deepseek-flash`: explanation, rephrase, corrected preference, correct/incorrect review, exact-answer command, export and clear |
 
-See the [acceptance matrix](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ACCEPTANCE.md) for coverage and [PR #16](https://github.com/yuezengwu/dsh-explain/pull/16) for the earlier real-model workflow evidence. DSH remains a developer preview; Explain follows its current public API line instead of retaining compatibility layers for private-preview packages.
+See the [acceptance matrix](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ACCEPTANCE.md) for coverage and the [2026-09-15 real-model acceptance](https://github.com/yuezengwu/dsh-explain/blob/main/docs/REAL_MODEL_ACCEPTANCE.md) for the current model route, sample, screenshots, and test limits. DSH remains a developer preview; Explain follows its current public API line instead of retaining compatibility layers for private-preview packages.
 
 ## Local development
 

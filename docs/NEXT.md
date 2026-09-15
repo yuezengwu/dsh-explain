@@ -1,12 +1,18 @@
 # dsh-explain 迭代计划
 
+## v0.3.0 发布收尾（2026-09-15）
+
+实现和真实模型验收已完成，发布入口为 [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0)。`deepseek-flash` 在 DSH 0.1.6-alpha.1 上通过讲解、重讲、偏好修正、正反答案复习、精确回答命令、导出及清空；精确运行时代码与证据见[真实模型验收](./REAL_MODEL_ACCEPTANCE.md)。本次发布提交只补充文档和验收素材，运行时代码与 PR #40 合入提交一致。
+
+社区后续集中在已有 [52DSH PR #2](https://github.com/tuofangzhe/dsh-plugins/pull/2) 和 [metadata PR #2336](https://github.com/dsh-pluginmarket/metadata/pull/2336)，合并及目录抓取由外部维护者处理；上游缺失依赖继续在 Discussion #6082 跟踪。真实用户反馈沿用 [Issue #31](https://github.com/yuezengwu/dsh-explain/issues/31)。以下里程碑保留当时状态，当前发布状态以此节和 release 为准。
+
 ## M19：异步来源读取与社区资料修复
 
-> 状态：**实现完成，执行发布前检查**（2026-09-15）。
+> 状态：**已合入 `main`（PR #40），八宿主门禁通过**（2026-09-15）。
 
 来源读取迁移到八个宿主共有的异步分页接口，移除生产代码中的同步 Session 历史读取；保持来源选择、隐私隔离和 SQLite schema 4 / backup v3。自动观察和手动来源读取都在等待完成后检查 generation，避免清空数据后旧请求重新写入。新增分页回归、清空期间读请求竞态回归，并修复中英文 README 在目录网站上的相对文档与媒体链接。
 
-目录记录通过固定提交的修复 PR 推进。真实辅助模型验收需要可用模型连接；v0.3.0 发布状态和真实模型证据独立记录，不把无密钥测试当作教学效果证据。
+目录记录通过固定提交的修复 PR 推进；同日完成真实辅助模型验收，见本页发布收尾记录。无密钥测试和真实模型样例各自保留证据范围。
 
 ## M18：DSH 0.1.6-alpha.1 兼容
 

@@ -1,0 +1,80 @@
+{
+  "date": "2026-09-15",
+  "timezone": "Asia/Taipei",
+  "explainVersion": "0.3.0",
+  "explainRuntimeCommit": "de416e535ced1ee7e786effec9328986aefc0f90",
+  "dshVersion": "0.1.6-alpha.1",
+  "dshCommit": "0a15e36e7f82b6ed45af6fa9759f29b40dcd965d",
+  "provider": "deepseek-official",
+  "model": "deepseek-flash",
+  "protocol": "messages",
+  "thinking": "disabled",
+  "modelsEndpointStatus": 200,
+  "isolation": {
+    "freshHome": true,
+    "freshPublicSampleWorkspace": true,
+    "mockedModelResponses": false,
+    "reviewDueTimeAccelerated": true,
+    "reviewClockMethod": "After asserting the generated next-day/three-day schedule, update only the isolated review_state.next_review_at to the past."
+  },
+  "outcomes": {
+    "automaticExplanation": "passed",
+    "rephrase": "passed",
+    "profileCorrectionAfterCompaction": "passed",
+    "correctRecall": "mastered",
+    "incorrectApplication": "forgotten",
+    "exactAnswerShortcut": "passed",
+    "mainAgentTurns": 1,
+    "mainAgentAnswers": 1,
+    "browserPageErrors": 0
+  },
+  "dataManagement": {
+    "format": "dsh-explain-backup",
+    "backupVersion": 3,
+    "databaseSchemaVersion": 4,
+    "entries": 5,
+    "reviewResults": [
+      "forgotten",
+      "mastered"
+    ],
+    "profileCorrectionPreserved": true,
+    "privateFieldsExcluded": true,
+    "before": {
+      "entries": 5,
+      "topics": 2,
+      "explanations": 2,
+      "review_attempts": 2,
+      "review_state": 1,
+      "context_observations": 4,
+      "context_checkpoints": 2,
+      "learner_profile_overrides": 1,
+      "learner_profile_events": 1
+    },
+    "after": {
+      "entries": 0,
+      "topics": 0,
+      "explanations": 0,
+      "review_attempts": 0,
+      "review_state": 0,
+      "context_observations": 0,
+      "context_checkpoints": 0,
+      "learner_profile_overrides": 0,
+      "learner_profile_events": 0
+    },
+    "usagePreserved": true,
+    "usedAutoRequests": 1,
+    "settingsPreserved": true
+  },
+  "evidenceSha256": {
+    "01-real-explanation.txt": "fc25f834aba9ef099ebc970893026602f27f695568d9c5e5498f0b637bfe05d3",
+    "02-rephrase-and-profile.txt": "0a6eb792ce842c89cf58e8fec7a178902b61d92531fbee4009974e28f6a96fc6",
+    "03-correct-review.txt": "a0373b819efd8bb0f3376357a56420553aedc98d295f1ec2322116c742698f0d",
+    "04-wrong-review.txt": "d214192d80104e35caada9b3ea32146a3abd0e3b225bf72b92d94490c5b0ace1",
+    "05-real-answer-command.txt": "b2a383bfc31c4e2621999759f2153aaf69cec5610b3aa8389767ddef1cc1be54",
+    "07-clear-settings.txt": "d9d349e0a43d8e5a82c80b8df5a7434cfb7c214669712db50f50dc5dbccdd5b9",
+    "08-cleared-learning.txt": "97a4afda63c2366207f63e3a920121883c074f0a9086b10bc4165cd42402e491",
+    "03-correct-review.png": "c2e251c165454932880d54315ec190d1453dcc03533efc2dae32aa56ee8d81c9",
+    "04-wrong-review.png": "42f1963903f84752a414c85b2c76a74e7fdb3efbc31b6f8e3f5abb63b9ba1fb7",
+    "08-cleared-learning.png": "8a4364d6b1b763d2facf27c7a94e7caaa8047b8792a7c7036c7ee42575ddfa9c"
+  }
+}

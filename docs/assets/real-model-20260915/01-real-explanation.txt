@@ -1,0 +1,62 @@
+- main:
+  - heading "全局学习线程" [level=1]
+  - text: 运行正常，正在等待合格回合 当前上下文压力 0.2%
+  - strong: "1"
+  - text: 学习中
+  - strong: "0"
+  - text: 已掌握
+  - strong: "1"
+  - text: 待反馈
+  - strong: 1/5
+  - text: 自主额度
+  - heading "今日复习" [level=2]
+  - paragraph: 用回忆、应用和辨析把“看懂了”变成“真正记住了”。
+  - button "开始复习" [disabled]
+  - strong: "0"
+  - text: 待复习
+  - strong: "0"
+  - text: 薄弱概念
+  - strong: "0"
+  - text: 首次复习
+  - strong: "0"
+  - text: 今日完成 暂无待复习概念。标记“懂了”的概念会在次日进入复习。
+  - heading "学习概况" [level=2]
+  - text: 尚未生成全局学习概况
+  - heading "讲解偏好" [level=3]
+  - paragraph: 这是 Explain 当前采用的学习画像。显式偏好优先于修正，修正优先于模型推断。
+  - strong: 讲解长度
+  - text: 偏好简短解释 模型推断 信心 高 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - strong: 内容结构
+  - text: 尚无判断
+  - button "设置偏好"
+  - strong: 示例方式
+  - text: 更容易理解具体代码例子，并希望看到一个常见错误示例 模型推断 信心 高 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - strong: 术语习惯
+  - text: 使用中文术语讲解 模型推断 信心 中 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - heading "主题熟悉度" [level=3]
+  - strong: typescript-discriminated-union-narrowing
+  - text: 入门 模型推断 信心 中 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - heading "当前会话" [level=2]
+  - article:
+    - heading "TypeScript 可辨识联合与类型收窄" [level=3]
+    - text: 来源 real-v03… · 当前 回合 1
+    - time: 2026/9/15 17:23:01
+    - text: 当前
+    - heading "是什么" [level=4]
+    - paragraph: "用一个共享的字面量字段（如 kind: \"ok\" | \"error\"）区分多个对象类型，构成可辨识联合。当用 result.kind === \"ok\" 比较时，TypeScript 做类型收窄，只在匹配的分支里把 result 缩成对应的类型，所以能安全访问该分支独有的 value；error 分支没有 value，收窄前访问会报错。"
+    - heading "为什么" [level=4]
+    - paragraph: 联合类型表示“多个形状之一”，编译器不能默认某个独有字段一定存在。字面量判别字段充当标签，=== 比较字面量让编译器排除其他分支，从而精确缩小类型，避免在运行时访问 undefined 的属性。
+    - heading "常见坑" [level=4]
+    - paragraph: 常见错误是忘了先判断就访问 result.value（报 Property 'value' does not exist on type 'Result'），或在 if 分支外用收窄后的类型。正确做法是在 if (r.kind === "ok") 分支内使用 r.value，else 分支使用 r.message。
+    - button "✓ 懂了"
+    - button "✗ 没懂"
+  - heading "学习历史" [level=2]
+  - text: 还没有讲解。完成工作回合后，explain 会在值得讲解时记录到这里。

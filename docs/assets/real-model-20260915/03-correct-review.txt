@@ -1,0 +1,68 @@
+- main:
+  - heading "全局学习线程" [level=1]
+  - text: 运行正常，正在等待合格回合 当前上下文压力 0.2%
+  - strong: "0"
+  - text: 学习中
+  - strong: "1"
+  - text: 已掌握
+  - strong: "0"
+  - text: 待反馈
+  - strong: 1/5
+  - text: 自主额度
+  - heading "今日复习" [level=2]
+  - paragraph: 用回忆、应用和辨析把“看懂了”变成“真正记住了”。
+  - button "开始复习" [disabled]
+  - strong: "0"
+  - text: 待复习
+  - strong: "0"
+  - text: 薄弱概念
+  - strong: "0"
+  - text: 首次复习
+  - strong: "1"
+  - text: 今日完成 下次复习： 2026/9/18 17:25:25
+  - heading "最近复习" [level=3]
+  - strong: TypeScript 可辨识联合与类型收窄
+  - text: 掌握
+  - paragraph: 回答准确抓住了可辨识联合的核心：用 kind 字面量标签区分两种对象形状，通过 kind === "ok" 比较触发类型收窄，使分支内能安全访问 value/error 分支访问 message。也说明了重要性——编译器阻止访问未确认存在的字段，减少运行时错误。表述清晰、完整。
+  - text: 下次复习： 2026/9/18 17:25:25
+  - heading "学习概况 模型推断" [level=2]
+  - heading "知识概况" [level=3]
+  - paragraph: "正在学习 TypeScript 的可辨识联合类型收窄（discriminated union narrowing）。已经理解用共享字面量字段（如 kind: \"ok\" | \"error\"）作为标签，在 if (r.kind === \"ok\") 分支内才能安全访问该分支独有的字段（如 value），否则会报 Property 'value' does not exist。最初用“快递包裹”比喻说明时需要多次解释，后来借助错误与正确写法的对比示例得以理解。基础用法已入门，仍需在嵌套判断、switch 与更复杂场景中巩固。"
+  - heading "学习进展" [level=3]
+  - paragraph: 一开始对“先判断标签再访问字段”的机制未能理解，反馈后通过“先错误、后正确”的对比代码示例掌握，反馈转为理解。学习者偏好简短、带对比代码示例的中文讲解，后续应继续用这种方式引入 switch 收窄与嵌套情况的常见陷阱。
+  - heading "讲解偏好" [level=3]
+  - paragraph: 这是 Explain 当前采用的学习画像。显式偏好优先于修正，修正优先于模型推断。
+  - strong: 讲解长度
+  - text: 尚无判断
+  - button "设置偏好"
+  - strong: 内容结构
+  - text: 尚无判断
+  - button "设置偏好"
+  - strong: 示例方式
+  - text: 使用两个对比代码示例，先展示错误，再展示正确写法。 用户修正 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - strong: 术语习惯
+  - text: 使用中文术语进行讲解。 模型推断 信心 中 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - heading "主题熟悉度" [level=3]
+  - strong: typescript-discriminated-union-narrowing
+  - text: 入门 模型推断 信心 中 来源会话 · 回合 1
+  - button "纠正"
+  - button "忘记这一判断"
+  - group: 最近的画像修改记录
+  - heading "当前会话" [level=2]
+  - text: 当前会话暂无讲解
+  - heading "学习历史" [level=2]
+  - text: 已标记为懂了 来源 real-v03…
+  - time: 2026/9/15 17:24:41
+  - text: 已掌握
+  - button "撤销掌握"
+  - text: TypeScript 可辨识联合与类型收窄 来源 real-v03… 回合 1
+  - time: 2026/9/15 17:23:38
+  - text: 已掌握 请求换一种讲法 来源 real-v03…
+  - time: 2026/9/15 17:23:35
+  - text: 已掌握 TypeScript 可辨识联合与类型收窄 来源 real-v03… 回合 1
+  - time: 2026/9/15 17:23:01
+  - text: 已掌握

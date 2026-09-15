@@ -33,11 +33,11 @@ Explain 的来源观察和手动来源定位已迁移至公开的 `sessionContro
 ## 安装
 
 ```sh
-npx @deepseek-ai/dsh@0.1.6-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain
+npx @deepseek-ai/dsh@0.1.6-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain#v0.3.0
 npx @deepseek-ai/dsh@0.1.6-alpha.1 --profile web
 ```
 
-如使用 npm 默认渠道，将两条命令中的版本均替换为 `0.1.5-rc.1`；旧 `0.1.2-rc.1` 也继续受支持。Explain 当前 GitHub 安装使用 `main`；最新标签仍为 `v0.2.0`，尚未发布 `v0.3.0`。宿主的 Session 格式迁移与插件 SQLite 分开管理：升级前保留 DSH 数据备份；八个版本的独立验收不表示新版 Session 文件能降级给旧宿主读取。
+如使用 npm 默认渠道，将两条命令中的版本均替换为 `0.1.5-rc.1`；旧 `0.1.2-rc.1` 也继续受支持。上述命令固定 Explain [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0)；需要跟随 `main` 时省略 `#v0.3.0`。宿主的 Session 格式迁移与插件 SQLite 分开管理：升级前保留 DSH 数据备份；八个版本的独立验收不表示新版 Session 文件能降级给旧宿主读取。
 
 ## 兼容实现
 
@@ -73,7 +73,7 @@ node --import tsx/esm apps/cli/src/bin.ts plugin --profile web add /absolute/pat
 node --import tsx/esm apps/cli/src/bin.ts --profile web --no-open
 ```
 
-CI 检查锁定的 0.1.6-alpha.1 发布包及上述依赖修复，并对八个固定源码提交运行完整组装矩阵。上表是本地运行证据；对应提交的 CI 结果见 [Actions](https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml)。Web/M6 使用临时 Session、数据库和无密钥夹具；本轮不构成真实模型教学效果评估。现有 Demo 媒体仍明确标注 `0.1.2-rc.1`。
+CI 检查锁定的 0.1.6-alpha.1 发布包及上述依赖修复，并对八个固定源码提交运行完整组装矩阵。上表是本地运行证据；对应提交的 CI 结果见 [Actions](https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml)。Web/M6 使用临时 Session、数据库和无密钥夹具，其结果只证明自动化行为。另于同日用 `deepseek-official/deepseek-flash`、当前默认 Messages 协议完成[真实模型学习闭环验收](./REAL_MODEL_ACCEPTANCE.md)，证据与范围单独记录。现有 Demo 媒体仍明确标注 `0.1.2-rc.1`。
 
 ## 修复后的学习行为
 

@@ -59,4 +59,4 @@ The generated background is decorative only. Every visible application screen co
 - About: `Private, local-first continuous learning for DeepSeek Harness: capture, review, and correct what Explain learns.`
 - Homepage: `https://dsh-hub.org/plugins/yuezengwu-dsh-explain`
 - Topics: retain `deepseek`, `deepseek-harness`, `dsh`, `dsh-plugin`, `learning`, `local-first`, `sqlite`; add `spaced-repetition`; remove the implementation-only `typescript` topic.
-- Release boundary: the showcase does not publish `v0.3.0`; release creation remains a separate approval.
+- Release boundary: this deterministic showcase is separate from release acceptance. The later [v0.3.0 real-model acceptance](./REAL_MODEL_ACCEPTANCE.md) records the current host and model evidence.
