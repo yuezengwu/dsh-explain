@@ -2,7 +2,11 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
-## M17 当前宿主兼容门禁（2026-09-11）
+## M18 当前宿主兼容门禁（2026-09-15）
+
+0.1.6-alpha.1 发布包经精确版本 store 依赖修复，通过 frozen install、类型检查、80 项单元/集成、构建和 pack dry-run。八个固定源码宿主（七个既有版本与新增 0.1.6-alpha.1）分别通过类型检查、80 项测试、7 Web、3 M6 和构建；快照期望无需改写。设置快照显式等待保存请求完成，避免 revision 推送早于请求结束时误取“保存中”状态；该竞态曾造成 rc.2 CI 失败。新版 Web 输入区、侧边栏与设置调整未破坏 Explain 的学习视图和快捷草稿。独立 npm import 仍复现新版 store 缺少 Zustand。同步 Session 历史读取只被弃用，现有实现继续可用；该后续迁移项与精确 SHA 见 [兼容约定](./COMPATIBILITY.md)。
+
+## M17 宿主兼容门禁（2026-09-11）
 
 0.1.5-rc.2 发布包在精确版本依赖修复后，通过 frozen install、类型检查、80 项单元/集成、构建和 pack dry-run。七个固定源码宿主（0.1.2-rc.1、0.1.3-alpha.1/alpha.2、0.1.5-alpha.1/alpha.2/rc.1/rc.2）分别通过类型检查、80 项测试、7 Web 和 3 M6；既有视图和快捷入口保持原验收期望。独立 npm import 对照确认 store 依赖缺失在两个新 rc 仍存在，原 alpha.1 对照成功。精确提交和修复范围见 [兼容约定](./COMPATIBILITY.md)。
 
