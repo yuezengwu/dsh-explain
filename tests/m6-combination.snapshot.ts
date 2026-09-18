@@ -2,7 +2,7 @@ import { COMPOSER_LABEL } from './web-locators.ts'
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createServer } from 'node:net'
 import { existsSync, realpathSync } from 'node:fs'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -253,6 +253,36 @@ describe('M6 Explain-owned shortcuts', () => {
   })
 
   it('removes and restores the complete shortcut layer after Web unload', async () => {
+    const version = (JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }).version
+    if (version === '0.1.6-alpha.2') {
+      if (page === undefined) throw new Error('Web page is not initialized')
+      // This release also supports live Host and Client unloading without a restart.
+      await page.getByRole('button', { name: '插件', exact: true }).click()
+      const toggle = page.getByRole('switch', { name: '启用 explain', exact: true })
+      await toggle.waitFor({ timeout: 15_000 }).catch(async (error: unknown) => {
+        throw new Error(`Plugin toggle unavailable\n${await page!.locator('body').ariaSnapshot()}`, { cause: error })
+      })
+      await expect.poll(() => toggle.getAttribute('aria-checked')).toBe('true')
+      await toggle.click()
+      await expect.poll(() => toggle.getAttribute('aria-checked')).toBe('false')
+      await expect.poll(() => page!.locator('style[data-plugin="dsh-explain"]').count()).toBe(0)
+      const session = page.locator('[role="treeitem"][aria-selected]').filter({ hasText: 'workspace' })
+      await session.click()
+      expect(await page.getByRole('tab', { name: '学习', exact: true }).count()).toBe(0)
+      expect(await page.getByRole('button', { name: '解释选中文字', exact: true }).count()).toBe(0)
+      await page.getByRole('button', { name: '插件', exact: true }).click()
+      await toggle.click()
+      await expect.poll(() => toggle.getAttribute('aria-checked')).toBe('true')
+      await expect.poll(() => page!.locator('style[data-plugin="dsh-explain"]').count()).toBe(1)
+      await session.click()
+      const learning = page.getByRole('tab', { name: '学习', exact: true })
+      await learning.waitFor({ timeout: 15_000 })
+      expect(await learning.count()).toBe(1)
+      expect(await page.getByRole('button', { name: '解释选中文字', exact: true }).count()).toBe(1)
+      await learning.click()
+      await page.getByText('学习模式已关闭', { exact: true }).waitFor({ timeout: 15_000 })
+      expect(pageErrors).toEqual([])
+    }
     await browser?.close()
     browser = undefined
     await stopDsh(host)

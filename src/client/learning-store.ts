@@ -18,6 +18,7 @@ import type {
 } from 'dsh-explain/types'
 import type { RequestId } from 'dsh-explain/types'
 import type {} from 'dsh-explain/remote'
+import { openLearningSource } from './session-compat.ts'
 
 const PAGE_SIZE = 30
 const RETRY_MS = 1_000
@@ -424,7 +425,7 @@ export class GlobalLearningStore {
         this.setNavigationError('SOURCE_UNAVAILABLE')
         return false
       }
-      this.ctx.sessions.open(sourceSessionId)
+      openLearningSource(this.ctx, sourceSessionId)
       this.setNavigationError(undefined)
       return true
     } catch {

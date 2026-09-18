@@ -1,7 +1,6 @@
 /** Browser half: mount typed Remote and register the global Learning view. */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
-import type { SessionId } from '@deepseek-ai/dsh-session'
 import explainRemote from 'dsh-explain/remote'
 import type {} from '@deepseek-ai/dsh-api-gateway/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -12,7 +11,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from 'dsh-explain/remote'
 import {
-  commitExplainDraft,
   ExplainAnswerShortcut,
   ExplainSelectionShortcut,
   type ExplainShortcutInjected,
@@ -25,6 +23,7 @@ import {
 import { GlobalLearningStore } from './learning-store.ts'
 import { en, NS, zh } from './locales.ts'
 import { LEARNING_VIEW_CSS } from './styles.ts'
+import { draftForSession, type ExplainSessionTarget } from './session-compat.ts'
 
 /** Required services: typed Remote, locale dictionaries, and conversation slots. */
 export const inject = ['remote', 'locale', 'slots', 'sessions', 'conversation']
@@ -44,14 +43,8 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       return () => { style.remove() }
     }, 'dsh-explain: learning view styles')
     const t = scope.locale.bind(NS)
-    const shortcuts = (sessionId: SessionId): ExplainShortcutInjected => ({
-      draft: (command) => {
-        const sessionScope = scope.sessions.scope(sessionId)
-        return commitExplainDraft(
-          sessionScope === undefined ? undefined : scope.conversation.input.for(sessionScope),
-          command,
-        )
-      },
+    const shortcuts = (target: ExplainSessionTarget): ExplainShortcutInjected => ({
+      draft: command => draftForSession(scope, target, command),
     })
     scope.slots.inject('conversation.view', () => scope.slots.register({
       name: 'conversation.view',
@@ -59,7 +52,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       order: 20,
       locale: NS,
       label: () => t('view.learning'),
-      inject: (_sessionId: SessionId): LearningViewInjected => ({
+      inject: (): LearningViewInjected => ({
         hooks: { learning: learning.store, sessions: scope.sessions.list },
         activate: () => learning.mount(),
         loadOlder: () => learning.loadOlder(),
