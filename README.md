@@ -40,7 +40,7 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 The current development and installation baseline is DSH `0.1.6-alpha.2`, published on 2026-09-17 and available through npm `alpha`. npm `next` and `latest` both point to `0.1.5-rc.2`; all eight previously verified hosts remain supported. Pin the version explicitly; see the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions, Session navigation and lifecycle compatibility, and verification.
 
 ```sh
-npx @deepseek-ai/dsh@0.1.6-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.1.6-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#v0.3.1
 npx @deepseek-ai/dsh@0.1.6-alpha.2 --profile web
 ```
 
@@ -48,7 +48,7 @@ Open **Settings → Learning**, choose an auxiliary provider and model, enable l
 
 Git-hosted plugins build during installation. If pnpm requests build approval, add the printed `dsh-explain` entry to the profile's `pnpm-workspace.yaml`, then repeat the install command. For automated runs that should not open a browser, start DSH with `--no-open`.
 
-> DSH 0.1.6-alpha.2 needs the compatibility fixes on `main`; no new Explain release tag has been published for them. The existing [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0) tag supports DSH through 0.1.6-alpha.1. Use a full commit SHA instead of `#main` when you need a fixed revision.
+> [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) adds DSH 0.1.6-alpha.2 support while retaining all eight previously verified hosts. It fixes source navigation and Explain shortcuts for the new Session API, with live plugin disable/re-enable coverage. Existing learning data remains compatible (SQLite schema 4, backup v3).
 
 ## Start from the work itself
 

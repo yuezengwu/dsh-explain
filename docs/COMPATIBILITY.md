@@ -40,11 +40,11 @@ Explain 的来源观察和手动来源定位已迁移至公开的 `sessionContro
 ## 安装
 
 ```sh
-npx @deepseek-ai/dsh@0.1.6-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.1.6-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#v0.3.1
 npx @deepseek-ai/dsh@0.1.6-alpha.2 --profile web
 ```
 
-如使用 npm 默认渠道，将两条命令中的版本均替换为 `0.1.5-rc.2`；旧 `0.1.2-rc.1` 也继续受支持。上述命令使用 `main` 的 alpha.2 修复，尚未发布新 Explain 标签；现有 [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0) 支持截至 DSH 0.1.6-alpha.1，不包含本轮客户端修复。需固定版本时用兼容 PR 的精确提交替换 `#main`。宿主的 Session 格式迁移与插件 SQLite 分开管理：升级前保留 DSH 数据备份；九个版本的独立验收不表示新版 Session 文件能降级给旧宿主读取。
+如使用 npm 默认渠道，将两条命令中的版本均替换为 `0.1.5-rc.2`；旧 `0.1.2-rc.1` 也继续受支持。上述命令固定安装 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1)，包含 alpha.2 客户端修复并保留表中八个旧宿主。旧 v0.3.0 标签的支持范围截至 DSH 0.1.6-alpha.1。宿主的 Session 格式迁移与插件 SQLite 分开管理：升级前保留 DSH 数据备份；九个版本的独立验收不表示新版 Session 文件能降级给旧宿主读取。
 
 ## 兼容实现
 
