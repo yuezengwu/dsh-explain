@@ -40,7 +40,7 @@
 当前开发与安装基线为 DSH `0.1.6-alpha.2`，于 2026-09-17 发布，npm `alpha` 指向该版本。npm `next` 与 `latest` 均为 `0.1.5-rc.2`；八个既有宿主继续受支持。安装时显式指定版本，精确源码提交、Session 导航和生命周期适配与验证记录见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
 
 ```sh
-npx @deepseek-ai/dsh@0.1.6-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.1.6-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#v0.3.1
 npx @deepseek-ai/dsh@0.1.6-alpha.2 --profile web
 ```
 
@@ -48,7 +48,7 @@ npx @deepseek-ai/dsh@0.1.6-alpha.2 --profile web
 
 Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按提示把 `dsh-explain` 加入该 profile 的 `pnpm-workspace.yaml`，然后重新执行安装命令。自动化运行不应打开浏览器时，可在启动 DSH 时加上 `--no-open`。
 
-> DSH 0.1.6-alpha.2 需要 `main` 中的兼容修复，目前未为这些修改发布新的 Explain 标签。现有 [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0) 标签的支持范围截至 DSH 0.1.6-alpha.1；需要固定版本时，使用兼容 PR 中的精确提交。
+> [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 新增 DSH 0.1.6-alpha.2 支持，保留八个已验证的旧宿主。修复新版 Session API 下的来源跳转和 Explain 快捷入口，并覆盖插件实时停用/启用。既有学习数据继续兼容（SQLite schema 4、backup v3）。
 
 ## 从正在做的工作开始学习
 

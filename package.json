@@ -1,6 +1,6 @@
 {
   "name": "dsh-explain",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "description": "DSH learning-mode plugin with a global local-first learning thread.",
   "repository": {
