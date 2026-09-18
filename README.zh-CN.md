@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img alt="DSH 0.1.6-alpha.1" src="https://img.shields.io/badge/DSH-0.1.6--alpha.1-4c8bf5">
+  <img alt="DSH 0.1.6-alpha.2" src="https://img.shields.io/badge/DSH-0.1.6--alpha.2-4c8bf5">
   <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="本地优先" src="https://img.shields.io/badge/数据-本地优先-2ea44f">
@@ -37,18 +37,18 @@
 
 ## 快速开始
 
-当前开发与安装基线为 DSH `0.1.6-alpha.1`，于 2026-09-15 发布，npm `alpha` 指向该版本。npm `next` 仍为 `0.1.5-rc.2`，`latest` 仍为 `0.1.5-rc.1`；七个既有宿主继续受支持。安装时显式指定版本，精确源码提交、异步 Session 历史读取方式与验证记录见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
+当前开发与安装基线为 DSH `0.1.6-alpha.2`，于 2026-09-17 发布，npm `alpha` 指向该版本。npm `next` 与 `latest` 均为 `0.1.5-rc.2`；八个既有宿主继续受支持。安装时显式指定版本，精确源码提交、Session 导航和生命周期适配与验证记录见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
 
 ```sh
-npx @deepseek-ai/dsh@0.1.6-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain#v0.3.0
-npx @deepseek-ai/dsh@0.1.6-alpha.1 --profile web
+npx @deepseek-ai/dsh@0.1.6-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.1.6-alpha.2 --profile web
 ```
 
 启动后进入「**设置 → 学习**」，选择辅助模型的 provider 和 model，启用学习模式并保存。Explain 只观察此后完成的顶层工作回合，不补扫已有历史。
 
 Git 仓库插件会在安装时构建。如果 pnpm 要求批准构建，请按提示把 `dsh-explain` 加入该 profile 的 `pnpm-workspace.yaml`，然后重新执行安装命令。自动化运行不应打开浏览器时，可在启动 DSH 时加上 `--no-open`。
 
-> 上述命令固定安装 Explain [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0)。需要跟随当前 `main` 时才省略 `#v0.3.0`。
+> DSH 0.1.6-alpha.2 需要 `main` 中的兼容修复，目前未为这些修改发布新的 Explain 标签。现有 [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0) 标签的支持范围截至 DSH 0.1.6-alpha.1；需要固定版本时，使用兼容 PR 中的精确提交。
 
 ## 从正在做的工作开始学习
 
@@ -93,10 +93,10 @@ Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 s
 
 | 检查 | 当前结果 |
 |---|---|
-| DSH 兼容 | `0.1.6-alpha.1` 发布包；`0.1.2-rc.1`、`0.1.3-alpha.1`、`0.1.3-alpha.2`、`0.1.5-alpha.1`、`0.1.5-alpha.2`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.6-alpha.1` 组装源码 |
-| 单元与集成 | 八个源码版本各 84 项测试 |
-| DSH Web 组装验收 | 八个源码版本各 7 个场景 |
-| Explain 自有快捷入口 | 3 个 M6 场景 |
+| DSH 兼容 | `0.1.6-alpha.2` 发布包；`0.1.2-rc.1`、`0.1.3-alpha.1`、`0.1.3-alpha.2`、`0.1.5-alpha.1`、`0.1.5-alpha.2`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.6-alpha.1`、`0.1.6-alpha.2` 组装源码 |
+| 单元与集成 | 九个源码版本各 87 项测试 |
+| DSH Web 组装验收 | 九个源码版本各 7 个场景 |
+| Explain 自有快捷入口 | 3 个 M6 场景；alpha.2 增加实时停用与重新启用验收 |
 | 生产包 | 构建与 pack dry-run |
 | 真实辅助模型 | DSH `0.1.6-alpha.1` + `deepseek-flash`：讲解、重讲、偏好修正、正反答案复习、精确回答命令、导出与清空 |
 
@@ -104,7 +104,7 @@ Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 s
 
 ## 本地开发
 
-默认开发安装使用已发布的 `0.1.6-alpha.1` API 包，并仅针对已复现版本补齐[遗漏的 store 运行依赖](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复)。组装 Web 测试支持上表八个版本中任一已构建的 DSH 源码 checkout；现有 Demo 录制仍使用 `0.1.2-rc.1`：
+默认开发安装使用已发布的 `0.1.6-alpha.2` API 包，并仅针对已复现版本补齐[遗漏的 store 运行依赖](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复)。组装 Web 测试支持上表九个版本中任一已构建的 DSH 源码 checkout；现有 Demo 录制仍使用 `0.1.2-rc.1`：
 
 ```sh
 pnpm install

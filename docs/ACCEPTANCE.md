@@ -2,6 +2,14 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M20：DSH 0.1.6-alpha.2 客户端兼容（2026-09-18）
+
+固定新源码 `ddefc45fbc7f8e46dd73185e68295696d1297887`，保留八个原有宿主。发布包类型检查发现 `sessions.open()` 已移除；来源跳转改走新版工作区导航，旧版继续使用原入口。Session slot reference 直接提供其 binding 的作用域，避免把 reference 当作 id 导致快捷草稿不可用；释放后的点击返回不可用。新增三项回归覆盖 reference generation、已释放引用、旧版已有草稿保护及新版来源跳转失败反馈，总数为 87 项。
+
+新宿主通过 7 个真实组装 Web 场景与 3 个 M6 场景；M6 还在新版插件管理页实时关闭、启用插件，验证样式、学习入口及快捷操作消失与单份恢复，并读取恢复后的学习状态。产品快照期望不变。发布包仍复现 store 缺少 Zustand/Immer，精确版本补丁扩至五个受影响版本。当前 CI 固定九个源码宿主；本地验证范围及提交证据见[兼容约定](./COMPATIBILITY.md)。
+
+此兼容修复使用 `main`，现有 v0.3.0 标签不包含它；本轮未发新标签，也未进行真实模型调用。下方 9 月 15 日模型验收保留原版本与范围。
+
 ## v0.3.0 真实辅助模型验收（2026-09-15）
 
 在独立 home、空白会话和自建公开 TypeScript 样例中，使用 DSH `0.1.6-alpha.1` 与 `deepseek-official/deepseek-flash` 的 Messages 协议完成真实学习闭环。自动讲解、重讲、用户修正跨压缩保留、正确回忆判为 mastered、错误应用判为 forgotten、精确回答命令、backup v3 导出和确认式清空均通过。主 Agent 仍只有一轮回答；清空后学习表为空，路由、启用和自主额度保留。

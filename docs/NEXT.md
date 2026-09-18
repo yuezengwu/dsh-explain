@@ -1,10 +1,14 @@
 # dsh-explain 迭代计划
 
+## M20：DSH 0.1.6-alpha.2 兼容（2026-09-18）
+
+当前代码适配 0.1.6-alpha.2 的来源导航与 Session reference slot，保留八个既有宿主，并新增新版插件管理页的实时停用/启用验收。发布包与九宿主 CI 门禁见[兼容约定](./COMPATIBILITY.md)。本轮不发布新标签：alpha.2 使用修复后的 `main` 或精确提交，v0.3.0 标签的支持范围截至 alpha.1。社区资料需明确这一区别；目录实际刷新与外部 PR 审批分别跟踪。
+
 ## v0.3.0 发布收尾（2026-09-15）
 
 实现和真实模型验收已完成，发布入口为 [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0)。`deepseek-flash` 在 DSH 0.1.6-alpha.1 上通过讲解、重讲、偏好修正、正反答案复习、精确回答命令、导出及清空；精确运行时代码与证据见[真实模型验收](./REAL_MODEL_ACCEPTANCE.md)。本次发布提交补充文档和验收素材，并修正 Web/M6 测试只查找未选中会话的前提，增加重复打开当前会话的检查；运行时代码与 PR #40 合入提交一致。
 
-社区后续集中在已有 [52DSH PR #2](https://github.com/tuofangzhe/dsh-plugins/pull/2) 和 [metadata PR #2336](https://github.com/dsh-pluginmarket/metadata/pull/2336)，合并及目录抓取由外部维护者处理；上游缺失依赖继续在 Discussion #6082 跟踪。真实用户反馈沿用 [Issue #31](https://github.com/yuezengwu/dsh-explain/issues/31)。以下里程碑保留当时状态，当前发布状态以此节和 release 为准。
+社区后续集中在已有 [52DSH PR #2](https://github.com/tuofangzhe/dsh-plugins/pull/2) 和 [metadata PR #2336](https://github.com/dsh-pluginmarket/metadata/pull/2336)，合并及目录抓取由外部维护者处理；上游缺失依赖继续在 Discussion #6082 跟踪。真实用户反馈沿用 [Issue #31](https://github.com/yuezengwu/dsh-explain/issues/31)。以下里程碑保留当时状态；标签发布以 release 为准，后续兼容范围见上方 M20。
 
 ## M19：异步来源读取与社区资料修复
 
