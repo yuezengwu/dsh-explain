@@ -158,7 +158,7 @@ describe('M6 Explain-owned shortcuts', () => {
   const plugin: PluginSpec = {
     marker: '# == dsh-explain',
     packageName: 'dsh-explain',
-    installSpec: REPOSITORY,
+    installSpec: process.env.DSH_EXPLAIN_INSTALL_SPEC ?? REPOSITORY,
   }
   const pageErrors: string[] = []
 

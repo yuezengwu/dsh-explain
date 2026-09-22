@@ -44,7 +44,7 @@ export type ExplainRuntimeSettings = Pick<ResolvedExplainConfig,
 > & { readonly provider?: string; readonly model?: string }
 
 /** Loader schema with every deployment tunable defined in architecture v6. */
-export const Config = z.object({
+const PlainConfig = z.object({
   enabled: z.boolean().default(false),
   provider: z.string(),
   model: z.string(),
@@ -79,6 +79,27 @@ export const RuntimeSettings = z.object({
   maxAttempts: z.number().step(1).min(1).default(2),
 })
 
+/** Loader values are plain on older hosts and live references on DSH 0.1.7+. */
+export type ExplainPluginConfig = {
+  readonly [K in keyof ExplainConfig]: ExplainConfig[K] | { readonly get: () => ExplainConfig[K] }
+}
+
+/** Mark runtime fields live when the host supports volatile configuration. */
+export const Config = z.object(Object.fromEntries(
+  Object.entries(PlainConfig.dict!).map(([key, field]) => {
+    const schema = field as z & { volatile?: () => z }
+    return [key, key !== 'dshHome' && key !== 'storageDir' && typeof schema.volatile === 'function'
+      ? schema.volatile() : schema]
+  }),
+)) as z<ExplainPluginConfig>
+
+/** Capture one consistent set of plain loader values without retaining live refs. */
+export function readExplainConfig(config: ExplainPluginConfig): ExplainConfig {
+  return Object.fromEntries(Object.entries(config).map(([key, value]) => [
+    key, typeof value === 'object' && value !== null && 'get' in value ? value.get() : value,
+  ]))
+}
+
 /** Project one resolved loader config into the settings-owned live subset. */
 export function runtimeSettings(config: ResolvedExplainConfig): ExplainRuntimeSettings {
   return {
@@ -112,7 +133,7 @@ export function resolveExplainConfig(input: ExplainConfig): ResolvedExplainConfi
   for (const key of Object.keys(input)) {
     if (!CONFIG_KEYS.has(key)) throw new Error(`dsh-explain: unknown config key "${key}"`)
   }
-  const config = Config(input)
+  const config = PlainConfig(input)
   const dshHome = config.dshHome?.trim() || process.env.DSH_HOME || resolve(homedir(), '.dsh')
   const storageDir = config.storageDir?.trim()
   const provider = config.provider?.trim()

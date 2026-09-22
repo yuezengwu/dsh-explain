@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, Service } from '@deepseek-ai/cordis'
 import CommandService from '@deepseek-ai/dsh-commands'
 import LlmService, {
   createAssistantMessage,
@@ -15,7 +15,8 @@ import LlmService, {
 } from '@deepseek-ai/dsh-llm'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import Settings, { type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import { SettingsConflictError, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import { RuntimeSettings, type ExplainRuntimeSettings } from '../src/config.ts'
 import TokenMeterService from '@deepseek-ai/dsh-token-meter'
 import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { Config, apply, inject, name } from '../src/index.ts'
@@ -28,15 +29,31 @@ function createSourceSession(id: ReturnType<typeof SessionId>): Session {
   return session
 }
 
-class MemorySettings extends Settings {
-  override readonly writable = true
-  private readonly data: Record<string, unknown> = {}
+/** In-memory legacy settings transport; Web tests exercise each host's real persistence. */
+class MemorySettings extends Service {
+  private value: ExplainRuntimeSettings | undefined
+  private revision = 0
+  private changed = (): void => {}
 
-  protected override load(): Promise<Record<string, unknown>> { return Promise.resolve(this.data) }
+  constructor(ctx: Context) { super(ctx, 'settings') }
 
-  protected override persist(namespace: SettingsNamespace, section: Record<string, unknown>): Promise<void> {
-    this.data[namespace] = structuredClone(section)
-    return Promise.resolve()
+  installSection(ctx: Context, _ns: string, _schema: typeof RuntimeSettings, entry: ExplainRuntimeSettings, options: {
+    setSource(source: () => ExplainRuntimeSettings): void
+    onChange(): void
+  }): void {
+    this.value = entry
+    options.setSource(() => this.value!)
+    this.changed = options.onChange
+    ctx.effect(() => () => { this.value = undefined })
+  }
+
+  describe() { return [{ ns: 'dsh-explain', revision: this.revision, user: this.value }] }
+
+  async update(ns: SettingsNamespace, patch: object, expected?: number): Promise<void> {
+    if (expected !== undefined && expected !== this.revision) throw new SettingsConflictError(ns, expected, this.revision)
+    this.value = RuntimeSettings({ ...this.value, ...patch })
+    this.revision++
+    this.changed()
   }
 }
 

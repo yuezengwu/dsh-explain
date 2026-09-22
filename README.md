@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img alt="DSH 0.1.6-alpha.2" src="https://img.shields.io/badge/DSH-0.1.6--alpha.2-4c8bf5">
+  <img alt="DSH 0.1.7-alpha.1" src="https://img.shields.io/badge/DSH-0.1.7--alpha.1-4c8bf5">
   <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="Local first" src="https://img.shields.io/badge/data-local--first-2ea44f">
@@ -37,12 +37,16 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 ## Quick start
 
-The current development and installation baseline is DSH `0.1.6-alpha.2`, published on 2026-09-17 and available through npm `alpha`. npm `next` and `latest` both point to `0.1.5-rc.2`; all eight previously verified hosts remain supported. Pin the version explicitly; see the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions, Session navigation and lifecycle compatibility, and verification.
+DSH `0.1.7-alpha.1` support is available on `main` and has not been tagged as a new Explain release. It preserves the nine previously verified hosts. The latest Explain release, `v0.3.1`, supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
+
+For the new alpha, install the current development branch:
 
 ```sh
-npx @deepseek-ai/dsh@0.1.6-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#v0.3.1
-npx @deepseek-ai/dsh@0.1.6-alpha.2 --profile web
+npx @deepseek-ai/dsh@0.1.7-alpha.1 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.1.7-alpha.1 --profile web
 ```
+
+For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-09-22, npm `alpha` is `0.1.7-alpha.1`, `latest` is `0.1.5-rc.2`, and `next` is `0.1.5-rc.3`. The `next` version has no matching official Git tag at this check and is not in the verified matrix.
 
 Open **Settings → Learning**, choose an auxiliary provider and model, enable learning mode, and save. Explain observes only future completed top-level turns; it does not scan existing history.
 
@@ -81,7 +85,7 @@ Concepts marked **Got it** enter a local spaced-review schedule. **Learning → 
 | Data | Behavior |
 |---|---|
 | Learning thread | Stored in `$DSH_HOME/dsh-explain/v1/thread.sqlite`. |
-| Enablement and model settings | Stored through DSH settings in `$DSH_HOME/settings.yaml`. |
+| Enablement and model settings | DSH 0.1.7 stores live fields in the active profile patch; older hosts use `$DSH_HOME/settings.yaml`. Explain imports its own legacy section once per profile, preserves explicit profile overrides and the original file, and leaves storage paths unchanged. |
 | Source material | Reduced to bounded capsules; rephrasing retains at most a 2,000-character restricted summary. |
 | Global learning context | Sent with bounded source text to the configured auxiliary provider. Local storage does not imply offline model inference. |
 | Export | A versioned local backup excludes private source summaries and filters common credential/path formats in public text. Arbitrary private prose may remain; review before sharing. |
@@ -93,18 +97,18 @@ Explain uses first-party DSH conversation, composer, assistant-action, and setti
 
 | Check | Current result |
 |---|---|
-| DSH compatibility | `0.1.6-alpha.2` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.6-alpha.1`, `0.1.6-alpha.2` assembled source |
-| Unit and integration | 87 tests on each source version |
-| Assembled DSH Web | 7 scenarios per source version |
-| Explain-owned shortcuts | 3 M6 scenarios; alpha.2 also exercises live disable/re-enable |
-| Production package | Build and pack dry-run |
+| DSH compatibility | `0.1.7-alpha.1` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.6-alpha.1`, `0.1.6-alpha.2`, `0.1.7-alpha.1` assembled source |
+| Unit and integration | 90 tests on each source version |
+| Assembled DSH Web | 7 shared scenarios; 0.1.7 adds legacy-settings migration and restart coverage |
+| Explain-owned shortcuts | 3 M6 scenarios; 0.1.6-alpha.2 and 0.1.7-alpha.1 also exercise live disable/re-enable |
+| Production package | Frozen install, build and pack |
 | Real auxiliary model | DSH `0.1.6-alpha.1` + `deepseek-flash`: explanation, rephrase, corrected preference, correct/incorrect review, exact-answer command, export and clear |
 
 See the [acceptance matrix](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ACCEPTANCE.md) for coverage and the [2026-09-15 real-model acceptance](https://github.com/yuezengwu/dsh-explain/blob/main/docs/REAL_MODEL_ACCEPTANCE.md) for the current model route, sample, screenshots, and test limits. DSH remains a developer preview; Explain follows its current public API line instead of retaining compatibility layers for private-preview packages.
 
 ## Local development
 
-The default development install uses published `0.1.6-alpha.2` API packages, with a version-scoped repair for their [missing store runtime dependencies](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the nine versions above. The existing demo recording remains on `0.1.2-rc.1`:
+The default development install uses published `0.1.7-alpha.1` API packages, with a version-scoped repair for their [missing store runtime dependencies](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the ten versions above. The existing demo recording remains on `0.1.2-rc.1`:
 
 ```sh
 pnpm install

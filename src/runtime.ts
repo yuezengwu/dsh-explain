@@ -1,3 +1,4 @@
+import { dirname } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import {
   SettingsConflictError,
@@ -9,6 +10,7 @@ import {
   type ResolvedExplainConfig,
 } from './config.ts'
 import { ExplainRouteError, resolveExplainRoute } from './explainer.ts'
+import { migrateLegacySettings } from './settings-migration.ts'
 import { ExplainScheduler } from './scheduler.ts'
 import type { ExplainStore } from './store.ts'
 import type {
@@ -23,6 +25,13 @@ import type {
 } from './types.ts'
 
 type SetEnabledError = Extract<SetEnabledResult, { readonly ok: false }>['error']
+interface LegacySettings {
+  installSection(ctx: Context, ns: string, schema: typeof RuntimeSettings, entry: ExplainRuntimeSettings, options: {
+    setSource(source: () => ExplainRuntimeSettings): void
+    onChange(): void
+  }): void
+}
+
 const SETTINGS_NAMESPACE = 'dsh-explain'
 
 /** Settings owner and lifecycle bridge around the global scheduler. */
@@ -32,11 +41,13 @@ export class ExplainRuntime {
   private current: ExplainRuntimeSettings
   private synchronizeTail: Promise<void> = Promise.resolve()
   private clearing = false
+  private readonly namespace: string
 
   constructor(
     private readonly ctx: Context,
     private readonly store: ExplainStore,
     resolved: ResolvedExplainConfig,
+    liveSettings: () => ExplainRuntimeSettings,
   ) {
     const entry = runtimeSettings(resolved)
     this.settingsSource = () => entry
@@ -46,14 +57,42 @@ export class ExplainRuntime {
       this.store.notifyRuntimeChange()
       this.scheduler.adaptersUpdated()
     })
-    ctx.settings.installSection(ctx, SETTINGS_NAMESPACE, RuntimeSettings, entry, {
-      setSource: (source) => { this.settingsSource = source },
-      onChange: () => {
-        void this.synchronize().catch((error: unknown) => {
-          ctx.logger('dsh-explain').warn('settings synchronization failed: %s', messageOf(error))
-        })
-      },
-    })
+    const synchronize = (): void => {
+      void this.synchronize().catch((error: unknown) => {
+        ctx.logger('dsh-explain').warn('settings synchronization failed: %s', messageOf(error))
+      })
+    }
+    const settings = ctx.settings as typeof ctx.settings & Partial<LegacySettings>
+    if (typeof settings.installSection === 'function') {
+      this.namespace = SETTINGS_NAMESPACE
+      settings.installSection(ctx, this.namespace, RuntimeSettings, entry, {
+        setSource: source => { this.settingsSource = source },
+        onChange: synchronize,
+      })
+    } else {
+      const fiber = ctx.fiber as typeof ctx.fiber & { entry?: { options: { id?: string } } }
+      const id = fiber.entry?.options.id
+      if (id === undefined) throw new Error('dsh-explain: live settings require a profile entry')
+      this.namespace = id
+      this.settingsSource = liveSettings
+      // Older supported Cordis declarations predate this event. Only the new
+      // settings path registers it; the loader dispatches it to the owning fiber.
+      const on = ctx.on as (name: 'loader/volatile-update', listener: () => void) => () => void
+      on.call(ctx, 'loader/volatile-update', synchronize)
+      const abort = new AbortController()
+      ctx.effect(() => () => { abort.abort() }, 'dsh-explain: stop legacy settings migration')
+      const host = ctx as Context & {
+        profileContext: { home: string }
+        loader: { await(): Promise<void> }
+      }
+      void (host.root as typeof host).loader.await().then(async () => {
+        if (abort.signal.aborted) return
+        await migrateLegacySettings(settings, this.namespace, host.profileContext.home,
+          dirname(settings.documentPath!), abort.signal)
+      }).catch(() => {
+        if (!abort.signal.aborted) ctx.logger('dsh-explain').warn('Legacy learning settings could not be imported; the original settings file is retained.')
+      })
+    }
   }
 
   /** Start lease renewal and any configured runtime work. */
@@ -65,7 +104,7 @@ export class ExplainRuntime {
   /** Current UI-editable settings paired with the native namespace revision. */
   configuration(): ExplainConfigurationView {
     const descriptor = this.ctx.settings.describe({ redactSecrets: true })
-      .find(candidate => candidate.ns === SETTINGS_NAMESPACE)
+      .find(candidate => candidate.ns === this.namespace)
     if (descriptor === undefined) throw new Error('dsh-explain: settings namespace is unavailable')
     const settings = normalizeSettings(this.settingsSource())
     return {
@@ -129,7 +168,7 @@ export class ExplainRuntime {
       }
     }
     try {
-      await this.ctx.settings.update(SETTINGS_NAMESPACE, {
+      await this.ctx.settings.update(this.namespace, {
         enabled: request.enabled,
         provider: request.provider?.trim() ?? '',
         model: request.model?.trim() ?? '',
@@ -154,7 +193,7 @@ export class ExplainRuntime {
         return { code: 'RUNTIME_FAILED', message: 'The selected auxiliary model route is unavailable.' }
       }
     }
-    await this.ctx.settings.update(SETTINGS_NAMESPACE, { enabled })
+    await this.ctx.settings.update(this.namespace, { enabled })
     await this.synchronize()
     return undefined
   }

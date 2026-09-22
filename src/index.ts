@@ -10,7 +10,7 @@ import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-token-meter'
 import { RequestId } from './brands.ts'
-import { resolveExplainConfig, type ExplainConfig } from './config.ts'
+import { readExplainConfig, runtimeSettings, resolveExplainConfig, type ExplainPluginConfig } from './config.ts'
 import { ExplainGateway } from './gateway.ts'
 import {
   captureManualExplainTarget,
@@ -42,10 +42,10 @@ export * from './brands.ts'
 export type * from './types.ts'
 
 /** Open the global runtime, observe eligible completed turns, and publish commands and Remote methods. */
-export async function apply(ctx: Context, config: ExplainConfig): Promise<void> {
-  const resolved = resolveExplainConfig(config)
+export async function apply(ctx: Context, config: ExplainPluginConfig): Promise<void> {
+  const resolved = resolveExplainConfig(readExplainConfig(config))
   const store = new ExplainStore(resolved.databasePath)
-  const runtime = new ExplainRuntime(ctx, store, resolved)
+  const runtime = new ExplainRuntime(ctx, store, resolved, () => runtimeSettings(resolveExplainConfig(readExplainConfig(config))))
   try {
     await runtime.start()
   } catch (error) {

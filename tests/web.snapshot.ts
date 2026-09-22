@@ -1,3 +1,5 @@
+import { DatabaseSync } from 'node:sqlite'
+import { parse, stringify } from 'yaml'
 import { COMPOSER_LABEL } from './web-locators.ts'
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createServer } from 'node:net'
@@ -63,6 +65,12 @@ function runDsh(dshSource: string, dshHome: string, args: readonly string[]): vo
     encoding: 'utf8',
     stdio: 'pipe',
   })
+}
+
+function runtimeOwner(dshHome: string): unknown {
+  const database = new DatabaseSync(join(dshHome, 'dsh-explain/v1/thread.sqlite'), { readOnly: true })
+  try { return database.prepare("SELECT owner_id FROM runtime_lease WHERE name = 'explainer'").get()?.['owner_id'] }
+  finally { database.close() }
 }
 
 async function seedLearningDatabase(dshHome: string): Promise<void> {
@@ -282,6 +290,7 @@ async function openWorkspaceSession(page: Page, workspaceLabel: string): Promise
 describe('keyless assembled DSH Web learning view', () => {
   let root: string
   let dshHome: string
+  let dshSource: string
   let workspace: string
   let sourceWorkspace: string
   let host: ChildProcessWithoutNullStreams | undefined
@@ -290,7 +299,7 @@ describe('keyless assembled DSH Web learning view', () => {
   const pageErrors: string[] = []
 
   beforeAll(async () => {
-    const dshSource = requireDshSource()
+    dshSource = requireDshSource()
     root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-explain-web-snapshot-')))
     dshHome = join(root, 'home')
     workspace = join(root, 'workspace-primary')
@@ -299,7 +308,7 @@ describe('keyless assembled DSH Web learning view', () => {
       mkdir(workspace, { recursive: true }),
       mkdir(sourceWorkspace, { recursive: true }),
     ])
-    runDsh(dshSource, dshHome, ['plugin', '--profile', 'web', 'add', REPOSITORY])
+    runDsh(dshSource, dshHome, ['plugin', '--profile', 'web', 'add', process.env.DSH_EXPLAIN_INSTALL_SPEC ?? REPOSITORY])
     await writeFile(join(dshHome, 'profiles/web/cordis.patch.yml'), [
       '- id: directory-picker',
       '  disabled: true',
@@ -401,7 +410,7 @@ describe('keyless assembled DSH Web learning view', () => {
     expect(pageErrors).toEqual([])
   })
 
-  it('saves one native settings revision and opens an available source Session', async () => {
+  it('saves settings without remounting and opens an available source Session', async () => {
     if (page === undefined) throw new Error('web page is not initialized')
     await page.getByRole('button', { name: '设置', exact: true }).click()
     const settingsDialog = page.getByRole('dialog', { name: '设置', exact: true })
@@ -409,11 +418,14 @@ describe('keyless assembled DSH Web learning view', () => {
     await settingsDialog.getByRole('button', { name: '学习', exact: true }).click()
     const settings = page.getByTestId('dsh-explain-settings-section')
     await settings.waitFor({ timeout: 15_000 })
+    const owner = runtimeOwner(dshHome)
+    expect(typeof owner).toBe('string')
     await settings.getByRole('spinbutton', { name: '每 24 小时自主请求上限' }).fill('12')
     await settings.getByRole('button', { name: '保存设置' }).click()
     await settings.getByText('设置 revision 1', { exact: true }).waitFor({ timeout: 15_000 })
     // The revision push can arrive before the save request finishes.
     await settings.getByRole('button', { name: '保存设置', exact: true }).waitFor({ timeout: 15_000 })
+    expect(runtimeOwner(dshHome)).toBe(owner)
     await compareOrRefresh(await stableAria(settings), SETTINGS_GOLDEN)
     await settingsDialog.getByRole('button', { name: '关闭', exact: true }).click()
 
@@ -505,7 +517,7 @@ describe('keyless assembled DSH Web learning view', () => {
     const view = page.getByTestId('dsh-explain-learning-view')
     await view.getByText('还没有讲解。完成工作回合后，explain 会在值得讲解时记录到这里。', { exact: true })
       .waitFor({ timeout: 15_000 })
-    expect(await view.getByRole('heading', { name: '用判别字段安全缩小联合类型' }).count()).toBe(0)
+    await view.getByRole('heading', { name: '用判别字段安全缩小联合类型' }).waitFor({ state: 'detached', timeout: 15_000 })
     expect(pageErrors).toEqual([])
   })
 
@@ -535,6 +547,59 @@ describe('keyless assembled DSH Web learning view', () => {
     expect(await view.getByRole('button', { name: '加载更早记录', exact: true }).isVisible()).toBe(true)
     expect(pageErrors).toEqual([])
   })
+
+  it('imports legacy settings into the new profile and keeps later edits after two restarts', async (test) => {
+    const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
+    if (manifest.version !== '0.1.7-alpha.1') test.skip()
+    if (page === undefined) throw new Error('web page is not initialized')
+    await stopDsh(host)
+    host = undefined
+    const legacyPath = join(dshHome, 'settings.yaml.imported')
+    const legacy = 'dsh-explain:\n  enabled: false\n  provider: legacy-provider\n  model: legacy-model\n  timeoutMs: 19000\n  maxAutoRequestsPerDay: 17\n'
+    await writeFile(legacyPath, legacy)
+    // Simulate a profile that set its budget but has not overridden the old route.
+    const patchPath = join(dshHome, 'profiles/web/cordis.patch.yml')
+    const rows = parse(await readFile(patchPath, 'utf8')) as { id?: string; config?: Record<string, unknown> }[]
+    const config = rows.find(row => row.id === 'explain')?.config
+    if (config === undefined) throw new Error('saved Explain profile configuration is missing')
+    delete config.provider
+    delete config.model
+    await writeFile(patchPath, stringify(rows))
+    const restart = async (): Promise<Locator> => {
+      const started = await startDsh(dshSource, dshHome, await freePort())
+      host = started.child
+      await page!.goto(started.authenticatedUrl, { waitUntil: 'load' })
+      // A keyless profile may offer model setup again after a process restart.
+      const later = page!.getByRole('button', { name: '稍后配置', exact: true })
+      await later.waitFor({ state: 'visible', timeout: 3_000 }).then(() => later.click()).catch(() => {})
+      await page!.getByRole('button', { name: '设置', exact: true }).click()
+      await page!.getByRole('dialog', { name: '设置', exact: true })
+        .getByRole('button', { name: '学习', exact: true }).click()
+      const settings = page!.getByTestId('dsh-explain-settings-section')
+      await settings.waitFor({ timeout: 15_000 })
+      return settings
+    }
+    const settings = await restart()
+    await expect.poll(() => settings.getByRole('combobox', { name: /^模型/u }).inputValue(), { timeout: 15_000 }).toBe('legacy-model')
+    expect(await settings.getByRole('spinbutton', { name: '每 24 小时自主请求上限' }).inputValue()).toBe('12')
+    const patch = await readFile(join(dshHome, 'profiles/web/cordis.patch.yml'), 'utf8')
+    expect(patch).toContain('legacy-provider')
+    expect(patch).toContain('19000')
+    expect(await readFile(legacyPath, 'utf8')).toBe(legacy)
+    expect(await readFile(join(dshHome, 'profiles/web/.dsh-explain-settings-migrated'), 'utf8')).toBe('1\n')
+    await settings.getByRole('combobox', { name: 'Provider', exact: true }).selectOption('')
+    await settings.getByRole('combobox', { name: /^模型/u }).fill('')
+    await settings.getByRole('spinbutton', { name: '每 24 小时自主请求上限' }).fill('13')
+    await settings.getByRole('button', { name: '保存设置', exact: true }).click()
+    await settings.getByRole('button', { name: '保存设置', exact: true }).waitFor({ timeout: 15_000 })
+    await stopDsh(host)
+    host = undefined
+    const restored = await restart()
+    expect(await restored.getByRole('combobox', { name: /^模型/u }).inputValue()).toBe('')
+    expect(await restored.getByRole('spinbutton', { name: '每 24 小时自主请求上限' }).inputValue()).toBe('13')
+    expect(await readFile(legacyPath, 'utf8')).toBe(legacy)
+    expect(pageErrors).toEqual([])
+  }, 60_000)
 
   it('keeps the fixture inventory closed', async () => {
     expect((await readdir(SNAPSHOT_DIRECTORY)).sort()).toEqual([
