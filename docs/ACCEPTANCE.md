@@ -2,6 +2,10 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M21：DSH 0.1.7-alpha.1 兼容（2026-09-22）
+
+新增 live Config / profile 设置适配、旧设置一次性迁移、Session V4 消息来源和工具结果兼容，以及新旧快捷图标适配。三项迁移回归覆盖旧文件保留、字段隔离、显式配置优先、重置不重复导入、失败可重试与取消。90 项单元/集成在十个固定宿主执行；真实 Web 在新 alpha 增加迁移及两次重启场景，旧宿主保留七个共有场景；M6 保留三项含实时停用/启用的验证。SQLite schema 4 和 backup v3 不变，精确提交与证据范围见[兼容约定](./COMPATIBILITY.md)。
+
 ## M20：DSH 0.1.6-alpha.2 客户端兼容（2026-09-18）
 
 固定新源码 `ddefc45fbc7f8e46dd73185e68295696d1297887`，保留八个原有宿主。发布包类型检查发现 `sessions.open()` 已移除；来源跳转改走新版工作区导航，旧版继续使用原入口。Session slot reference 直接提供其 binding 的作用域，避免把 reference 当作 id 导致快捷草稿不可用；释放后的点击返回不可用。新增三项回归覆盖 reference generation、已释放引用、旧版已有草稿保护及新版来源跳转失败反馈，总数为 87 项。

@@ -266,7 +266,9 @@ async function latestSourceCapsule(session: ObservedSession, maxSourceChars: num
   return undefined
 }
 
-function textBlocks(blocks: readonly ContentBlock[]): string[] {
+type ReadableBlock = ContentBlock | { readonly type: 'tool-result'; readonly content: readonly ReadableBlock[] }
+
+function textBlocks(blocks: readonly ReadableBlock[]): string[] {
   const texts: string[] = []
   for (const block of blocks) {
     if (block.type === 'text') texts.push(block.text)

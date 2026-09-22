@@ -1,12 +1,18 @@
 /** Explain-owned composer and assistant-message shortcuts. */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { IconSparkle16, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
+import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ComponentType } from 'react'
 import type {
   InjectFace, PropsLocale, PropsRuntime,
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ChatSnapshot } from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from './locales.ts'
+
+const { Tooltip } = primitives
+const icons = primitives as typeof primitives & { IconSparkle16?: ComponentType; IconSparkleRegular?: ComponentType }
+const IconSparkle = icons.IconSparkleRegular ?? icons.IconSparkle16
+if (IconSparkle === undefined) throw new Error('dsh-explain: host sparkle icon is unavailable')
 
 const MAX_SELECTION_CHARS = 10_000
 
@@ -128,7 +134,7 @@ export function ExplainSelectionShortcut({ useInput, draft, t }: ExplainSelectio
           onPointerDown={capture}
           onClick={activate}
         >
-          <IconSparkle16 />
+          <IconSparkle />
         </button>
       </Tooltip>
       {status !== null && <span className="dsh-explain-visually-hidden" role="status">{status}</span>}
@@ -166,7 +172,7 @@ export function ExplainAnswerShortcut({ messageId, useChat, useInput, draft, t }
           data-unavailable={unavailable || undefined}
           onClick={activate}
         >
-          <IconSparkle16 />
+          <IconSparkle />
         </button>
       </Tooltip>
       {status !== null && <span className="dsh-explain-visually-hidden" role="status">{status}</span>}

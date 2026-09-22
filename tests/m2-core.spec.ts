@@ -54,7 +54,7 @@ describe('completed-turn source observation', () => {
       content: [{ type: 'text', text: 'How does narrowing work?' }],
     }), { surfaceOp: 'append' })
     session.append('user/message', createUserMessage({
-      source: { kind: 'plugin', plugin: 'test-context' },
+      source: { kind: 'dsh-explain' },
       content: [{ type: 'text', text: 'private synthetic context' }],
     }), { surfaceOp: 'append' })
     const callId = ToolCallId('call-1')

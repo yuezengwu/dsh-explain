@@ -29,9 +29,15 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
-      - run: pnpm pack --dry-run
+      - run: pnpm pack --out dsh-explain.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-explain-package
+          path: dsh-explain.tgz
+          if-no-files-found: error
 
   assembled:
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -56,11 +62,18 @@ jobs:
             sha: 0a15e36e7f82b6ed45af6fa9759f29b40dcd965d
           - version: 0.1.6-alpha.2
             sha: ddefc45fbc7f8e46dd73185e68295696d1297887
+          - version: 0.1.7-alpha.1
+            sha: c36a83ff6bb95e3f82cf79f9be7c724270a8aa61
     name: DSH ${{ matrix.version }}
     env:
       DSH_SOURCE_DIR: ${{ github.workspace }}/.dsh-source
+      DSH_EXPLAIN_INSTALL_SPEC: ${{ github.workspace }}/.package/dsh-explain.tgz
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: dsh-explain-package
+          path: .package
       - uses: actions/checkout@v7
         with:
           repository: deepseek-ai/deepseek-harness

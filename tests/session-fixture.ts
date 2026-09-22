@@ -1,5 +1,6 @@
+import { auxiliarySystemMessage } from '../src/message-compat.ts'
 import { observeSession } from '../src/observer.ts'
-import { createMessage, type AssistantMessage, type Message } from '@deepseek-ai/dsh-llm'
+import { type AssistantMessage, type Message } from '@deepseek-ai/dsh-llm'
 import { SESSION_FORMAT_VERSION, type Session } from '@deepseek-ai/dsh-session'
 
 /** Synthetic settled message accepted by DSH v1, v2 and v3 Session formats. */
@@ -20,11 +21,7 @@ export function appendSystemContext(session: Session, text: string): void {
   append.call(session, 'system/message', {
     turn: 1,
     step: 1,
-    message: createMessage({
-      role: 'system',
-      source: { kind: 'plugin', plugin: 'test-system-context' },
-      content: [{ type: 'text', text }],
-    }),
+    message: auxiliarySystemMessage(text),
   }, { surfaceOp: 'append' })
 }
 

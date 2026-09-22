@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WorkspaceTypertGenerator } from '@deepseek-ai/dsh-typert-generator'
+import { addLegacyCodecAccess } from './typert-codec-compat.mjs'
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const workspace = mkdtempSync(join(tmpdir(), 'dsh-explain-typert-'))
@@ -101,9 +102,10 @@ try {
     throw new Error(`TypeRT generator did not emit the dsh-explain host and Remote artifacts: ${JSON.stringify({ discovered, artifacts: summary })}`)
   }
   mkdirSync(join(repository, 'lib'), { recursive: true })
-  writeFileSync(join(repository, 'lib', 'typert.host.js'), artifact.js)
+  const compatible = (source, name) => `${source}\n${addLegacyCodecAccess.toString()}\naddLegacyCodecAccess(${name})\n`
+  writeFileSync(join(repository, 'lib', 'typert.host.js'), compatible(artifact.js, 'TYPERT.invocations'))
   writeFileSync(join(repository, 'lib', 'typert.host.d.ts'), artifact.dts)
-  writeFileSync(join(repository, 'lib', 'typert.remote-client.js'), artifact.remote.js)
+  writeFileSync(join(repository, 'lib', 'typert.remote-client.js'), compatible(artifact.remote.js, 'TYPERT_REMOTE.descriptors'))
   writeFileSync(join(repository, 'lib', 'typert.remote-client.d.ts'), artifact.remote.dts)
   writeFileSync(join(repository, 'lib', 'typert.remote-client.d.ts.map'), artifact.remote.dtsMap)
   console.log('generated TypeRT host and Remote artifacts')

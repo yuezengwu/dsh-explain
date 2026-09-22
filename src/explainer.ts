@@ -1,7 +1,7 @@
+import { auxiliarySystemMessage } from './message-compat.ts'
 import { redactLearningData } from './privacy.ts'
 import {
   BlockAssembler,
-  createMessage,
   createUserMessage,
   type ReasoningEffortId,
   type Message,
@@ -26,6 +26,12 @@ import type {
   ReviewEvaluationTarget,
   SourceCapsule,
 } from './domain.ts'
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'dsh-explain': { kind: 'dsh-explain' }
+  }
+}
 
 const SYSTEM = `You are dsh-explain, a private auxiliary learning assistant. Decide whether one completed coding-work turn contains a useful teachable concept for this user, using only the supplied bounded source capsule and learning context. Write every user-visible title and explanation field in the language used by sourceCapsule.userText. Do not infer occupation, identity, health, politics, or other sensitive attributes. Return exactly one JSON object with no markdown or extra text.`
 
@@ -297,11 +303,7 @@ function contextLanguageSample(batch: CompactionBatch): string {
 
 /** Heuristically price the complete request plus output reservation. */
 export function estimateAuxiliaryRequest(ctx: Context, request: AuxiliaryRequest<unknown>): number {
-  const system = createMessage({
-    role: 'system',
-    source: { kind: 'plugin', plugin: 'dsh-explain' },
-    content: [{ type: 'text', text: request.system }],
-  })
+  const system = auxiliarySystemMessage(request.system)
   return ctx.tokenMeter.estimateMessage(system)
     + request.messages.reduce((total, message) => total + ctx.tokenMeter.estimateMessage(message), 0)
     + request.maxTokens
@@ -361,7 +363,7 @@ export class ExplainRouteError extends Error {
 
 function jsonMessage(value: unknown): Message {
   return createUserMessage({
-    source: { kind: 'plugin', plugin: 'dsh-explain' },
+    source: { kind: 'dsh-explain' },
     content: [{ type: 'text', text: JSON.stringify(redactLearningData(value)) }],
   })
 }

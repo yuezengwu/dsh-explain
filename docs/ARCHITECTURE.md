@@ -331,7 +331,7 @@ Scheduler 全局最多持有一个 `AbortController` 和一个模型 promise。�
 
 ### 路由
 
-`provider` 与 `model` 是用户全局设置。默认关闭允许二者为空；执行 `/explain on` 或设置页启用时，任一缺失都返回 `MODEL_ROUTE_REQUIRED`。host 通过 `ctx.llm.resolveModelInfo(provider, model)` 读取精确路由容量；adapter 未提供 `context.contextWindow` 时返回 `MODEL_CONTEXT_REQUIRED`。容量必须配置在拥有该 route 的 adapter，不在 explain 中维护第二份漂移值。不得从来源 Agent、最近 Session 或默认 adapter 隐式选择模型。辅助任务只需短结构化输出；若精确模型公开 `off` 推理强度，explain 为每次辅助调用显式选择 `off`，否则保留 adapter 的默认推理策略。
+`provider` 与 `model` 是学习线程使用的显式辅助路由；DSH 0.1.7 起由当前 profile 的插件配置保存，旧宿主由全局 settings 保存。默认关闭允许二者为空；执行 `/explain on` 或设置页启用时，任一缺失都返回 `MODEL_ROUTE_REQUIRED`。host 通过 `ctx.llm.resolveModelInfo(provider, model)` 读取精确路由容量；adapter 未提供 `context.contextWindow` 时返回 `MODEL_CONTEXT_REQUIRED`。容量必须配置在拥有该 route 的 adapter，不在 explain 中维护第二份漂移值。不得从来源 Agent、最近 Session 或默认 adapter 隐式选择模型。辅助任务只需短结构化输出；若精确模型公开 `off` 推理强度，explain 为每次辅助调用显式选择 `off`，否则保留 adapter 的默认推理策略。
 
 ### 请求上下文
 
@@ -516,9 +516,11 @@ browser 的插件级 `learning-store`：
 
 client half 通过 `ctx.slots.inject('settings.section', ...)` 注册「学习」页面，等待第一方设置壳层的真实 declaration，并在 collapse/redeclaration 时随 effect 移除和恢复。页面只开放 `enabled`、`provider`、`model` 和 `maxAutoRequestsPerDay`；其余高级字段继续由 composition/settings 文件管理。
 
-Host 使用 `ctx.settings.describe()` 读取 `dsh-explain` namespace 的原生 revision，并使用 `ctx.settings.update(namespace, patch, expectedRevision)` 提交一次 merge。插件不维护平行 revision，也不 `replace()` user section。开启或在已开启状态下修改路由时，先对目标 settings 调用 `resolveModelInfo()` 并要求精确 `contextWindow`；验证、schema 或 CAS 任一失败都不写部分设置。成功后 Runtime 从 owner scope 同步 Scheduler，设置页与 `/explain status` 读取同一状态。
+Host 使用 `ctx.settings.describe()` 读取原生 revision：旧宿主为 `dsh-explain` namespace，DSH 0.1.7 为当前插件 Loader entry id，并使用 `ctx.settings.update(namespace, patch, expectedRevision)` 提交一次 merge。插件不维护平行 revision，也不 `replace()` user section。开启或在已开启状态下修改路由时，先对目标 settings 调用 `resolveModelInfo()` 并要求精确 `contextWindow`；验证、schema 或 CAS 任一失败都不写部分设置。成功后 Runtime 从 owner scope 同步 Scheduler，设置页与 `/explain status` 读取同一状态。
 
 `modelCatalog()` 合并 `ctx.llm.listProviders()` 与各 provider 的 `listModels()` 结果。建议模型目录为空或单个 provider 查询失败时仍允许显式输入 model id；目录不是路由许可，启用条件始终由精确模型解析决定。`llm/adapters-updated` 提高 view cursor，使已加载目录的设置页重新读取。
+
+DSH 0.1.7 的 runtime 字段声明为 volatile，Loader 提交字段后触发同步，不重新挂载 SQLite runtime；存储路径仍为固定 composition 字段。首次升级仅把旧 settings 中 Explain 自己的字段迁移到当前 profile，保留显式新配置和源文件，成功标记阻止后来重置后重复导入。完整迁移范围见[兼容约定](./COMPATIBILITY.md)。
 
 诊断展示按以下顺序纯派生：关闭、runtime 失败、路由未配置、额度耗尽、正常等待。额度耗尽展示最早恢复时间；压力和最近压缩只在 Host 返回对应事实时展示。Remote 传输失败单独呈现并保留缓存，不与业务状态合并成“空历史”。
 
