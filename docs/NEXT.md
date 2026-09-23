@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M22：DSH 0.1.7-alpha.2 与 npm next 0.1.5-rc.3（2026-09-23）
+
+两版新增官方 tag 已核对；公开依赖锁到 alpha.2，peer 与固定源码 CI 扩展至十二个宿主。Web/M6 使用同一插件 tarball，两个新宿主均通过本地验收，现有 0.1.7 设置迁移仍受覆盖。两版 store 发布包缺失 Zustand 的问题独立复现并限定版本修复。alpha.2 的 UI 滚动、断线恢复和工具输出预算变化未要求 Explain 改动业务逻辑；真实模型调用仍需独立验收。当前 Explain 发布标签仍为 v0.3.1，本轮只更新 main。
+
 ## M21：DSH 0.1.7-alpha.1 兼容（2026-09-22）
 
 本轮在 main 提供 0.1.7-alpha.1 适配，保留九个旧宿主。设置改走原生 live Config / profile patch，并保留 Explain 旧设置；Session V4 的消息和工具结果读取保持来源隔离。十宿主门禁及迁移/重启验收见[兼容约定](./COMPATIBILITY.md)。当前发布标签仍为 v0.3.1，其范围截至 0.1.6-alpha.2；本轮没有新增发布标签。npm next 的 0.1.5-rc.3 缺少对应官方 tag，固定源码验证继续待定。
@@ -12,7 +16,7 @@
 
 实现和真实模型验收已完成，发布入口为 [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0)。`deepseek-flash` 在 DSH 0.1.6-alpha.1 上通过讲解、重讲、偏好修正、正反答案复习、精确回答命令、导出及清空；精确运行时代码与证据见[真实模型验收](./REAL_MODEL_ACCEPTANCE.md)。本次发布提交补充文档和验收素材，并修正 Web/M6 测试只查找未选中会话的前提，增加重复打开当前会话的检查；运行时代码与 PR #40 合入提交一致。
 
-社区后续集中在已有 [52DSH PR #2](https://github.com/tuofangzhe/dsh-plugins/pull/2) 和 [metadata PR #2336](https://github.com/dsh-pluginmarket/metadata/pull/2336)，合并及目录抓取由外部维护者处理；上游缺失依赖继续在 Discussion #6082 跟踪。真实用户反馈沿用 [Issue #31](https://github.com/yuezengwu/dsh-explain/issues/31)。以下里程碑保留当时状态；标签发布以 release 为准，后续兼容范围见上方 M21。
+社区后续集中在已有 [52DSH PR #2](https://github.com/tuofangzhe/dsh-plugins/pull/2) 和 [metadata PR #2336](https://github.com/dsh-pluginmarket/metadata/pull/2336)，合并及目录抓取由外部维护者处理；上游缺失依赖继续在 Discussion #6082 跟踪。真实用户反馈沿用 [Issue #31](https://github.com/yuezengwu/dsh-explain/issues/31)。以下里程碑保留当时状态；标签发布以 release 为准，后续兼容范围见上方 M22。
 
 ## M19：异步来源读取与社区资料修复
 
