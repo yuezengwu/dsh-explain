@@ -550,7 +550,7 @@ describe('keyless assembled DSH Web learning view', () => {
 
   it('imports legacy settings into the new profile and keeps later edits after two restarts', async (test) => {
     const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
-    if (!['0.1.7-alpha.1', '0.1.7-alpha.2'].includes(manifest.version)) test.skip()
+    if (!['0.1.7-alpha.1', '0.1.7-alpha.2', '0.1.7-rc.1'].includes(manifest.version)) test.skip()
     if (page === undefined) throw new Error('web page is not initialized')
     await stopDsh(host)
     host = undefined
