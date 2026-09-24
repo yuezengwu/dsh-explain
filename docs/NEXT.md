@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M23：DSH 0.1.7-rc.1 与 npm next（2026-09-24）
+
+官方 rc.1 tag `46a7f68b0922371ce7144b668b90e377d8e799f4` 和 npm next 已核对。公开依赖锁定 rc.1，peer 与固定源码 CI 扩展到十三个宿主，旧版保留。独立导入 rc.1 的 store 原始发布包仍复现缺少 Zustand 的问题，因此将仅作用于本仓库的依赖补丁扩至 rc.1。发布包和 rc.1 固定源码宿主通过本地无密钥验收；新宿主旧设置迁移、两次重启和插件实时卸载也在 Web/M6 中通过。业务逻辑、Explain SQLite schema 4 与 backup v3 未变。本轮不进行真实 provider 验收，也不创建新的 Explain 发布标签。
+
 ## M22：DSH 0.1.7-alpha.2 与 npm next 0.1.5-rc.3（2026-09-23）
 
 两版新增官方 tag 已核对；公开依赖锁到 alpha.2，peer 与固定源码 CI 扩展至十二个宿主。Web/M6 使用同一插件 tarball，两个新宿主均通过本地验收，现有 0.1.7 设置迁移仍受覆盖。两版 store 发布包缺失 Zustand 的问题独立复现并限定版本修复。alpha.2 的 UI 滚动、断线恢复和工具输出预算变化未要求 Explain 改动业务逻辑；真实模型调用仍需独立验收。当前 Explain 发布标签仍为 v0.3.1，本轮只更新 main。

@@ -2,6 +2,10 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M23：DSH 0.1.7-rc.1（2026-09-24）
+
+npm next 的 rc.1 发布包通过 frozen install、类型检查、90 项测试、生产构建和实际 pack。精确源码 `46a7f68b0922371ce7144b668b90e377d8e799f4` 通过类型检查、90 项测试、8 项 Web（含旧设置迁移与两次重启）和 3 项 M6（含插件管理页实时停用/启用），Web/M6 安装同一发布依赖构建的插件 tarball。十三宿主完整矩阵由本次 PR CI 复核；本轮不声称真实 provider 验收或新版 Session 文件可降级读取。
+
 ## M22：DSH 0.1.7-alpha.2 与 0.1.5-rc.3（2026-09-23）
 
 npm alpha 发布包完成 frozen install、类型检查、90 项测试、生产构建和实际 pack。alpha.2 与 npm next rc.3 的官方固定源码宿主分别通过类型检查、90 项测试、Web（alpha.2 为 8 项，rc.3 为 7 项）和 3 项 M6；Web/M6 安装同一发布依赖构建的插件包。旧设置迁移与两次重启继续在新版宿主验收；Explain SQLite schema 4 / backup v3 不变。完整十二宿主矩阵和精确 SHA 见[兼容约定](./COMPATIBILITY.md)。本轮不进行真实 provider 验收。
