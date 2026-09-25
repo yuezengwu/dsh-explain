@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M24：DSH 0.1.7-rc.2 与 npm next（2026-09-25）
+
+官方 rc.2 tag `477b4f420553e8a52c2fbccc464d7561b239c443` 与 npm next 已核对。公开依赖锁定 rc.2，peer 和固定源码矩阵扩展到十四个宿主，保留之前十三版。原始 rc.2 store tarball 仍独立复现 Zustand 运行依赖缺失，故将本仓库 pnpm 的精确版本补丁扩至 rc.2。rc.2 新增 DeepSeek Account provider 选项；Web 设置快照按宿主版本记录该新增项，旧版期望不变。发布包与 rc.2 固定源码在本地通过无密钥验证，Web 的设置迁移、两次重启和 M6 的实时停用/启用继续通过。Explain 产品逻辑、SQLite schema 4 与 backup v3 未变；未验证账号模型或真实 provider，也不创建新的 Explain 发布标签。
+
 ## M23：DSH 0.1.7-rc.1 与 npm next（2026-09-24）
 
 官方 rc.1 tag `46a7f68b0922371ce7144b668b90e377d8e799f4` 和 npm next 已核对。公开依赖锁定 rc.1，peer 与固定源码 CI 扩展到十三个宿主，旧版保留。独立导入 rc.1 的 store 原始发布包仍复现缺少 Zustand 的问题，因此将仅作用于本仓库的依赖补丁扩至 rc.1。发布包和 rc.1 固定源码宿主通过本地无密钥验收；新宿主旧设置迁移、两次重启和插件实时卸载也在 Web/M6 中通过。业务逻辑、Explain SQLite schema 4 与 backup v3 未变。本轮不进行真实 provider 验收，也不创建新的 Explain 发布标签。

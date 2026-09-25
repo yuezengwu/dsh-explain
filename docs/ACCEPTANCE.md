@@ -2,6 +2,10 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M24：DSH 0.1.7-rc.2（2026-09-25）
+
+npm next 的 rc.2 发布包通过 frozen install、类型检查、90 项测试、构建和实际 pack。精确源码 `477b4f420553e8a52c2fbccc464d7561b239c443` 通过类型检查、90 项测试、8 项 Web（含旧设置迁移和两次重启）及 3 项 M6（含插件管理页实时停用/启用）；Web/M6 使用同一发布依赖构建的插件 tarball。新版设置页新增 DeepSeek Account 选项，由 rc.2 独立快照记录，旧宿主保留原快照。十四宿主完整矩阵由本次 PR CI 复核；本轮未验证账号模型或真实 provider。
+
 ## M23：DSH 0.1.7-rc.1（2026-09-24）
 
 npm next 的 rc.1 发布包通过 frozen install、类型检查、90 项测试、生产构建和实际 pack。精确源码 `46a7f68b0922371ce7144b668b90e377d8e799f4` 通过类型检查、90 项测试、8 项 Web（含旧设置迁移与两次重启）和 3 项 M6（含插件管理页实时停用/启用），Web/M6 安装同一发布依赖构建的插件 tarball。十三宿主完整矩阵由本次 PR CI 复核；本轮不声称真实 provider 验收或新版 Session 文件可降级读取。

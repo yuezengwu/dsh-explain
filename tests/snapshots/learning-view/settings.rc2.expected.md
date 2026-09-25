@@ -1,0 +1,46 @@
+- heading "学习模式" [level=2]
+- paragraph: 配置辅助模型、全局开关和自主讲解额度。学习历史保存在本机；有界来源素材会发送给你选择的辅助模型。
+- button "刷新"
+- checkbox "启用学习模式 开启后只观察未来完成的顶层工作回合，不补扫历史。"
+- strong: 启用学习模式
+- text: 开启后只观察未来完成的顶层工作回合，不补扫历史。 Provider
+- combobox "Provider":
+  - option "选择 provider" [selected]
+  - option "DeepSeek (deepseek-official)"
+  - option "DeepSeek Account (deepseek-account)"
+- text: 模型
+- combobox "模型 建议列表不限制路由；未列出的 id 会在启用时校验容量。"
+- text: 建议列表不限制路由；未列出的 id 会在启用时校验容量。 每 24 小时自主请求上限
+- spinbutton "每 24 小时自主请求上限 失败与重试计入额度；用户显式复习、重讲和压缩不计入。": "12"
+- text: 失败与重试计入额度；用户显式复习、重讲和压缩不计入。
+- button "保存设置"
+- text: 设置 revision 1
+- heading "数据管理" [level=3]
+- paragraph: 导出或清除本机保存的学习记录。清除前建议先下载备份。
+- strong: 导出学习数据
+- text: 下载版本化 JSON，包含学习卡片、复习记录、Topic 状态、有效学习画像及修改审计；排除私有来源摘要，并过滤常见路径和凭证格式；分享前仍需检查正文。
+- button "导出 JSON"
+- strong: 清除本机学习数据
+- paragraph: 永久删除所有学习卡片、复习记录、Topic 状态、ExplainContext 和画像修改审计。进行中的讲解或复习会被取消。
+- text: 辅助模型设置、启用状态和当前 24 小时自主额度计数会保留。 输入 CLEAR 以确认
+- textbox "输入 CLEAR 以确认":
+  - /placeholder: CLEAR
+- button "清除所有学习数据" [disabled]
+- heading "运行诊断" [level=3]
+- text: 学习模式已关闭
+- term: 辅助模型路由
+- definition: 不可用
+- term: 自主额度
+- definition: 0/12
+- term: 最早恢复时间
+- definition: 尚未发生
+- term: 当前上下文压力
+- definition: 不可用
+- term: 活跃讲解
+- definition: "2"
+- term: 等待候选
+- definition: "0"
+- term: 最近 explain 操作
+- definition: {{clock}}
+- term: 最近压缩
+- definition: {{clock}}
