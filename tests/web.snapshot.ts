@@ -19,6 +19,7 @@ const SNAPSHOT_DIRECTORY = join(REPOSITORY, 'tests/snapshots/learning-view')
 const SESSION_FIXTURE = join(SNAPSHOT_DIRECTORY, 'session.jsonl')
 const UI_GOLDEN = join(SNAPSHOT_DIRECTORY, 'ui.expected.md')
 const SETTINGS_GOLDEN = join(SNAPSHOT_DIRECTORY, 'settings.expected.md')
+const SETTINGS_RC2_GOLDEN = join(SNAPSHOT_DIRECTORY, 'settings.rc2.expected.md')
 const SESSION_ID = 'web-snapshot-session'
 const SOURCE_SESSION_ID = SessionId('fixture-source')
 const MISSING_SOURCE_SESSION_ID = SessionId('missing-source')
@@ -426,7 +427,9 @@ describe('keyless assembled DSH Web learning view', () => {
     // The revision push can arrive before the save request finishes.
     await settings.getByRole('button', { name: '保存设置', exact: true }).waitFor({ timeout: 15_000 })
     expect(runtimeOwner(dshHome)).toBe(owner)
-    await compareOrRefresh(await stableAria(settings), SETTINGS_GOLDEN)
+    const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
+    await compareOrRefresh(await stableAria(settings),
+      manifest.version === '0.1.7-rc.2' ? SETTINGS_RC2_GOLDEN : SETTINGS_GOLDEN)
     await settingsDialog.getByRole('button', { name: '关闭', exact: true }).click()
 
     const view = page.getByTestId('dsh-explain-learning-view')
@@ -550,7 +553,7 @@ describe('keyless assembled DSH Web learning view', () => {
 
   it('imports legacy settings into the new profile and keeps later edits after two restarts', async (test) => {
     const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
-    if (!['0.1.7-alpha.1', '0.1.7-alpha.2', '0.1.7-rc.1'].includes(manifest.version)) test.skip()
+    if (!['0.1.7-alpha.1', '0.1.7-alpha.2', '0.1.7-rc.1', '0.1.7-rc.2'].includes(manifest.version)) test.skip()
     if (page === undefined) throw new Error('web page is not initialized')
     await stopDsh(host)
     host = undefined
@@ -603,7 +606,7 @@ describe('keyless assembled DSH Web learning view', () => {
 
   it('keeps the fixture inventory closed', async () => {
     expect((await readdir(SNAPSHOT_DIRECTORY)).sort()).toEqual([
-      'session.jsonl', 'settings.expected.md', 'ui.expected.md',
+      'session.jsonl', 'settings.expected.md', 'settings.rc2.expected.md', 'ui.expected.md',
     ])
   })
 })
