@@ -1,10 +1,10 @@
 # DSH 兼容约定
 
-核验日期：2026-09-25。
+核验日期：2026-09-28（npm 发行标签）；rc.2 兼容验证于 2026-09-25 完成。
 
 | 来源 | 版本 | 精确提交 | 本轮验证 |
 |---|---|---|---|
-| npm next 发布包 | `0.1.7-rc.2` | 发布包安装与锁文件 | 类型检查、90 项单元/集成测试、生产构建、实际 pack |
+| npm latest / next 发布包 | `0.1.7-rc.2` | 发布包安装与锁文件 | 类型检查、90 项单元/集成测试、生产构建、实际 pack |
 | DSH 0.1.2-rc.1 源码 | `0.1.2-rc.1` | `a66e4702047846cdaa10c66c9d3df3951f5ea70d` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
 | DSH alpha.1 源码 | `0.1.3-alpha.1` | `d347e703908d0406b7a7ef80e3a0e594d86b2215` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
 | DSH alpha.2 源码 | `0.1.3-alpha.2` | `82a5fd61a7cf5c293cec4bdff68f455398d685e9` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
@@ -12,7 +12,7 @@
 | DSH 0.1.5-alpha.2 源码 | `0.1.5-alpha.2` | `b2e3b2a0125854567a4a5fcba75782e42fe84901` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
 | DSH 0.1.5-rc.1 源码 | `0.1.5-rc.1` | `183f08e9c6dde7e36cd2318eaee70b0da08fb35e` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
 | DSH 0.1.5-rc.2 源码 | `0.1.5-rc.2` | `fb2c4b9e698e30edb738bca4cf0618587db7d203` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
-| npm latest 对应源码 | `0.1.5-rc.3` | `a4c74a91e06b00fe0b0937bde982170c526cc842` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
+| DSH 0.1.5-rc.3 源码 | `0.1.5-rc.3` | `a4c74a91e06b00fe0b0937bde982170c526cc842` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
 | DSH 0.1.6-alpha.1 源码 | `0.1.6-alpha.1` | `0a15e36e7f82b6ed45af6fa9759f29b40dcd965d` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
 | DSH 0.1.6-alpha.2 源码 | `0.1.6-alpha.2` | `ddefc45fbc7f8e46dd73185e68295696d1297887` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景（含实时停用/启用） |
 | DSH 0.1.7-alpha.1 源码 | `0.1.7-alpha.1` | `c36a83ff6bb95e3f82cf79f9be7c724270a8aa61` | 类型检查、90 项测试、8 个 Web 场景、3 个 M6 场景 |
@@ -20,7 +20,7 @@
 | DSH 0.1.7-rc.1 源码 | `0.1.7-rc.1` | `46a7f68b0922371ce7144b668b90e377d8e799f4` | 类型检查、90 项测试、8 个 Web 场景、3 个 M6 场景 |
 | 最新 DSH 源码发布 | `0.1.7-rc.2` | `477b4f420553e8a52c2fbccc464d7561b239c443` | 类型检查、90 项测试、8 个 Web 场景、3 个 M6 场景 |
 
-[官方 0.1.7-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.7-rc.2) 于 2026-09-24 14:10:21 UTC 发布，精确 tag 为上表 SHA。2026-09-25 核对：npm `next` 指向 `0.1.7-rc.2`，`latest` 为 `0.1.5-rc.3`，`alpha` 为 `0.1.7-alpha.2`。依赖和锁文件固定 rc.2 发布包，peer 声明显式接受十四个已验证的预发布版本，保留旧宿主。
+[官方 0.1.7-rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.7-rc.2) 于 2026-09-24 14:10:21 UTC 发布，精确 tag 为上表 SHA。2026-09-28 核对：npm `latest` 和 `next` 均指向 `0.1.7-rc.2`，`alpha` 为 `0.1.7-alpha.2`；`@deepseek-ai/dsh@latest` 与固定 `@deepseek-ai/dsh@0.1.7-rc.2` 的 tarball integrity 相同。此为发行标签变更，不是新增兼容版本。依赖和锁文件仍固定 rc.2 发布包，peer 声明显式接受十四个已验证的预发布版本，保留旧宿主。
 
 rc.2 的宿主设置页新增 DeepSeek Account provider 选项。Explain 的设置快照为 rc.2 单独记录此项，其余宿主保留原期望；本轮只验证该选项在无密钥 UI 中出现，不验证账号模型实际调用。
 
@@ -63,7 +63,7 @@ npx @deepseek-ai/dsh@0.1.7-rc.2 plugin --profile web add github:yuezengwu/dsh-ex
 npx @deepseek-ai/dsh@0.1.7-rc.2 --profile web
 ```
 
-上述命令安装尚未发布新标签的 `main`。需要不可变安装时，把 `#main` 换为对应已通过 CI 的合入提交 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍搭配 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含本轮 0.1.7 适配；v0.3.0 的支持范围截至 0.1.6-alpha.1。npm 默认渠道可显式使用 `0.1.5-rc.3`，`alpha` 可显式使用 `0.1.7-alpha.2`。宿主 Session 格式迁移与 Explain SQLite 独立；各版本独立验收不表示新版 Session 文件可以降级读取。
+上述命令安装尚未发布新标签的 `main`。需要不可变安装时，把 `#main` 换为对应已通过 CI 的合入提交 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍搭配 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含本轮 0.1.7 适配；v0.3.0 的支持范围截至 0.1.6-alpha.1。npm 默认渠道现与上述固定的 `0.1.7-rc.2` 相同；旧宿主 `0.1.5-rc.3` 仍保留在验证矩阵，`alpha` 可显式使用 `0.1.7-alpha.2`。宿主 Session 格式迁移与 Explain SQLite 独立；各版本独立验收不表示新版 Session 文件可以降级读取。
 
 ## 兼容实现
 

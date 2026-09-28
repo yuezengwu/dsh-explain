@@ -39,14 +39,14 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 DSH `0.1.7-rc.2` support is available on `main` and has not been tagged as a new Explain release. It preserves the thirteen previously verified hosts. The latest Explain release, `v0.3.1`, supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
 
-For the new release candidate, install the current development branch:
+For the current DSH release candidate, install the current development branch:
 
 ```sh
 npx @deepseek-ai/dsh@0.1.7-rc.2 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.1.7-rc.2 --profile web
 ```
 
-For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-09-25, npm `next` is `0.1.7-rc.2`, `latest` is `0.1.5-rc.3`, and `alpha` is `0.1.7-alpha.2`. Use `0.1.5-rc.3` in both commands above to install the latest-channel host.
+For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-09-28, npm `latest` and `next` both resolve to `0.1.7-rc.2`; `alpha` remains `0.1.7-alpha.2`. The commands above pin rc.2 so a future dist-tag change cannot silently change the host version.
 
 Open **Settings → Learning**, choose an auxiliary provider and model, enable learning mode, and save. Explain observes only future completed top-level turns; it does not scan existing history.
 

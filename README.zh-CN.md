@@ -46,7 +46,7 @@ npx @deepseek-ai/dsh@0.1.7-rc.2 plugin --profile web add github:yuezengwu/dsh-ex
 npx @deepseek-ai/dsh@0.1.7-rc.2 --profile web
 ```
 
-使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。2026-09-25 核对：npm `next` 为 `0.1.7-rc.2`，`latest` 为 `0.1.5-rc.3`，`alpha` 为 `0.1.7-alpha.2`。安装默认渠道宿主时，把上述两条命令中的版本均改为 `0.1.5-rc.3`。
+使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。2026-09-28 核对：npm `latest` 和 `next` 均指向 `0.1.7-rc.2`，`alpha` 仍为 `0.1.7-alpha.2`。上述命令固定 rc.2，避免以后发行标签变化时悄然切换宿主版本。
 
 启动后进入「**设置 → 学习**」，选择辅助模型的 provider 和 model，启用学习模式并保存。Explain 只观察此后完成的顶层工作回合，不补扫已有历史。
 
