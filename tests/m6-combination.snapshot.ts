@@ -152,6 +152,7 @@ describe('M6 Explain-owned shortcuts', () => {
   let root: string
   let dshHome: string
   let dshSource: string
+  let dshVersion: string
   let host: ChildProcessWithoutNullStreams | undefined
   let browser: Browser | undefined
   let page: Page | undefined
@@ -190,7 +191,10 @@ describe('M6 Explain-owned shortcuts', () => {
     await workspaceItem.waitFor({ timeout: 15_000 })
     if (await workspaceItem.getAttribute('aria-expanded') !== 'true') await workspaceItem.click()
     // The host may restore/select the fixture before this hook opens it.
-    const session = page.locator('[role="treeitem"][aria-selected]').filter({ hasText: 'workspace' })
+    dshVersion = (JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }).version
+    const session = dshVersion === '0.2.0-rc.1'
+      ? page.locator(`[role="treeitem"][data-row-key="session:${SESSION_ID}"]`)
+      : page.locator('[role="treeitem"][aria-selected]').filter({ hasText: 'workspace' })
     await session.waitFor({ timeout: 15_000 })
     await session.click()
   }, 180_000)
@@ -207,7 +211,9 @@ describe('M6 Explain-owned shortcuts', () => {
   it('assembles one self-contained Explain layer without consumer plugins', async () => {
     if (page === undefined) throw new Error('Web page is not initialized')
     // Reopening an already selected source must not depend on aria-selected=false.
-    const session = page.locator('[role="treeitem"][aria-selected]').filter({ hasText: 'workspace' })
+    const session = dshVersion === '0.2.0-rc.1'
+      ? page.locator(`[role="treeitem"][data-row-key="session:${SESSION_ID}"]`)
+      : page.locator('[role="treeitem"][aria-selected]').filter({ hasText: 'workspace' })
     await expect.poll(() => session.getAttribute('aria-selected')).toBe('true')
     await session.click()
     const dump = runDsh(dshSource, dshHome, ['--profile', 'web', '--dump-config'])
