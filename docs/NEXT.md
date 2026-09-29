@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M26：DSH 0.2.0-rc.1 与 npm next（2026-09-29）
+
+官方 tag `4878cdabd87d4041bdaff61d04c966883b9fd07a` 和 npm `next=0.2.0-rc.1` 已核对；`@deepseek-ai/dsh` 的 `latest` 仍为 `0.1.7-rc.2`，`alpha` 仍为 `0.1.7-alpha.2`。公开 API 依赖和锁文件固定 rc.1，peer 与 CI 固定源码矩阵扩展到十五个宿主，保留此前十四版。原始 rc.1 store tarball 仍独立复现缺少 Zustand 运行依赖，仅将本仓库 pnpm 的精确版本补丁扩至 rc.1。新宿主的无标题 Session 改显示「未命名」，组装验收按 Session ID 定位，同时保留旧版定位。发布包与固定源码已在本地通过无密钥验收，业务逻辑、Explain SQLite schema 4 与 backup v3 未变；未验证真实 provider 或账号模型，也不创建新的 Explain 发布标签。
+
 ## M25：npm latest 指向已验证的 DSH 0.1.7-rc.2（2026-09-28）
 
 npm `latest` 已从 `0.1.5-rc.3` 改指 `0.1.7-rc.2`，与 `next` 相同；`alpha` 仍指向 `0.1.7-alpha.2`。`@deepseek-ai/dsh@latest` 与固定 rc.2 版本的 tarball integrity 相同，官方 rc.2 tag SHA 未变。更新中英文安装说明和兼容表中的渠道标注；继续固定安装 rc.2，并保留 `0.1.5-rc.3` 源码宿主。此次没有新增 Explain 兼容版本或发布标签。

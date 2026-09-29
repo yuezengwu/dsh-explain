@@ -279,11 +279,13 @@ async function compareOrRefresh(actual: string, golden = UI_GOLDEN): Promise<voi
   expect(payload).toBe(await readFile(golden, 'utf8'))
 }
 
-async function openWorkspaceSession(page: Page, workspaceLabel: string): Promise<void> {
+async function openWorkspaceSession(page: Page, workspaceLabel: string, version: string): Promise<void> {
   const workspace = page.getByRole('treeitem', { name: workspaceLabel, exact: true })
   await workspace.waitFor({ timeout: 15_000 })
   if (await workspace.getAttribute('aria-expanded') !== 'true') await workspace.click()
-  const session = page.locator('[role="treeitem"][aria-selected]').filter({ hasText: workspaceLabel })
+  const session = version === '0.2.0-rc.1'
+    ? page.locator(`[role="treeitem"][data-row-key="session:${SESSION_ID}"]`)
+    : page.locator('[role="treeitem"][aria-selected]').filter({ hasText: workspaceLabel })
   await session.waitFor({ timeout: 15_000 })
   await session.click()
 }
@@ -350,7 +352,8 @@ describe('keyless assembled DSH Web learning view', () => {
     await configureLater.waitFor({ state: 'detached', timeout: 15_000 })
     expect(await page.getByRole('tab', { name: '学习' }).count()).toBe(0)
     try {
-      await openWorkspaceSession(page, 'workspace-primary')
+      const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
+      await openWorkspaceSession(page, 'workspace-primary', manifest.version)
     } catch (error) {
       throw new Error(`seeded Session did not appear\n${await page.locator('body').ariaSnapshot()}`, { cause: error })
     }
@@ -429,14 +432,15 @@ describe('keyless assembled DSH Web learning view', () => {
     expect(runtimeOwner(dshHome)).toBe(owner)
     const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
     await compareOrRefresh(await stableAria(settings),
-      manifest.version === '0.1.7-rc.2' ? SETTINGS_RC2_GOLDEN : SETTINGS_GOLDEN)
+      ['0.1.7-rc.2', '0.2.0-rc.1'].includes(manifest.version) ? SETTINGS_RC2_GOLDEN : SETTINGS_GOLDEN)
     await settingsDialog.getByRole('button', { name: '关闭', exact: true }).click()
 
     const view = page.getByTestId('dsh-explain-learning-view')
     await view.getByRole('button', { name: '打开来源会话' }).click()
-    await page.locator('[role="treeitem"][aria-selected="true"]')
-      .filter({ hasText: 'workspace-source' })
-      .waitFor({ timeout: 15_000 })
+    const selectedSource = manifest.version === '0.2.0-rc.1'
+      ? page.locator(`[role="treeitem"][data-row-key="session:${SOURCE_SESSION_ID}"][aria-selected="true"]`)
+      : page.locator('[role="treeitem"][aria-selected="true"]').filter({ hasText: 'workspace-source' })
+    await selectedSource.waitFor({ timeout: 15_000 })
     await page.getByRole('tab', { name: '学习' }).click()
     await page.getByRole('heading', { name: '用判别字段安全缩小联合类型' }).waitFor({ timeout: 15_000 })
     expect(await page.getByText('来源会话不可用').count()).toBeGreaterThan(0)
@@ -553,7 +557,7 @@ describe('keyless assembled DSH Web learning view', () => {
 
   it('imports legacy settings into the new profile and keeps later edits after two restarts', async (test) => {
     const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
-    if (!['0.1.7-alpha.1', '0.1.7-alpha.2', '0.1.7-rc.1', '0.1.7-rc.2'].includes(manifest.version)) test.skip()
+    if (!['0.1.7-alpha.1', '0.1.7-alpha.2', '0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1'].includes(manifest.version)) test.skip()
     if (page === undefined) throw new Error('web page is not initialized')
     await stopDsh(host)
     host = undefined
