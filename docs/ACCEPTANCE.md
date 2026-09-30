@@ -2,6 +2,10 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M27：DSH 0.2.0-rc.2（2026-09-30）
+
+npm `latest` / `next` 的 rc.2 配套 API 发布包通过全新 frozen install、类型检查、90 项测试、构建和实际 pack。官方固定源码 `639ed015397290b3745d163aafe02ffee4aa3f84` 通过类型检查、90 项测试、8 项 Web（含旧设置迁移及两次重启）和 3 项 M6（含实时停用/启用）；Web/M6 安装同一发布依赖构建的插件 tarball。完整十六宿主矩阵由本次 PR CI 复核。原始 rc.2 store tarball 仍缺少 Zustand 运行依赖，因此仅扩展本仓库的精确版本补丁。此轮未验证真实 provider、账号模型或桌面端内置 CLI；不声称新版 Session 文件可降级读取。
+
 ## M26：DSH 0.2.0-rc.1（2026-09-29）
 
 npm `next` 的 rc.1 配套 API 发布包通过全新 frozen install、类型检查、90 项测试、构建和实际 pack。官方固定源码 `4878cdabd87d4041bdaff61d04c966883b9fd07a` 通过类型检查、90 项测试、8 项 Web（含旧设置迁移和两次重启）及 3 项 M6（含实时停用/启用）；Web/M6 安装同一发布依赖构建的插件 tarball。新宿主的无标题 Session 在侧边栏显示「未命名」，测试改按 Session ID 定位，旧版定位保留。十五宿主完整矩阵由本次 PR CI 复核。原始 rc.1 `dsh-client-store` 发布包仍缺少 Zustand 运行依赖；本轮无真实 provider 或账号模型验收，不声称新版 Session 文件可降级读取。

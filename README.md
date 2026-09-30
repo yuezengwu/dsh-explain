@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img alt="DSH 0.2.0-rc.1" src="https://img.shields.io/badge/DSH-0.2.0--rc.1-4c8bf5">
+  <img alt="DSH 0.2.0-rc.2" src="https://img.shields.io/badge/DSH-0.2.0--rc.2-4c8bf5">
   <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="Local first" src="https://img.shields.io/badge/data-local--first-2ea44f">
@@ -37,16 +37,16 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 ## Quick start
 
-DSH `0.2.0-rc.1` support is available on `main` and has not been tagged as a new Explain release. It preserves the fourteen previously verified hosts. The latest Explain release, `v0.3.1`, supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
+DSH `0.2.0-rc.2` support is available on `main` and has not been tagged as a new Explain release. It preserves the fifteen previously verified hosts. The latest Explain release, `v0.3.1`, supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
 
 For the current DSH release candidate, install the current development branch:
 
 ```sh
-npx @deepseek-ai/dsh@0.2.0-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.0-rc.1 --profile web
+npx @deepseek-ai/dsh@0.2.0-rc.2 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.0-rc.2 --profile web
 ```
 
-For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-09-29, the `@deepseek-ai/dsh` npm `next` tag resolves to `0.2.0-rc.1`, `latest` remains `0.1.7-rc.2`, and `alpha` remains `0.1.7-alpha.2`. The commands above pin rc.1 so a future dist-tag change cannot silently change the host version.
+For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-09-30, the `@deepseek-ai/dsh` npm `latest` and `next` tags both resolve to `0.2.0-rc.2`, while `alpha` remains `0.1.7-alpha.2`. The commands above pin rc.2 so a future dist-tag change cannot silently change the host version.
 
 Open **Settings → Learning**, choose an auxiliary provider and model, enable learning mode, and save. Explain observes only future completed top-level turns; it does not scan existing history.
 
@@ -97,7 +97,7 @@ Explain uses first-party DSH conversation, composer, assistant-action, and setti
 
 | Check | Current result |
 |---|---|
-| DSH compatibility | `0.2.0-rc.1` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.6-alpha.1`, `0.1.6-alpha.2`, `0.1.7-alpha.1`, `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1` assembled source |
+| DSH compatibility | `0.2.0-rc.2` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.6-alpha.1`, `0.1.6-alpha.2`, `0.1.7-alpha.1`, `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2` assembled source |
 | Unit and integration | 90 tests on each source version |
 | Assembled DSH Web | 7 shared scenarios; 0.1.7 and 0.2.0 add legacy-settings migration and restart coverage |
 | Explain-owned shortcuts | 3 M6 scenarios; 0.1.6-alpha.2 and all 0.1.7/0.2.0 hosts also exercise live disable/re-enable |
@@ -108,7 +108,7 @@ See the [acceptance matrix](https://github.com/yuezengwu/dsh-explain/blob/main/d
 
 ## Local development
 
-The default development install uses published `0.2.0-rc.1` API packages, with a version-scoped repair for their [missing store runtime dependencies](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the fifteen versions above. The existing demo recording remains on `0.1.2-rc.1`:
+The default development install uses published `0.2.0-rc.2` API packages, with a version-scoped repair for their [missing store runtime dependencies](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the sixteen versions above. The existing demo recording remains on `0.1.2-rc.1`:
 
 ```sh
 pnpm install
