@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M27：DSH 0.2.0-rc.2 与 npm latest/next（2026-09-30）
+
+官方 tag `639ed015397290b3745d163aafe02ffee4aa3f84` 已核对，CLI npm `latest` 与 `next` 均为 `0.2.0-rc.2`，`alpha` 仍为 `0.1.7-alpha.2`。公开 API 依赖与锁文件固定 rc.2，peer 和精确源码 CI 矩阵扩到十六个宿主，保留此前十五版。原始 rc.2 store 独立安装后仍缺少 Zustand 运行依赖，pnpm 补丁只增加此精确版本。发布包与 rc.2 源码通过本地无密钥验收；Web 旧设置迁移、两次重启及 M6 实时停用/启用继续通过。Explain 业务逻辑、SQLite schema 4 与 backup v3 未变；桌面端内置 CLI、真实 provider 和账号模型未验收，也不创建新 Explain 标签。
+
 ## M26：DSH 0.2.0-rc.1 与 npm next（2026-09-29）
 
 官方 tag `4878cdabd87d4041bdaff61d04c966883b9fd07a` 和 npm `next=0.2.0-rc.1` 已核对；`@deepseek-ai/dsh` 的 `latest` 仍为 `0.1.7-rc.2`，`alpha` 仍为 `0.1.7-alpha.2`。公开 API 依赖和锁文件固定 rc.1，peer 与 CI 固定源码矩阵扩展到十五个宿主，保留此前十四版。原始 rc.1 store tarball 仍独立复现缺少 Zustand 运行依赖，仅将本仓库 pnpm 的精确版本补丁扩至 rc.1。新宿主的无标题 Session 改显示「未命名」，组装验收按 Session ID 定位，同时保留旧版定位。发布包与固定源码已在本地通过无密钥验收，业务逻辑、Explain SQLite schema 4 与 backup v3 未变；未验证真实 provider 或账号模型，也不创建新的 Explain 发布标签。
