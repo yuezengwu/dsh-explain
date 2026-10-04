@@ -283,7 +283,7 @@ async function openWorkspaceSession(page: Page, workspaceLabel: string, version:
   const workspace = page.getByRole('treeitem', { name: workspaceLabel, exact: true })
   await workspace.waitFor({ timeout: 15_000 })
   if (await workspace.getAttribute('aria-expanded') !== 'true') await workspace.click()
-  const session = ['0.2.0-rc.1', '0.2.0-rc.2'].includes(version)
+  const session = ['0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1'].includes(version)
     ? page.locator(`[role="treeitem"][data-row-key="session:${SESSION_ID}"]`)
     : page.locator('[role="treeitem"][aria-selected]').filter({ hasText: workspaceLabel })
   await session.waitFor({ timeout: 15_000 })
@@ -432,12 +432,12 @@ describe('keyless assembled DSH Web learning view', () => {
     expect(runtimeOwner(dshHome)).toBe(owner)
     const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
     await compareOrRefresh(await stableAria(settings),
-      ['0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2'].includes(manifest.version) ? SETTINGS_RC2_GOLDEN : SETTINGS_GOLDEN)
+      ['0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1'].includes(manifest.version) ? SETTINGS_RC2_GOLDEN : SETTINGS_GOLDEN)
     await settingsDialog.getByRole('button', { name: '关闭', exact: true }).click()
 
     const view = page.getByTestId('dsh-explain-learning-view')
     await view.getByRole('button', { name: '打开来源会话' }).click()
-    const selectedSource = ['0.2.0-rc.1', '0.2.0-rc.2'].includes(manifest.version)
+    const selectedSource = ['0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1'].includes(manifest.version)
       ? page.locator(`[role="treeitem"][data-row-key="session:${SOURCE_SESSION_ID}"][aria-selected="true"]`)
       : page.locator('[role="treeitem"][aria-selected="true"]').filter({ hasText: 'workspace-source' })
     await selectedSource.waitFor({ timeout: 15_000 })
@@ -557,7 +557,7 @@ describe('keyless assembled DSH Web learning view', () => {
 
   it('imports legacy settings into the new profile and keeps later edits after two restarts', async (test) => {
     const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
-    if (!['0.1.7-alpha.1', '0.1.7-alpha.2', '0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2'].includes(manifest.version)) test.skip()
+    if (!['0.1.7-alpha.1', '0.1.7-alpha.2', '0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1'].includes(manifest.version)) test.skip()
     if (page === undefined) throw new Error('web page is not initialized')
     await stopDsh(host)
     host = undefined

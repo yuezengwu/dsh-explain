@@ -2,6 +2,10 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M28：DSH 0.2.1-alpha.1（2026-10-04）
+
+npm `alpha` 的配套 API 发布包通过 frozen install、类型检查、90 项测试、构建和实际 pack。官方固定源码 `5badb15009ae1756c3afe0ae0cef1faafc290ccc` 通过类型检查、90 项测试、8 项 Web（含旧设置迁移及两次重启）和 3 项 M6（含实时停用/启用）；Web/M6 安装同一发布依赖构建的插件 tarball。此前十六个宿主由本次 PR CI 继续复核。新宿主移除了运行时 invariant 插件，Explain 不使用其入口，移除已停发的开发依赖即可。原始 alpha.1 store tarball 的最小 npm 导入仍缺少 Zustand，精确版本补丁扩至此版。本轮没有真实 provider、账号模型或桌面端测试，也不声称新版 Session 文件可降级读取。
+
 ## M27：DSH 0.2.0-rc.2（2026-09-30）
 
 npm `latest` / `next` 的 rc.2 配套 API 发布包通过全新 frozen install、类型检查、90 项测试、构建和实际 pack。官方固定源码 `639ed015397290b3745d163aafe02ffee4aa3f84` 通过类型检查、90 项测试、8 项 Web（含旧设置迁移及两次重启）和 3 项 M6（含实时停用/启用）；Web/M6 安装同一发布依赖构建的插件 tarball。完整十六宿主矩阵由本次 PR CI 复核。原始 rc.2 store tarball 仍缺少 Zustand 运行依赖，因此仅扩展本仓库的精确版本补丁。此轮未验证真实 provider、账号模型或桌面端内置 CLI；不声称新版 Session 文件可降级读取。
