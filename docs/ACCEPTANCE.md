@@ -2,6 +2,10 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M29：来源队列回收与兼容一致性（2026-10-09）
+
+发布 API 依赖经 frozen install、类型检查、106 项测试、生产构建与实际 pack。固定 alpha 源码 `5badb15009ae1756c3afe0ae0cef1faafc290ccc` 通过源码链接检查、类型检查、同一 106 项测试，以及安装上述发布依赖 tarball 的 8 项 Web、3 项 M6。Web 含旧设置迁移及两次重启；alpha 的 M6 验证卸载后移除与重装，当前实时启停分支只在 `0.1.6-alpha.2` 执行，不把完整矩阵保留该用例解释为其他宿主的独立实时验收。共享清单保留全部十七个版本和 SHA，完整 CI 结果以本轮 PR / main run 为准。队列测量及原始合成样本见 [规模验证](./QUEUE_SCALE.md)；Node 22.19.0 额外通过兼容检查与源码链接检查，正式包/宿主 CI 使用 Node 24。用户学习库未读取或改写，仍为 schema 4 / backup v3，无新标签或真实 provider 验收。
+
 ## M28：DSH 0.2.1-alpha.1（2026-10-04）
 
 npm `alpha` 的配套 API 发布包通过 frozen install、类型检查、90 项测试、构建和实际 pack。官方固定源码 `5badb15009ae1756c3afe0ae0cef1faafc290ccc` 通过类型检查、90 项测试、8 项 Web（含旧设置迁移及两次重启）和 3 项 M6（含实时停用/启用）；Web/M6 安装同一发布依赖构建的插件 tarball。此前十六个宿主由本次 PR CI 继续复核。新宿主移除了运行时 invariant 插件，Explain 不使用其入口，移除已停发的开发依赖即可。原始 alpha.1 store tarball 的最小 npm 导入仍缺少 Zustand，精确版本补丁扩至此版。本轮没有真实 provider、账号模型或桌面端测试，也不声称新版 Session 文件可降级读取。

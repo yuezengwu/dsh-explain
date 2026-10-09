@@ -12,6 +12,7 @@ import {
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { requireDshHost } from './dsh-hosts.ts'
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const checkOnly = process.argv.includes('--check')
@@ -132,9 +133,7 @@ function reactIdentity(sourceRoot) {
 function main() {
   const sourceRoot = resolveSourceRoot()
   const version = JSON.parse(readFileSync(join(sourceRoot, 'package.json'), 'utf8')).version
-  if (!['0.1.2-rc.1', '0.1.3-alpha.1', '0.1.3-alpha.2', '0.1.5-alpha.1', '0.1.5-alpha.2', '0.1.5-rc.1', '0.1.5-rc.2', '0.1.6-alpha.1', '0.1.6-alpha.2', '0.1.7-alpha.1', '0.1.5-rc.3', '0.1.7-alpha.2', '0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1'].includes(version)) {
-    throw new Error(`unsupported DSH source ${String(version)}; expected 0.1.2-rc.1, 0.1.3-alpha.1, 0.1.3-alpha.2, 0.1.5-alpha.1, 0.1.5-alpha.2, 0.1.6-alpha.1, 0.1.6-alpha.2, 0.1.7-alpha.1, 0.1.5-rc.3, 0.1.7-alpha.2, 0.1.7-rc.1, 0.1.7-rc.2, 0.2.0-rc.1, 0.2.0-rc.2, or 0.2.1-alpha.1`)
-  }
+  requireDshHost(version)
   const available = collectPackages(sourceRoot)
   const missing = requiredDshPackages().filter(name => !available.has(name))
   if (missing.length > 0) throw new Error(`DSH source tree is missing peers: ${missing.join(', ')}`)

@@ -240,6 +240,99 @@ describe('completed-turn source observation', () => {
 })
 
 describe('latest-wins candidate queue', () => {
+  it.each(['retry', 'defer'] as const)('keeps a full queue within its cap during %s', (operation) => {
+    const queue = new CandidateQueue()
+    queue.push(capsule('in-flight', 1, 1), 1)
+    const active = queue.take(new Set())!
+    queue.push(capsule('newer', 1, 2), 1)
+    queue[operation](active)
+    queue.finish(active)
+    expect(queue.size).toBe(1)
+    expect(queue.retainedSourceCount).toBe(1)
+    expect(queue.isLatest(active)).toBe(false)
+    expect(queue.take(new Set())?.capsule.sourceSessionId).toBe(SessionId('newer'))
+  })
+
+  it('bounds retained identities during source churn and releases completed targets', () => {
+    const queue = new CandidateQueue()
+    queue.push(capsule('in-flight', 1, 0), 8)
+    const active = queue.take(new Set())!
+    for (let i = 1; i <= 10_000; i++) queue.push(capsule(`source-${i}`, 1, i), 8)
+    expect(queue.size).toBe(8)
+    expect(queue.retainedSourceCount).toBe(9)
+    expect(queue.isLatest(active)).toBe(true)
+    queue.finish(active)
+    expect(queue.retainedSourceCount).toBe(8)
+    expect(queue.isLatest(active)).toBe(false)
+    while (queue.size > 0) queue.finish(queue.take(new Set())!)
+    expect(queue.retainedSourceCount).toBe(0)
+    for (let i = 0; i < 1000; i++) {
+      queue.push(capsule(`processed-${i}`, 1, i), 8)
+      queue.finish(queue.take(new Set())!)
+    }
+    expect(queue.retainedSourceCount).toBe(0)
+  })
+
+  it('invalidates evicted targets so retry and defer cannot resurrect them', () => {
+    const queue = new CandidateQueue()
+    queue.push(capsule('old', 1, 1), 1)
+    const evicted = queue.push(capsule('new', 1, 2), 1)!
+    expect(queue.isLatest(evicted)).toBe(false)
+    queue.retry(evicted)
+    queue.defer(evicted)
+    expect(queue.size).toBe(1)
+    const latest = queue.take(new Set())!
+    expect(latest.capsule.sourceSessionId).toBe(SessionId('new'))
+    queue.defer(latest)
+    const trimmed = queue.trim(0)[0]!
+    queue.retry(trimmed)
+    queue.defer(trimmed)
+    expect(queue.size).toBe(0)
+    expect(queue.retainedSourceCount).toBe(0)
+  })
+
+  it('keeps queued retries and deferred targets valid after an attempt finishes', () => {
+    const queue = new CandidateQueue()
+    queue.push(capsule('retry', 1, 1), 1)
+    const first = queue.take(new Set())!
+    queue.retry(first)
+    queue.finish(first)
+    const retried = queue.take(new Set())!
+    expect(retried.attempts).toBe(1)
+    expect(queue.isLatest(retried)).toBe(true)
+    queue.defer(retried)
+    queue.finish(retried)
+    const deferred = queue.take(new Set())!
+    expect(deferred.attempts).toBe(1)
+    queue.finish(deferred)
+    queue.retry(deferred)
+    queue.defer(deferred)
+    expect(queue.size).toBe(0)
+    expect(queue.retainedSourceCount).toBe(0)
+  })
+
+  it('does not forget or revive a newer turn when an old in-flight target finishes', () => {
+    const queue = new CandidateQueue()
+    queue.push(capsule('same-source', 1, 1), 1)
+    const stale = queue.take(new Set())!
+    queue.push(capsule('same-source', 2, 2), 1)
+    queue.finish(stale)
+    queue.retry(stale)
+    queue.defer(stale)
+    const current = queue.take(new Set())!
+    expect(current.capsule.turn).toBe(2)
+    expect(queue.isLatest(current)).toBe(true)
+    queue.finish(stale)
+    expect(queue.isLatest(current)).toBe(true)
+    queue.clear()
+    queue.finish(current)
+    queue.retry(current)
+    queue.defer(current)
+    expect(queue.retainedSourceCount).toBe(0)
+    queue.push(capsule('same-source', 3, 3), 1)
+    expect(queue.isLatest(current)).toBe(false)
+  })
+
   it('replaces by source, evicts globally oldest, respects source gates, and retries only the latest target', () => {
     const queue = new CandidateQueue()
     const a1 = capsule('a', 1, 10)
