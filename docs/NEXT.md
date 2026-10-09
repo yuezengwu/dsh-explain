@@ -1,5 +1,13 @@
 # dsh-explain 迭代计划
 
+## 整体方案审查与维护记录修正（2026-10-09）
+
+已补齐 [整体方案审查与优化建议](./AUDIT.md)：基于当前代码与已有验证，梳理产品目标、核心不变量、长期规模、兼容清单、学习效果、成本可见性和模块职责。建议与已完成实现分别记录；本轮补齐缺失的 M28 里程碑和文档入口，运行时与数据格式未变。后续先完成合成规模基线及兼容清单一致性检查，再根据结果决定优化。新标签、真实模型验收和外部目录合并仍是独立事项。
+
+## M28：DSH 0.2.1-alpha.1 与 npm alpha（2026-10-04）
+
+已通过 [PR #51](https://github.com/yuezengwu/dsh-explain/pull/51) 合入 `4bd96f52f8a28fcd27d8ba3316fd5e6452d1f556`。官方 tag 为 `5badb15009ae1756c3afe0ae0cef1faafc290ccc`；CLI npm `alpha=0.2.1-alpha.1`，`latest/next=0.2.0-rc.2`。协调公开依赖、锁文件、peer 与源码链接门禁，保留此前十六个宿主并扩至十七版；移除不再发布的 invariant 开发依赖，同包 release-age 例外合并为精确版本的单个选择器。原始 alpha store tarball 仍缺少 Zustand，补丁仅限本仓库 pnpm。PR 与 main CI 均 18/18 通过，发布包与固定源码的 90 项测试、8 个 Web、3 个 M6 及不可变 SHA 安装证据见 [M28 验收](./ACCEPTANCE.md) 和 [兼容约定](./COMPATIBILITY.md)。没有新增 Explain 标签，`v0.3.1` 的支持范围仍截至 DSH 0.1.6-alpha.2；本轮未验收真实 provider、账号模型或桌面端。
+
 ## M27：DSH 0.2.0-rc.2 与 npm latest/next（2026-09-30）
 
 官方 tag `639ed015397290b3745d163aafe02ffee4aa3f84` 已核对，CLI npm `latest` 与 `next` 均为 `0.2.0-rc.2`，`alpha` 仍为 `0.1.7-alpha.2`。公开 API 依赖与锁文件固定 rc.2，peer 和精确源码 CI 矩阵扩到十六个宿主，保留此前十五版。原始 rc.2 store 独立安装后仍缺少 Zustand 运行依赖，pnpm 补丁只增加此精确版本。发布包与 rc.2 源码通过本地无密钥验收；Web 旧设置迁移、两次重启及 M6 实时停用/启用继续通过。Explain 业务逻辑、SQLite schema 4 与 backup v3 未变；桌面端内置 CLI、真实 provider 和账号模型未验收，也不创建新 Explain 标签。
@@ -36,7 +44,7 @@ npm `latest` 已从 `0.1.5-rc.3` 改指 `0.1.7-rc.2`，与 `next` 相同；`alph
 
 实现和真实模型验收已完成，发布入口为 [v0.3.0](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.0)。`deepseek-flash` 在 DSH 0.1.6-alpha.1 上通过讲解、重讲、偏好修正、正反答案复习、精确回答命令、导出及清空；精确运行时代码与证据见[真实模型验收](./REAL_MODEL_ACCEPTANCE.md)。本次发布提交补充文档和验收素材，并修正 Web/M6 测试只查找未选中会话的前提，增加重复打开当前会话的检查；运行时代码与 PR #40 合入提交一致。
 
-社区后续集中在已有 [52DSH PR #2](https://github.com/tuofangzhe/dsh-plugins/pull/2) 和 [metadata PR #2336](https://github.com/dsh-pluginmarket/metadata/pull/2336)，合并及目录抓取由外部维护者处理；上游缺失依赖继续在 Discussion #6082 跟踪。真实用户反馈沿用 [Issue #31](https://github.com/yuezengwu/dsh-explain/issues/31)。以下里程碑保留当时状态；标签发布以 release 为准，后续兼容范围见上方 M22。
+社区后续集中在已有 [52DSH PR #2](https://github.com/tuofangzhe/dsh-plugins/pull/2) 和 [metadata PR #2336](https://github.com/dsh-pluginmarket/metadata/pull/2336)，合并及目录抓取由外部维护者处理；上游缺失依赖继续在 Discussion #6082 跟踪。真实用户反馈沿用 [Issue #31](https://github.com/yuezengwu/dsh-explain/issues/31)。以下里程碑保留当时状态；标签发布以 release 为准，后续兼容范围见上方最新兼容里程碑与 [兼容约定](./COMPATIBILITY.md)。
 
 ## M19：异步来源读取与社区资料修复
 
