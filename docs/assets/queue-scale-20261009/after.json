@@ -1,0 +1,249 @@
+{
+  "node": "v24.20.0",
+  "queueModule": "M29:src/queue.ts",
+  "pendingLimit": 8,
+  "samplesPerCase": 5,
+  "measurements": [
+    {
+      "scenario": "queued",
+      "sources": 1000,
+      "pending": 8,
+      "retainedSources": 8,
+      "heapRetainedBytesMedian": 76880,
+      "elapsedMsMedian": 0.5203749999999943,
+      "samples": [
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 76880,
+          "elapsedMs": 0.5116250000000022
+        },
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 76832,
+          "elapsedMs": 0.5203749999999943
+        },
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 95336,
+          "elapsedMs": 1.3051669999999973
+        },
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 76880,
+          "elapsedMs": 0.5278749999999945
+        },
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 76880,
+          "elapsedMs": 0.5146659999999983
+        }
+      ]
+    },
+    {
+      "scenario": "queued",
+      "sources": 10000,
+      "pending": 8,
+      "retainedSources": 8,
+      "heapRetainedBytesMedian": 86624,
+      "elapsedMsMedian": 4.026959000000005,
+      "samples": [
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 86744,
+          "elapsedMs": 3.917500000000004
+        },
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 84800,
+          "elapsedMs": 5.274541999999997
+        },
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 86624,
+          "elapsedMs": 3.9634579999999957
+        },
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 86744,
+          "elapsedMs": 4.026959000000005
+        },
+        {
+          "pending": 8,
+          "retainedSources": 8,
+          "heapRetainedBytes": 86624,
+          "elapsedMs": 4.690541000000003
+        }
+      ]
+    },
+    {
+      "scenario": "processed",
+      "sources": 1000,
+      "pending": 0,
+      "retainedSources": 0,
+      "heapRetainedBytesMedian": 70992,
+      "elapsedMsMedian": 0.17895900000000609,
+      "samples": [
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": -235336,
+          "elapsedMs": 0.17687499999999545
+        },
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": 71136,
+          "elapsedMs": 0.18779100000000426
+        },
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": 71328,
+          "elapsedMs": 0.17895900000000609
+        },
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": -460520,
+          "elapsedMs": 0.17749999999999488
+        },
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": 70992,
+          "elapsedMs": 0.2902920000000009
+        }
+      ]
+    },
+    {
+      "scenario": "processed",
+      "sources": 10000,
+      "pending": 0,
+      "retainedSources": 0,
+      "heapRetainedBytesMedian": 72624,
+      "elapsedMsMedian": 2.654625000000003,
+      "samples": [
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": 72624,
+          "elapsedMs": 2.4062079999999995
+        },
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": 72480,
+          "elapsedMs": 2.654625000000003
+        },
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": 78280,
+          "elapsedMs": 3.328666999999996
+        },
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": 69344,
+          "elapsedMs": 2.4695840000000047
+        },
+        {
+          "pending": 0,
+          "retainedSources": 0,
+          "heapRetainedBytes": 72624,
+          "elapsedMs": 2.717917
+        }
+      ]
+    },
+    {
+      "scenario": "in-flight",
+      "sources": 1000,
+      "pending": 8,
+      "retainedSources": 9,
+      "heapRetainedBytesMedian": 77552,
+      "elapsedMsMedian": 0.8101249999999993,
+      "samples": [
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 83680,
+          "elapsedMs": 0.8990410000000111
+        },
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 77552,
+          "elapsedMs": 0.8101249999999993
+        },
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 75568,
+          "elapsedMs": 0.5400419999999997
+        },
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 77552,
+          "elapsedMs": 0.6925000000000026
+        },
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 80352,
+          "elapsedMs": 0.8142919999999947
+        }
+      ]
+    },
+    {
+      "scenario": "in-flight",
+      "sources": 10000,
+      "pending": 8,
+      "retainedSources": 9,
+      "heapRetainedBytesMedian": 85432,
+      "elapsedMsMedian": 4.125041999999993,
+      "samples": [
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 81704,
+          "elapsedMs": 4.308582999999999
+        },
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 87464,
+          "elapsedMs": 3.898457999999998
+        },
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 85432,
+          "elapsedMs": 4.168666000000002
+        },
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 85432,
+          "elapsedMs": 4.125041999999993
+        },
+        {
+          "pending": 8,
+          "retainedSources": 9,
+          "heapRetainedBytes": 87224,
+          "elapsedMs": 4.034500000000001
+        }
+      ]
+    }
+  ],
+  "queueSourceSha256": "d2d9010f71c0dae28c0a86ea0767cefc0226c7886bd0e376229248883c0ba527"
+}

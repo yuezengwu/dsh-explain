@@ -2,6 +2,8 @@
 
 核验日期：2026-10-04（DSH 0.2.1-alpha.1）。
 
+M29（2026-10-09）保持以下版本与 SHA 不变，并增加兼容一致性门禁；当前测试扩至 106 项，表内 90 项为既有兼容里程碑的验收记录。共享清单为 [dsh-hosts.json](../scripts/dsh-hosts.json)，`pnpm compat:check` 核对 CI 精确 SHA、peer 范围、协调开发依赖和表内 Web/M6 夹具能力；源码链接与组装夹具从该清单读取版本能力，拒绝未知宿主。新支持版本仍须实际验收，不能只改清单扩大承诺。
+
 | 来源 | 版本 | 精确提交 | 验证范围 |
 |---|---|---|---|
 | CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.1` | 发布包安装与锁文件 | frozen install、类型检查、90 项单元/集成测试、生产构建、实际 pack |
@@ -106,7 +108,7 @@ node --import tsx/esm apps/cli/src/bin.ts plugin --profile web add /absolute/pat
 node --import tsx/esm apps/cli/src/bin.ts --profile web --no-open
 ```
 
-CI 检查锁定的 0.2.1-alpha.1 配套发布包，并对十七个精确源码提交运行组装矩阵：每个宿主 90 项单元/集成、7 个共有 Web 场景及 3 个 M6 场景；四个 0.1.7 预发布版、两个 0.2.0 候选版及 0.2.1-alpha.1 另有旧设置迁移及两次重启验收。发布包经过 frozen install、构建和实际 pack，十七宿主 Web / M6 安装该同一 tarball。本地验证新 alpha.1 宿主，其余由当前 PR 的完整 CI 复核，提交结果见 [Actions](https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml)。所有 Web/M6 使用临时 Session、SQLite、profile 和无密钥夹具。另于 2026-09-15 在 0.1.6-alpha.1 上完成的[真实模型验收](./REAL_MODEL_ACCEPTANCE.md)与当前宿主验证范围分开。现有 Demo 仍标注 `0.1.2-rc.1`。
+CI 检查锁定的 0.2.1-alpha.1 配套发布包，并对十七个精确源码提交运行组装矩阵：每个宿主 106 项单元/集成、7 个共有 Web 场景及 3 个 M6 场景；四个 0.1.7 预发布版、两个 0.2.0 候选版及 0.2.1-alpha.1 另有旧设置迁移及两次重启验收。发布包经过 frozen install、构建和实际 pack，十七宿主 Web / M6 安装该同一 tarball。本地验证新 alpha.1 宿主，其余由当前 PR 的完整 CI 复核，提交结果见 [Actions](https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml)。所有 Web/M6 使用临时 Session、SQLite、profile 和无密钥夹具。另于 2026-09-15 在 0.1.6-alpha.1 上完成的[真实模型验收](./REAL_MODEL_ACCEPTANCE.md)与当前宿主验证范围分开。现有 Demo 仍标注 `0.1.2-rc.1`。
 
 ## 修复后的学习行为
 

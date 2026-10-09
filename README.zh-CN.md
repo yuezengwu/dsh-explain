@@ -137,6 +137,7 @@ dsh --profile web
 | [产品需求](https://github.com/yuezengwu/dsh-explain/blob/main/docs/PRD.md) | 用户模型、范围、策略和验收标准。 |
 | [技术架构](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ARCHITECTURE.md) | 持久化、调度、RPC、UI 集成和失败行为。 |
 | [整体审查与优化建议](https://github.com/yuezengwu/dsh-explain/blob/main/docs/AUDIT.md) | 代码证据、验证边界和按优先级排列的后续工作。 |
+| [来源队列规模验证](https://github.com/yuezengwu/dsh-explain/blob/main/docs/QUEUE_SCALE.md) | 修改前后合成测量、原始样本与候选生命周期约束。 |
 | [验收矩阵](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ACCEPTANCE.md) | 自动化与真实流程证据。 |
 | [迭代计划](https://github.com/yuezengwu/dsh-explain/blob/main/docs/NEXT.md) | 已完成里程碑与后续顺序。 |
 

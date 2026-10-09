@@ -137,6 +137,7 @@ dsh --profile web
 | [Product requirements](https://github.com/yuezengwu/dsh-explain/blob/main/docs/PRD.md) | User model, scope, policies, and acceptance criteria. |
 | [Architecture](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ARCHITECTURE.md) | Persistence, scheduling, RPC, UI integration, and failure behavior. |
 | [Architecture audit and improvements](https://github.com/yuezengwu/dsh-explain/blob/main/docs/AUDIT.md) | Code evidence, verification boundaries, and prioritized follow-up work (Chinese). |
+| [Queue scale validation](https://github.com/yuezengwu/dsh-explain/blob/main/docs/QUEUE_SCALE.md) | Synthetic before/after measurements and queue lifecycle invariants (Chinese). |
 | [Acceptance matrix](https://github.com/yuezengwu/dsh-explain/blob/main/docs/ACCEPTANCE.md) | Automated and real-flow evidence. |
 | [Iteration plan](https://github.com/yuezengwu/dsh-explain/blob/main/docs/NEXT.md) | Completed milestones and follow-up sequencing. |
 

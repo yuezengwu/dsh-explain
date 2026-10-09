@@ -12,6 +12,7 @@ import { RequestId } from '../src/brands.ts'
 import type { ExplainRuntimeSettings } from '../src/config.ts'
 import type { SourceCapsule } from '../src/domain.ts'
 import { ExplainScheduler } from '../src/scheduler.ts'
+import { CandidateQueue } from '../src/queue.ts'
 import { ExplainStore } from '../src/store.ts'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
@@ -137,6 +138,12 @@ function source(sourceId: string): SourceCapsule {
   }
 }
 
+function retainedSources(scheduler: ExplainScheduler): number {
+  const queue: unknown = Reflect.get(scheduler, 'queue')
+  if (!(queue instanceof CandidateQueue)) throw new Error('scheduler candidate queue is unavailable')
+  return queue.retainedSourceCount
+}
+
 async function setup(
   settings: ExplainRuntimeSettings = SETTINGS,
   configureAdapter?: (adapter: LearningAdapter) => void,
@@ -169,6 +176,18 @@ async function setup(
 }
 
 describe('real LLM-service scheduler integration', () => {
+  it('releases completed source identities throughout a running scheduler', async () => {
+    const { store, adapter, scheduler } = await setup(SETTINGS, target => { target.delayMs = 0 })
+    for (let i = 0; i < 20; i++) {
+      scheduler.enqueue(source(`completed-${i}`))
+      await until(() => store.activeExplanationCount() === i + 1 && retainedSources(scheduler) === 0)
+    }
+    expect(adapter.maxActive).toBe(1)
+    expect(adapter.calls).toHaveLength(20)
+    expect(store.autoBudget(50).used).toBe(20)
+    expect(scheduler.status().pendingCandidates).toBe(0)
+  })
+
   it('does no auxiliary or learning work while disabled', async () => {
     const { store, adapter, scheduler } = await setup({ ...SETTINGS, enabled: false })
     const before = store.cursor()
@@ -476,6 +495,7 @@ describe('real LLM-service scheduler integration', () => {
     await until(() => store.activeExplanationCount() === 1)
     expect(adapter.calls).toEqual(['auto:after-clear'])
     expect(store.autoBudget(50).used).toBe(2)
+    expect(retainedSources(scheduler)).toBe(0)
   })
 
   it('surfaces a terminal autonomous failure after exhausting its retry attempts', async () => {
@@ -489,6 +509,7 @@ describe('real LLM-service scheduler integration', () => {
     expect(store.autoBudget(50).used).toBe(2)
     expect(store.activeExplanationCount()).toBe(0)
     expect(adapter.calls).toEqual(['auto:provider-failure', 'auto:provider-failure'])
+    expect(retainedSources(scheduler)).toBe(0)
   })
 
   it('surfaces pressure-compaction failure and never sends the autonomous request', async () => {

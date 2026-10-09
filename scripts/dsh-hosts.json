@@ -1,0 +1,141 @@
+{
+  "developmentVersion": "0.2.1-alpha.1",
+  "hosts": [
+    {
+      "version": "0.1.2-rc.1",
+      "sha": "a66e4702047846cdaa10c66c9d3df3951f5ea70d",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.3-alpha.1",
+      "sha": "d347e703908d0406b7a7ef80e3a0e594d86b2215",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.3-alpha.2",
+      "sha": "82a5fd61a7cf5c293cec4bdff68f455398d685e9",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.5-alpha.1",
+      "sha": "5dda764ed3aa172535a7967b06ff95d9cbfe536a",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.5-alpha.2",
+      "sha": "b2e3b2a0125854567a4a5fcba75782e42fe84901",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.5-rc.1",
+      "sha": "183f08e9c6dde7e36cd2318eaee70b0da08fb35e",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.5-rc.2",
+      "sha": "fb2c4b9e698e30edb738bca4cf0618587db7d203",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.6-alpha.1",
+      "sha": "0a15e36e7f82b6ed45af6fa9759f29b40dcd965d",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.6-alpha.2",
+      "sha": "ddefc45fbc7f8e46dd73185e68295696d1297887",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": true
+    },
+    {
+      "version": "0.1.5-rc.3",
+      "sha": "a4c74a91e06b00fe0b0937bde982170c526cc842",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": false,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.7-alpha.1",
+      "sha": "c36a83ff6bb95e3f82cf79f9be7c724270a8aa61",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": true,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.7-alpha.2",
+      "sha": "00102833dfaee1da9f48a3a8eae9d34005a75218",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": true,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.7-rc.1",
+      "sha": "46a7f68b0922371ce7144b668b90e377d8e799f4",
+      "sessionById": false,
+      "accountSettings": false,
+      "settingsMigration": true,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.1.7-rc.2",
+      "sha": "477b4f420553e8a52c2fbccc464d7561b239c443",
+      "sessionById": false,
+      "accountSettings": true,
+      "settingsMigration": true,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.2.0-rc.1",
+      "sha": "4878cdabd87d4041bdaff61d04c966883b9fd07a",
+      "sessionById": true,
+      "accountSettings": true,
+      "settingsMigration": true,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.2.0-rc.2",
+      "sha": "639ed015397290b3745d163aafe02ffee4aa3f84",
+      "sessionById": true,
+      "accountSettings": true,
+      "settingsMigration": true,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.2.1-alpha.1",
+      "sha": "5badb15009ae1756c3afe0ae0cef1faafc290ccc",
+      "sessionById": true,
+      "accountSettings": true,
+      "settingsMigration": true,
+      "realtimeToggle": false
+    }
+  ]
+}

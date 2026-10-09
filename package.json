@@ -83,7 +83,9 @@
     "demo:record": "pnpm build && node scripts/record-demo.mjs",
     "demo:showcase": "node scripts/render-showcase.mjs",
     "demo": "pnpm demo:record && pnpm demo:showcase",
-    "prepare": "pnpm build"
+    "prepare": "pnpm build",
+    "compat:check": "node scripts/check-compatibility.ts",
+    "bench:queue": "node scripts/benchmark-queue.mjs"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.2 || 4.0.5-alpha.1",

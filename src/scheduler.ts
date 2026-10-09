@@ -428,7 +428,11 @@ export class ExplainScheduler {
       } else {
         const candidate = this.queue.take(this.store.activeSources())
         if (candidate !== undefined) {
-          await this.runCandidate(candidate)
+          try {
+            await this.runCandidate(candidate)
+          } finally {
+            this.queue.finish(candidate)
+          }
           continue
         }
       }
