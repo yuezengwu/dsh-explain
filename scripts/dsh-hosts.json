@@ -1,5 +1,5 @@
 {
-  "developmentVersion": "0.2.1-alpha.1",
+  "developmentVersion": "0.2.1-alpha.2",
   "hosts": [
     {
       "version": "0.1.2-rc.1",
@@ -132,6 +132,14 @@
     {
       "version": "0.2.1-alpha.1",
       "sha": "5badb15009ae1756c3afe0ae0cef1faafc290ccc",
+      "sessionById": true,
+      "accountSettings": true,
+      "settingsMigration": true,
+      "realtimeToggle": false
+    },
+    {
+      "version": "0.2.1-alpha.2",
+      "sha": "d743267388641bc76f17c45ce8b4c231aed1d32c",
       "sessionById": true,
       "accountSettings": true,
       "settingsMigration": true,

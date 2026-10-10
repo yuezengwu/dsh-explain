@@ -15,7 +15,8 @@ describe('verified DSH compatibility inventory', () => {
     expect(requireDshHost('0.1.2-rc.1').settingsMigration).toBe(false)
     expect(requireDshHost('0.1.6-alpha.2').realtimeToggle).toBe(true)
     expect(requireDshHost('0.2.1-alpha.1')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true })
-    expect(() => requireDshHost('0.2.1-alpha.2')).toThrow('unsupported DSH source')
+    expect(requireDshHost('0.2.1-alpha.2')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false })
+    expect(() => requireDshHost('0.2.1-alpha.3')).toThrow('unsupported DSH source')
   })
 
   it.each(['omission', 'pin drift'])('rejects a CI %s', (change) => {
@@ -30,7 +31,7 @@ describe('verified DSH compatibility inventory', () => {
     const key = '@deepseek-ai/dsh-session'
     manifest.peerDependencies[key] = change === 'omission'
       ? manifest.peerDependencies[key].replace(' || 0.2.1-alpha.1', '')
-      : manifest.peerDependencies[key] + ' || 0.2.1-alpha.2'
+      : manifest.peerDependencies[key] + ' || 0.2.1-alpha.3'
     expect(checkCompatibility({ ...files, manifest: JSON.stringify(manifest) }).join('\n')).toContain(`peers: ${key}`)
   })
 
@@ -50,8 +51,8 @@ describe('verified DSH compatibility inventory', () => {
     inventory.hosts.at(-1).settingsMigration = false
     inventory.hosts.at(-1).realtimeToggle = true
     const errors = checkCompatibility({ ...files, inventory: JSON.stringify(inventory) }).join('\n')
-    expect(errors).toContain('docs: Web coverage differs from settingsMigration for 0.2.1-alpha.1')
-    expect(errors).toContain('docs: M6 realtime coverage differs for 0.2.1-alpha.1')
+    expect(errors).toContain('docs: Web coverage differs from settingsMigration for 0.2.1-alpha.2')
+    expect(errors).toContain('docs: M6 realtime coverage differs for 0.2.1-alpha.2')
   })
 
   it('rejects duplicate inventory hosts and malformed capability flags', () => {
