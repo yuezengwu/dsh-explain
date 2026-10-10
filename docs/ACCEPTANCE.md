@@ -2,6 +2,12 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M30：DSH 0.2.1-alpha.2（2026-10-10）
+
+官方 annotated tag `6851e496285b2c9670066fdd142e7e46da586649` 固定源码提交 `d743267388641bc76f17c45ce8b4c231aed1d32c`；CLI npm `alpha=0.2.1-alpha.2`，`latest=next=0.2.0-rc.2`。协调发布 API 依赖、锁文件、共享清单、peer 和 CI，保留十七个既有宿主并扩至十八版。新版 Session plugin records 和 LLM 可选控制回调未要求 Explain 改用新 API，业务运行时保持不变。原始 store 发布包最小 npm 安装成功，独立 import 仍报缺少 Zustand；新版单独补齐 `immer: ^10.1.1` / `zustand: ~4.5.7`，此前十三个精确版本继续使用原补丁。
+
+本地发布包完成 frozen install、兼容一致性检查、类型检查、106 项测试、生产构建与实际 pack。新固定源码构建成功，源码链接检查、类型检查与同一 106 项测试通过；8 项 Web 和 3 项 M6 安装同一份发布依赖构建的插件 tarball，通过旧设置迁移及两次重启、来源导航、快捷草稿、卸载、移除和重装。alpha.2 不运行 M6 实时启停分支；该分支继续仅在 `0.1.6-alpha.2` 执行，README 与兼容约定已据此纠正覆盖描述。完整十八宿主与发布包 CI 以本轮 PR / main run 为准；SQLite schema 4、backup v3、Explain 版本不变，无新标签、真实 provider、账号模型或桌面端验收，不声称新版 Session 文件可降级读取。
+
 ## M29：来源队列回收与兼容一致性（2026-10-09）
 
 发布 API 依赖经 frozen install、类型检查、106 项测试、生产构建与实际 pack。固定 alpha 源码 `5badb15009ae1756c3afe0ae0cef1faafc290ccc` 通过源码链接检查、类型检查、同一 106 项测试，以及安装上述发布依赖 tarball 的 8 项 Web、3 项 M6。Web 含旧设置迁移及两次重启；alpha 的 M6 验证卸载后移除与重装，当前实时启停分支只在 `0.1.6-alpha.2` 执行，不把完整矩阵保留该用例解释为其他宿主的独立实时验收。共享清单保留全部十七个版本和 SHA，完整 CI 结果以本轮 PR / main run 为准。队列测量及原始合成样本见 [规模验证](./QUEUE_SCALE.md)；Node 22.19.0 额外通过兼容检查与源码链接检查，正式包/宿主 CI 使用 Node 24。用户学习库未读取或改写，仍为 schema 4 / backup v3，无新标签或真实 provider 验收。
