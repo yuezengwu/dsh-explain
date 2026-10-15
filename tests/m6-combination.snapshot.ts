@@ -140,9 +140,13 @@ async function seedSession(dshSource: string, dshHome: string, workspace: string
   })
 }
 
-async function finishOnboarding(page: Page): Promise<void> {
+async function finishOnboarding(page: Page, version: string): Promise<void> {
   await page.getByRole('button', { name: '继续', exact: true }).click()
   await page.locator('[class*="onboardingStage"]').waitFor({ state: 'detached', timeout: 15_000 })
+  if (requireDshHost(version).apiKeyOnboardingChoice) {
+    await page.getByRole('dialog', { name: '开始使用', exact: true })
+      .getByRole('button', { name: '添加 API Key', exact: true }).click()
+  }
   const configureLater = page.getByRole('button', { name: '稍后配置', exact: true })
   await configureLater.waitFor({ timeout: 15_000 })
   await configureLater.click()
@@ -166,6 +170,7 @@ describe('M6 Explain-owned shortcuts', () => {
 
   beforeAll(async () => {
     dshSource = requireDirectory('DSH_SOURCE_DIR', '', 'apps/cli/src/bin.ts')
+    dshVersion = (JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }).version
     root = await mkdtemp(join(tmpdir(), 'dsh-explain-m6-combination-'))
     dshHome = join(root, 'home')
     const workspace = join(root, 'workspace')
@@ -187,12 +192,11 @@ describe('M6 Explain-owned shortcuts', () => {
     page = await browser.newPage({ viewport: { width: 1440, height: 920 }, locale: 'zh-CN' })
     page.on('pageerror', error => { pageErrors.push(String(error)) })
     await page.goto(started.authenticatedUrl, { waitUntil: 'load' })
-    await finishOnboarding(page)
+    await finishOnboarding(page, dshVersion)
     const workspaceItem = page.getByRole('treeitem', { name: 'workspace', exact: true })
     await workspaceItem.waitFor({ timeout: 15_000 })
     if (await workspaceItem.getAttribute('aria-expanded') !== 'true') await workspaceItem.click()
     // The host may restore/select the fixture before this hook opens it.
-    dshVersion = (JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }).version
     const session = requireDshHost(dshVersion).sessionById
       ? page.locator(`[role="treeitem"][data-row-key="session:${SESSION_ID}"]`)
       : page.locator('[role="treeitem"][aria-selected]').filter({ hasText: 'workspace' })

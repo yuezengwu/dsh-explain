@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M31：DSH 0.2.1-alpha.3 兼容（2026-10-15）
+
+固定官方源码 `2fbf4359b82fb94c03dcce0b831660d87f12ea5c`，协调发布 API、Cordis/Schemastery、锁文件、精确 peer、清单与 CI，保留十八版并扩至十九版。修复 TypeRT 临时工作区声明不完整、扩展类型归属及新版 helper 的旧宿主加载问题；新增精确 store 补丁，保留旧补丁。夹具适配命名模块入口、首次启动选择页和账号菜单设置入口。发布包及固定源码各通过类型检查和 106 项测试，新源码用同一发布 tarball 通过 8 Web、3 M6，旧 golden 不变。完整矩阵、合并及不可变安装结果随本轮 PR 保存；业务源码、SQLite schema 4、backup v3 与 Explain 标签不变。见 [M31 验收](./ACCEPTANCE.md) 和 [兼容约定](./COMPATIBILITY.md)。
+
 ## M30：DSH 0.2.1-alpha.2 兼容（2026-10-10）
 
 固定官方源码 `d743267388641bc76f17c45ce8b4c231aed1d32c`，协调 npm alpha API、锁文件、精确 peer、兼容清单与 CI，保留全部十七个旧宿主并扩至十八版。新 store 仍遗漏运行依赖，新增单独精确选择器使用其实际 `zustand: ~4.5.7` 范围；旧补丁不变。发布包及新源码各通过本地类型检查和 106 项测试，新源码以同一发布包通过 8 Web、3 M6。README 修正测试数量与 M6 实时启停范围，完整矩阵、合并及安装证据随本轮 PR 保存。业务运行时、SQLite schema 4、backup v3 与发布标签不变；既有 M29 优化保留。详情见 [M30 验收](./ACCEPTANCE.md) 和 [兼容约定](./COMPATIBILITY.md)。

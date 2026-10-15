@@ -2,6 +2,14 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M31：DSH 0.2.1-alpha.3（2026-10-15）
+
+官方 tag 直接固定源码提交 `2fbf4359b82fb94c03dcce0b831660d87f12ea5c`；CLI npm `alpha=0.2.1-alpha.3`，`latest=next=0.2.0-rc.2`。协调新 API、Cordis `4.0.5-alpha.2`、Schemastery `3.18.5-alpha.2`、锁文件、精确 peer 和 CI，保留十八个既有宿主的 SHA 与夹具能力，并新增第十九版。原始 store 包最小 npm 安装成功，独立 import 仍报缺少 Zustand；alpha.3 新增精确版本补丁，使用 manifest 中实际的 `immer: ^10.1.1` / `zustand: ~4.5.7`，原十四版补丁保持不变。
+
+alpha.3 的 TypeRT 协议已拆分声明文件，Session/LLM/API 的声明合并需要明确归属。生成脚本复制五个已消费 SDK 的完整声明树，使用公开 analyzer/emitter 仅分析 Explain 的 Host face；新增官方 Remote helper 打入生成产物，不要求旧宿主提供 alpha.3 的 helper 入口。旧版 `schema` / 新版惰性 `create()` 访问仍共享同一个验证器。会话种子接受官方模块的命名 `apply`，alpha.3 的无密钥夹具经“添加 API Key → 稍后配置”及账号菜单进入设置；旧宿主路径保留。
+
+本地发布包完成 frozen install、兼容一致性检查、类型检查、106 项测试、构建与实际 pack。固定源码完成 frozen install 与完整 build，链接检查、类型检查和 106 项测试通过；8 项 Web 与 3 项 M6 安装同一发布依赖构建的 tarball，覆盖学习界面、设置保存、来源导航、备份与清空、旧设置迁移及两次重启、快捷草稿、卸载、移除和重装。旧 golden 文件未改动。完整十九宿主与发布包 CI 以本轮 PR / main run 为准。业务源码及 Host bundle 哈希不变，SQLite schema 4、backup v3、Explain 版本与发布标签不变；本轮无真实 provider、账号登录/模型或 Desktop 验收，不声称新版 Session 文件可降级读取。
+
 ## M30：DSH 0.2.1-alpha.2（2026-10-10）
 
 官方 annotated tag `6851e496285b2c9670066fdd142e7e46da586649` 固定源码提交 `d743267388641bc76f17c45ce8b4c231aed1d32c`；CLI npm `alpha=0.2.1-alpha.2`，`latest=next=0.2.0-rc.2`。协调发布 API 依赖、锁文件、共享清单、peer 和 CI，保留十七个既有宿主并扩至十八版。新版 Session plugin records 和 LLM 可选控制回调未要求 Explain 改用新 API，业务运行时保持不变。原始 store 发布包最小 npm 安装成功，独立 import 仍报缺少 Zustand；新版单独补齐 `immer: ^10.1.1` / `zustand: ~4.5.7`，此前十三个精确版本继续使用原补丁。

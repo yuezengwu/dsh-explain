@@ -8,6 +8,10 @@ export interface DshHost {
   readonly accountSettings: boolean
   readonly settingsMigration: boolean
   readonly realtimeToggle: boolean
+  /** First-run setup offers sign-in before its API-key editor. */
+  readonly apiKeyOnboardingChoice?: boolean
+  /** Settings is reached through the sidebar account menu. */
+  readonly settingsAccountMenu?: boolean
 }
 
 /** Shared inventory; compat:check validates it against CI, peers and documentation. */

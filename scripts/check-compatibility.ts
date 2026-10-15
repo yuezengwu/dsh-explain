@@ -26,6 +26,9 @@ export function checkCompatibility(files: CompatibilityFiles): readonly string[]
       for (const key of ['sessionById', 'accountSettings', 'settingsMigration', 'realtimeToggle'] as const) {
         if (typeof host[key] !== 'boolean') errors.push(`inventory: ${host.version}.${key} must be boolean`)
       }
+      for (const key of ['apiKeyOnboardingChoice', 'settingsAccountMenu'] as const) {
+        if (host[key] !== undefined && typeof host[key] !== 'boolean') errors.push(`inventory: ${host.version}.${key} must be boolean`)
+      }
     }
     if (!versions.includes(inventory.developmentVersion)) errors.push('inventory: developmentVersion must be a supported host')
     const workflow: { jobs: { assembled: { strategy: { matrix: { include: { version: string; sha: string }[] } } } } } = parse(files.workflow)
