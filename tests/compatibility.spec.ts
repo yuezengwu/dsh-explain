@@ -16,7 +16,8 @@ describe('verified DSH compatibility inventory', () => {
     expect(requireDshHost('0.1.6-alpha.2').realtimeToggle).toBe(true)
     expect(requireDshHost('0.2.1-alpha.1')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true })
     expect(requireDshHost('0.2.1-alpha.2')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false })
-    expect(() => requireDshHost('0.2.1-alpha.3')).toThrow('unsupported DSH source')
+    expect(requireDshHost('0.2.1-alpha.3')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false, apiKeyOnboardingChoice: true })
+    expect(() => requireDshHost('0.2.1-alpha.999')).toThrow('unsupported DSH source')
   })
 
   it.each(['omission', 'pin drift'])('rejects a CI %s', (change) => {
@@ -31,7 +32,7 @@ describe('verified DSH compatibility inventory', () => {
     const key = '@deepseek-ai/dsh-session'
     manifest.peerDependencies[key] = change === 'omission'
       ? manifest.peerDependencies[key].replace(' || 0.2.1-alpha.1', '')
-      : manifest.peerDependencies[key] + ' || 0.2.1-alpha.3'
+      : manifest.peerDependencies[key] + ' || 0.2.1-alpha.999'
     expect(checkCompatibility({ ...files, manifest: JSON.stringify(manifest) }).join('\n')).toContain(`peers: ${key}`)
   })
 
@@ -50,16 +51,19 @@ describe('verified DSH compatibility inventory', () => {
     const inventory = JSON.parse(files.inventory)
     inventory.hosts.at(-1).settingsMigration = false
     inventory.hosts.at(-1).realtimeToggle = true
+    const version = inventory.hosts.at(-1).version
     const errors = checkCompatibility({ ...files, inventory: JSON.stringify(inventory) }).join('\n')
-    expect(errors).toContain('docs: Web coverage differs from settingsMigration for 0.2.1-alpha.2')
-    expect(errors).toContain('docs: M6 realtime coverage differs for 0.2.1-alpha.2')
+    expect(errors).toContain(`docs: Web coverage differs from settingsMigration for ${version}`)
+    expect(errors).toContain(`docs: M6 realtime coverage differs for ${version}`)
   })
 
   it('rejects duplicate inventory hosts and malformed capability flags', () => {
     const inventory = JSON.parse(files.inventory)
     inventory.hosts.push({ ...inventory.hosts[0], settingsMigration: 'yes' })
+    inventory.hosts.at(-1).apiKeyOnboardingChoice = 'yes'
     const errors = checkCompatibility({ ...files, inventory: JSON.stringify(inventory) }).join('\n')
     expect(errors).toContain('inventory: host versions must be nonempty and unique')
     expect(errors).toContain('settingsMigration must be boolean')
+    expect(errors).toContain('apiKeyOnboardingChoice must be boolean')
   })
 })

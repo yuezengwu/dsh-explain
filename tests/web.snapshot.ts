@@ -1,7 +1,7 @@
 import { requireDshHost } from '../scripts/dsh-hosts.ts'
 import { DatabaseSync } from 'node:sqlite'
 import { parse, stringify } from 'yaml'
-import { COMPOSER_LABEL } from './web-locators.ts'
+import { COMPOSER_LABEL, openHostSettings } from './web-locators.ts'
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { createServer } from 'node:net'
 import { existsSync, realpathSync } from 'node:fs'
@@ -295,6 +295,7 @@ describe('keyless assembled DSH Web learning view', () => {
   let root: string
   let dshHome: string
   let dshSource: string
+  let dshVersion: string
   let workspace: string
   let sourceWorkspace: string
   let host: ChildProcessWithoutNullStreams | undefined
@@ -304,6 +305,7 @@ describe('keyless assembled DSH Web learning view', () => {
 
   beforeAll(async () => {
     dshSource = requireDshSource()
+    dshVersion = (JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }).version
     root = await realpath(await mkdtemp(join(tmpdir(), 'dsh-explain-web-snapshot-')))
     dshHome = join(root, 'home')
     workspace = join(root, 'workspace-primary')
@@ -347,6 +349,11 @@ describe('keyless assembled DSH Web learning view', () => {
     }
     await continueButton.click()
     await page.locator('[class*="onboardingStage"]').waitFor({ state: 'detached', timeout: 15_000 })
+    const onboardingHost = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
+    if (requireDshHost(onboardingHost.version).apiKeyOnboardingChoice) {
+      await page.getByRole('dialog', { name: '开始使用', exact: true })
+        .getByRole('button', { name: '添加 API Key', exact: true }).click()
+    }
     const configureLater = page.getByRole('button', { name: '稍后配置', exact: true })
     await configureLater.waitFor({ timeout: 15_000 })
     await configureLater.click()
@@ -417,7 +424,7 @@ describe('keyless assembled DSH Web learning view', () => {
 
   it('saves settings without remounting and opens an available source Session', async () => {
     if (page === undefined) throw new Error('web page is not initialized')
-    await page.getByRole('button', { name: '设置', exact: true }).click()
+    await openHostSettings(page, dshVersion)
     const settingsDialog = page.getByRole('dialog', { name: '设置', exact: true })
     await settingsDialog.waitFor({ timeout: 15_000 })
     await settingsDialog.getByRole('button', { name: '学习', exact: true }).click()
@@ -468,7 +475,7 @@ describe('keyless assembled DSH Web learning view', () => {
 
   it('downloads the v3 backup and clears learning data through the real settings page', async () => {
     if (page === undefined) throw new Error('web page is not initialized')
-    await page.getByRole('button', { name: '设置', exact: true }).click()
+    await openHostSettings(page, dshVersion)
     const settingsDialog = page.getByRole('dialog', { name: '设置', exact: true })
     await settingsDialog.waitFor({ timeout: 15_000 })
     await settingsDialog.getByRole('button', { name: '学习', exact: true }).click()
@@ -578,9 +585,13 @@ describe('keyless assembled DSH Web learning view', () => {
       host = started.child
       await page!.goto(started.authenticatedUrl, { waitUntil: 'load' })
       // A keyless profile may offer model setup again after a process restart.
+      if (requireDshHost(dshVersion).apiKeyOnboardingChoice) {
+        await page!.getByRole('dialog', { name: '开始使用', exact: true })
+          .getByRole('button', { name: '添加 API Key', exact: true }).click()
+      }
       const later = page!.getByRole('button', { name: '稍后配置', exact: true })
       await later.waitFor({ state: 'visible', timeout: 3_000 }).then(() => later.click()).catch(() => {})
-      await page!.getByRole('button', { name: '设置', exact: true }).click()
+      await openHostSettings(page!, dshVersion)
       await page!.getByRole('dialog', { name: '设置', exact: true })
         .getByRole('button', { name: '学习', exact: true }).click()
       const settings = page!.getByTestId('dsh-explain-settings-section')

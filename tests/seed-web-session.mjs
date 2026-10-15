@@ -31,8 +31,8 @@ const events = replayModule.parseSessionLog(fixture)
 const sessionId = sessionModule.SessionId(sessionIdText)
 const context = new Context()
 try {
-  await context.plugin(sessionModule.default)
-  await context.plugin(persistenceModule.default, { root: persistenceRoot })
+  await context.plugin(sessionModule.default ?? sessionModule)
+  await context.plugin(persistenceModule.default ?? persistenceModule, { root: persistenceRoot })
   const meta = {
     version: sessionModule.SESSION_FORMAT_VERSION,
     id: sessionId,
