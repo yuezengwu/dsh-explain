@@ -17,6 +17,7 @@ describe('verified DSH compatibility inventory', () => {
     expect(requireDshHost('0.2.1-alpha.1')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true })
     expect(requireDshHost('0.2.1-alpha.2')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false })
     expect(requireDshHost('0.2.1-alpha.3')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false, apiKeyOnboardingChoice: true })
+    expect(requireDshHost('0.2.1-alpha.4')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false, apiKeyOnboardingChoice: true, settingsAccountMenu: true })
     expect(() => requireDshHost('0.2.1-alpha.999')).toThrow('unsupported DSH source')
   })
 
@@ -40,6 +41,14 @@ describe('verified DSH compatibility inventory', () => {
     const manifest = JSON.parse(files.manifest)
     manifest.devDependencies['@deepseek-ai/dsh-session'] = '0.2.0-rc.2'
     expect(checkCompatibility({ ...files, manifest: JSON.stringify(manifest) }).join('\n')).toContain('development: @deepseek-ai/dsh-session')
+  })
+
+  it.each(['omission', 'unverified version'])('rejects a DSH engine %s', (change) => {
+    const manifest = JSON.parse(files.manifest)
+    manifest.engines.dsh = change === 'omission'
+      ? undefined
+      : manifest.engines.dsh + ' || 0.2.1-alpha.999'
+    expect(checkCompatibility({ ...files, manifest: JSON.stringify(manifest) }).join('\n')).toContain('engines: dsh')
   })
 
   it('rejects a changed documentation SHA', () => {
