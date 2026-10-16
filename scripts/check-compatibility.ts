@@ -40,7 +40,11 @@ export function checkCompatibility(files: CompatibilityFiles): readonly string[]
     for (const row of matrix) {
       if (!versions.includes(row.version)) errors.push(`CI: undeclared host ${row.version}`)
     }
-    const manifest: { peerDependencies: Record<string, string>; devDependencies: Record<string, string> } = JSON.parse(files.manifest)
+    const manifest: { peerDependencies: Record<string, string>; devDependencies: Record<string, string>; engines?: { dsh?: unknown } } = JSON.parse(files.manifest)
+    const engineRange = manifest.engines?.dsh
+    const engineVersions = typeof engineRange === 'string' ? engineRange.split('||').map(part => part.trim()) : []
+    if (engineVersions.length !== hosts.length || new Set(engineVersions).size !== hosts.length
+      || engineVersions.some(version => !versions.includes(version))) errors.push('engines: dsh must list exactly the supported versions')
     const expectedPeers = new Set(versions.map((v, i) => i === 0 ? `^${v}` : v))
     const peers = Object.entries(manifest.peerDependencies).filter(([name]) => name.startsWith('@deepseek-ai/dsh-'))
     const development = Object.entries(manifest.devDependencies).filter(([name]) => name.startsWith('@deepseek-ai/dsh-'))
