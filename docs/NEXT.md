@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M33：DSH 0.2.1-alpha.5 兼容（2026-10-17）
+
+固定官方源码 `1517a4dbca0a2789ff1d41ba439600f8547d23fa`，协调 alpha.5 发布包、锁文件、精确 peer、`engines.dsh`、清单和 CI；保留二十版并扩至二十一版。新增精确 store 补丁并保留全部旧补丁。新增模型名称 Slot 不需要 Explain 改用新接口。发布包和固定源码各通过类型检查与 108 项测试；新宿主安装同一发布 tarball 通过 8 Web、3 M6，官方兼容检查器接受二十一版并拒绝未验收 alpha.6。业务源码、Host/Client bundle 哈希、旧 golden、SQLite schema 4、backup v3 与 Explain 标签不变。验证结果见 [M33 验收](./ACCEPTANCE.md) 和[兼容约定](./COMPATIBILITY.md)。
+
 ## M32：DSH 0.2.1-alpha.4 兼容（2026-10-16）
 
 固定官方源码 `86a402200d95fecef4529d969836f1fe13c6cb0d`，保留十九版并扩至二十版。更新协调发布包、锁文件、peer、清单与 CI；按新版安装/启动规则声明精确 `engines.dsh`，把版本遗漏和未验收版本纳入门禁。新增精确 store 补丁并保留全部旧补丁。发布包与固定源码各通过类型检查和 108 项测试，新宿主用同一发布 tarball 通过 8 Web、3 M6；官方兼容检查器接受二十版并拒绝未验收 alpha.5。业务源码、旧 golden、SQLite schema 4、backup v3 与 Explain 标签不变。验证结果见 [M32 验收](./ACCEPTANCE.md) 和[兼容约定](./COMPATIBILITY.md)。

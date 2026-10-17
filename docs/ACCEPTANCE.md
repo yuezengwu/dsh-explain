@@ -2,6 +2,12 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M33：DSH 0.2.1-alpha.5（2026-10-17）
+
+固定官方源码 `1517a4dbca0a2789ff1d41ba439600f8547d23fa`，保留二十个既有宿主并扩至二十一版。更新 alpha.5 发布包、锁文件、精确 peer、`engines.dsh`、共享清单与 CI。新增精确 store 补丁，保留全部十六版旧补丁；原始发布包最小 npm 安装成功，独立 import 仍缺少 Zustand。Explain 不使用新增模型名称 Slot，业务源码与旧 golden 保持不变。
+
+本地发布包完成全新 frozen install、兼容一致性检查、类型检查、108 项测试、生产构建和实际 pack。固定源码完成 frozen install 与完整 build；源码链接检查、类型检查和同一 108 项测试通过。8 项 Web 与 3 项 M6 安装同一发布依赖 tarball，覆盖学习视图、设置保存、来源导航、备份与清空、旧设置迁移及两次重启、快捷草稿、卸载、移除和重装。官方 alpha.5 兼容检查器接受全部二十一版，拒绝未验收的 alpha.6，无版本豁免。完整二十一宿主与发布包 CI、合并和不可变安装证据随本轮 PR / main run 保存。业务源码、Host/Client bundle 哈希和旧 golden 不变；SQLite schema 4、backup v3、Explain 版本与标签不变。没有真实 provider、账号模型、Desktop 或 Session 降级读取验收。
+
 ## M32：DSH 0.2.1-alpha.4（2026-10-16）
 
 固定官方源码 `86a402200d95fecef4529d969836f1fe13c6cb0d`，保留十九个既有宿主并扩至二十版。协调 alpha.4 发布包、锁文件、精确 peer、清单和 CI；新增与清单完全一致的 `engines.dsh`，兼容检查拒绝遗漏或未验收版本。原始 store 最小 npm 安装成功，独立 import 仍缺少 Zustand；新增精确 alpha.4 补丁，原十五版补丁保留。Cordis/Schemastery 与 M31 相同，业务源码和旧 golden 不变。
