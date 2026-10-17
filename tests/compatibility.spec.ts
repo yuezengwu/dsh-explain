@@ -18,6 +18,7 @@ describe('verified DSH compatibility inventory', () => {
     expect(requireDshHost('0.2.1-alpha.2')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false })
     expect(requireDshHost('0.2.1-alpha.3')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false, apiKeyOnboardingChoice: true })
     expect(requireDshHost('0.2.1-alpha.4')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false, apiKeyOnboardingChoice: true, settingsAccountMenu: true })
+    expect(requireDshHost('0.2.1-alpha.5')).toMatchObject({ sessionById: true, accountSettings: true, settingsMigration: true, realtimeToggle: false, apiKeyOnboardingChoice: true, settingsAccountMenu: true })
     expect(() => requireDshHost('0.2.1-alpha.999')).toThrow('unsupported DSH source')
   })
 
