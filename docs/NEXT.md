@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M34：DSH 0.2.1 候选版兼容（2026-10-18）
+
+新增 rc.1 / rc.2 两个精确源码宿主并保留全部二十一个旧版本，开发发布依赖固定 rc.2，协调稳定版 Cordis/Schemastery、锁文件、精确 peer、`engines.dsh`、共享清单和 CI。两个原始 store 均复现依赖缺失，分别追加精确补丁。rc.2 发布包与两个固定源码各通过类型检查和 108 项测试；两个新宿主用同一发布 tarball 分别通过 8 Web、3 M6。官方兼容检查器接受二十三版、拒绝未知 rc.3。安装文档区分 latest / next / alpha，并修正当前测试数量。业务源码、Host/Client bundle、旧 golden、SQLite schema 4、backup v3 和 Explain 标签不变；无新增模型或 Search/Fetch API 实际调用验收。结果见 [M34 验收](./ACCEPTANCE.md) 和[兼容约定](./COMPATIBILITY.md)。
+
 ## M33：DSH 0.2.1-alpha.5 兼容（2026-10-17）
 
 固定官方源码 `1517a4dbca0a2789ff1d41ba439600f8547d23fa`，协调 alpha.5 发布包、锁文件、精确 peer、`engines.dsh`、清单和 CI；保留二十版并扩至二十一版。新增精确 store 补丁并保留全部旧补丁。新增模型名称 Slot 不需要 Explain 改用新接口。发布包和固定源码各通过类型检查与 108 项测试；新宿主安装同一发布 tarball 通过 8 Web、3 M6，官方兼容检查器接受二十一版并拒绝未验收 alpha.6。业务源码、Host/Client bundle 哈希、旧 golden、SQLite schema 4、backup v3 与 Explain 标签不变。验证结果见 [M33 验收](./ACCEPTANCE.md) 和[兼容约定](./COMPATIBILITY.md)。
