@@ -2,6 +2,14 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M34：DSH 0.2.1-rc.1 / rc.2（2026-10-18）
+
+固定官方 rc.1 源码 `1600d8a1e140dcde43a1a0941940a0480712c011` 与 rc.2 源码 `687f282e8625c6b8d11ff58211a90524be2e4317`，保留二十一个既有宿主并扩至二十三版。开发发布依赖锁定 rc.2，协调 Cordis `4.0.5`、Schemastery `3.18.5`、锁文件、精确 peer、`engines.dsh`、共享清单与 CI。两个原始 store 发布包分别最小 npm 安装成功，独立 import 均缺少 Zustand；分别添加精确版本补丁，保留全部十七版旧补丁。CLI npm `latest=0.2.0-rc.2`、`next=0.2.1-rc.2`、`alpha=0.2.1-alpha.5`，渠道分别记录。
+
+rc.2 发布依赖完成全新 frozen install、兼容一致性检查、类型检查、108 项测试、生产构建与实际 pack。两个固定源码各完成 frozen install 和完整 build；源码链接检查、类型检查及同一 108 项测试通过。两个源码宿主分别安装同一 rc.2 发布依赖 tarball，通过 8 项 Web、3 项 M6，覆盖学习视图、设置保存、来源导航、备份与清空、旧设置迁移及两次重启、快捷草稿、卸载、移除和重装。两个官方兼容检查器均接受全部二十三版，拒绝未验收的 rc.3，无版本豁免。完整二十三宿主与发布包 CI、合并和不可变安装证据随本轮 PR / main run 保存。
+
+Explain 消费的 Session 分页、LLM、TypeRT 与界面扩展接口源码没有变化；业务源码、Host/Client bundle 哈希和旧 golden 不变。两个生成 TypeRT bundle 仅构建路径注释变化。SQLite schema 4、backup v3、Explain 版本与标签不变。本轮没有新增模型、Search/Fetch API、真实 provider、账号模型、Desktop 或 Session 降级读取验收。
+
 ## M33：DSH 0.2.1-alpha.5（2026-10-17）
 
 固定官方源码 `1517a4dbca0a2789ff1d41ba439600f8547d23fa`，保留二十个既有宿主并扩至二十一版。更新 alpha.5 发布包、锁文件、精确 peer、`engines.dsh`、共享清单与 CI。新增精确 store 补丁，保留全部十六版旧补丁；原始发布包最小 npm 安装成功，独立 import 仍缺少 Zustand。Explain 不使用新增模型名称 Slot，业务源码与旧 golden 保持不变。
