@@ -39,14 +39,14 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 DSH `0.2.1-rc.1` / `0.2.1-rc.2` support is available on `main` and has not been tagged as a new Explain release. It preserves the twenty-one previously verified hosts. The latest Explain release, `v0.3.1`, supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
 
-For the opt-in DSH release candidate (`next`), install the current development branch:
+For the current npm default (`latest`, also `next`), install the current development branch:
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
 ```
 
-For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-10-18, the `@deepseek-ai/dsh` npm tags resolve to `latest=0.2.0-rc.2`, `next=0.2.1-rc.2`, and `alpha=0.2.1-alpha.5`. For the default channel, replace the DSH version in both commands above with `0.2.0-rc.2`.
+For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-10-20, the `@deepseek-ai/dsh` npm tags resolve to `latest=next=0.2.1-rc.2` and `alpha=0.2.1-alpha.5`. The commands above pin the current default CLI version.
 
 Open **Settings → Learning**, choose an auxiliary provider and model, enable learning mode, and save. Explain observes only future completed top-level turns; it does not scan existing history.
 
