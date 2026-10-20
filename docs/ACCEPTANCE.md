@@ -2,6 +2,12 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M35：npm 默认渠道指向已验证的 rc.2（2026-10-20）
+
+CLI npm `latest=next=0.2.1-rc.2`，`alpha=0.2.1-alpha.5`；store 标签独立核对，`latest` 仍为 `0.1.2-alpha.2`。默认 CLI 与固定 rc.2 的 tarball URL、integrity、shasum 和版本一致，官方 rc.2 / rc.1 / alpha.5 / 0.2.0-rc.2 精确 tag SHA 未变。本轮更新五份文档中的当前渠道与默认安装说明；固定的 rc.2 安装命令保持可复现。二十三宿主清单、引擎、peer、依赖、锁文件、精确 store 修复和业务源码均沿用 M34。
+
+兼容一致性检查复核全部版本及 SHA；发布包和固定源码的运行时验收沿用 M34 的原始日期。本轮当前提交与合并提交的完整 CI、官方 `@latest` CLI 在独立临时 Web profile 中按不可变 SHA 安装、四个 JavaScript 产物哈希比对结果随 PR / main run 保存。SQLite schema 4、backup v3、Explain 版本与标签保持不变；真实 provider、账号模型、Search/Fetch API、Desktop 与 Session 降级不在本轮验收范围。
+
 ## M34：DSH 0.2.1-rc.1 / rc.2（2026-10-18）
 
 固定官方 rc.1 源码 `1600d8a1e140dcde43a1a0941940a0480712c011` 与 rc.2 源码 `687f282e8625c6b8d11ff58211a90524be2e4317`，保留二十一个既有宿主并扩至二十三版。开发发布依赖锁定 rc.2，协调 Cordis `4.0.5`、Schemastery `3.18.5`、锁文件、精确 peer、`engines.dsh`、共享清单与 CI。两个原始 store 发布包分别最小 npm 安装成功，独立 import 均缺少 Zustand；分别添加精确版本补丁，保留全部十七版旧补丁。CLI npm `latest=0.2.0-rc.2`、`next=0.2.1-rc.2`、`alpha=0.2.1-alpha.5`，渠道分别记录。

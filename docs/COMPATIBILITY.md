@@ -1,18 +1,18 @@
 # DSH 兼容约定
 
-核验日期：2026-10-18（DSH 0.2.1-rc.1 / rc.2）。
+核验日期：2026-10-20（CLI npm latest / next：DSH 0.2.1-rc.2）。
 
 M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性门禁；当前测试扩至 108 项，表内 90 项为既有兼容里程碑的验收记录。共享清单为 [dsh-hosts.json](../scripts/dsh-hosts.json)，`pnpm compat:check` 核对 CI 精确 SHA、`engines.dsh`、peer 范围、协调开发依赖和表内 Web/M6 夹具能力；源码链接与组装夹具从该清单读取版本能力，拒绝未知宿主。新支持版本仍须实际验收，不能只改清单扩大承诺。
 
 | 来源 | 版本 | 精确提交 | 验证范围 |
 |---|---|---|---|
-| CLI npm next 配套 API 发布包 | `0.2.1-rc.2` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
+| CLI npm latest / next 配套 API 发布包 | `0.2.1-rc.2` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.5` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.4` | 2026-10-16 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.3` | 2026-10-15 发布包验证 | frozen install、类型检查、106 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.2` | 2026-10-10 发布包验证 | frozen install、类型检查、106 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.1` | 2026-10-04 发布包验证 | frozen install、类型检查、90 项单元/集成测试、生产构建、实际 pack |
-| CLI npm latest 配套 API 发布包 | `0.2.0-rc.2` | 2026-09-30 发布包验证 | frozen install、类型检查、90 项单元/集成测试、生产构建、实际 pack |
+| 先前 CLI npm latest 配套 API 发布包 | `0.2.0-rc.2` | 2026-09-30 发布包验证 | frozen install、类型检查、90 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm latest 配套 API 发布包 | `0.1.7-rc.2` | 2026-09-25 发布包验证 | 类型检查、90 项单元/集成测试、生产构建、实际 pack |
 | DSH 0.1.2-rc.1 源码 | `0.1.2-rc.1` | `a66e4702047846cdaa10c66c9d3df3951f5ea70d` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
 | DSH alpha.1 源码 | `0.1.3-alpha.1` | `d347e703908d0406b7a7ef80e3a0e594d86b2215` | 类型检查、90 项测试、7 个 Web 场景、3 个 M6 场景 |
@@ -37,6 +37,8 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 | CLI npm alpha 对应源码 | `0.2.1-alpha.5` | `1517a4dbca0a2789ff1d41ba439600f8547d23fa` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.1-rc.1 源码 | `0.2.1-rc.1` | `1600d8a1e140dcde43a1a0941940a0480712c011` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.1-rc.2 源码 | `0.2.1-rc.2` | `687f282e8625c6b8d11ff58211a90524be2e4317` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
+
+2026-10-20 核对 CLI npm `latest` 已从 `0.2.0-rc.2` 改指 `0.2.1-rc.2`，与 `next` 相同；`alpha` 仍为 `0.2.1-alpha.5`。`@deepseek-ai/dsh@latest` 与固定 `0.2.1-rc.2` 的版本、tarball URL、integrity 和 shasum 一致，官方 rc.2 tag 仍直接固定源码 `687f282e8625c6b8d11ff58211a90524be2e4317`。store 自身的独立标签仍为 `latest=0.1.2-alpha.2`、`next=0.2.1-rc.2`、`alpha=0.2.1-alpha.5`。M35 更新当前安装说明和渠道标注，继续固定安装 rc.2，完整保留二十三个已验收源码宿主（含 0.2.0-rc.2）、peer、`engines.dsh`、开发依赖、锁文件和精确 store 补丁。M34 的运行时兼容证据保持原日期，当前提交 CI 与不可变安装结果随本轮 PR 保存；没有新增 Explain 发布标签。
 
 [官方 0.2.1-rc.1](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.1) 与 [rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2) 分别于 2026-10-17 05:22:10 / 08:16:33 UTC 发布，直接 tag SHA 见表。2026-10-18 核对 CLI npm `latest=0.2.0-rc.2`、`next=0.2.1-rc.2`、`alpha=0.2.1-alpha.5`；store 独立标签为 `latest=0.1.2-alpha.2`、`next=0.2.1-rc.2`、`alpha=0.2.1-alpha.5`。M34 协调 rc.2 发布 API、Cordis `4.0.5`、Schemastery `3.18.5`、锁文件、精确 peer、`engines.dsh`、共享清单与 CI，保留全部二十一个旧宿主并扩至二十三版。Explain 消费的 Session 分页、LLM 与 TypeRT 接口源码没有变化；新增模型及 Search/Fetch API 的实际调用不在本轮无密钥验收范围。发布包与两个精确源码宿主的实际结果见 [M34](./ACCEPTANCE.md)。
 
@@ -99,7 +101,7 @@ npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-ex
 npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
 ```
 
-上述命令安装尚未发布新标签的 `main`。需要不可变安装时，把 `#main` 换为对应已通过 CI 的合入提交 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍搭配 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含后续 0.1.7/0.2.0/0.2.1 适配；v0.3.0 的支持范围截至 0.1.6-alpha.1。npm `latest=0.2.0-rc.2`、`next=0.2.1-rc.2`、`alpha=0.2.1-alpha.5`；如需默认渠道，把两条命令的 DSH 版本换成 `0.2.0-rc.2`。宿主 Session 格式迁移与 Explain SQLite 独立；各版本独立验收不表示新版 Session 文件可以降级读取。
+上述命令安装尚未发布新标签的 `main`。需要不可变安装时，把 `#main` 换为对应已通过 CI 的合入提交 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍搭配 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含后续 0.1.7/0.2.0/0.2.1 适配；v0.3.0 的支持范围截至 0.1.6-alpha.1。2026-10-20 核对 npm `latest=next=0.2.1-rc.2`、`alpha=0.2.1-alpha.5`，上述命令已固定到当前默认 CLI 版本。宿主 Session 格式迁移与 Explain SQLite 独立；各版本独立验收不表示新版 Session 文件可以降级读取。
 
 ## 兼容实现
 

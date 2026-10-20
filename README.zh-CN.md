@@ -39,14 +39,14 @@
 
 `main` 已适配 DSH `0.2.1-rc.1` / `0.2.1-rc.2`，保留二十一个既有宿主，尚未发布新的 Explain 标签。最新发布版仍为 `v0.3.1`，支持范围截至 DSH `0.1.6-alpha.2`。精确源码提交与证据见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
 
-使用候选版（`next`）时，安装当前开发分支：
+使用当前 npm 默认版本（`latest`，与 `next` 相同）时，安装当前开发分支：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
 ```
 
-使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。2026-10-18 核对：`@deepseek-ai/dsh` 的 npm `latest=0.2.0-rc.2`、`next=0.2.1-rc.2`、`alpha=0.2.1-alpha.5`。使用默认渠道时，把上述两条命令的 DSH 版本换为 `0.2.0-rc.2`。
+使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。2026-10-20 核对：`@deepseek-ai/dsh` 的 npm `latest=next=0.2.1-rc.2`、`alpha=0.2.1-alpha.5`。上述命令已固定到当前默认 CLI 版本。
 
 启动后进入「**设置 → 学习**」，选择辅助模型的 provider 和 model，启用学习模式并保存。Explain 只观察此后完成的顶层工作回合，不补扫已有历史。
 

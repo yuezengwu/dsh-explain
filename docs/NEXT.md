@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M35：npm latest 指向 DSH 0.2.1-rc.2（2026-10-20）
+
+npm `latest` 已从 `0.2.0-rc.2` 改指 `0.2.1-rc.2`，与 `next` 相同；`alpha` 保持 `0.2.1-alpha.5`。默认 CLI 的发布包身份与已验证的固定 rc.2 一致，官方 tag SHA 未变。更新中英文 Quick start 与兼容表渠道标注，安装命令继续固定 rc.2，保留全部二十三个宿主及 0.2.0-rc.2 旧宿主。业务源码、依赖、锁文件、引擎和数据格式保持 M34；当前提交 CI、官方 latest CLI 不可变安装结果随本轮 PR 保存，无新 Explain 标签。见 [M35 验收](./ACCEPTANCE.md)。
+
 ## M34：DSH 0.2.1 候选版兼容（2026-10-18）
 
 新增 rc.1 / rc.2 两个精确源码宿主并保留全部二十一个旧版本，开发发布依赖固定 rc.2，协调稳定版 Cordis/Schemastery、锁文件、精确 peer、`engines.dsh`、共享清单和 CI。两个原始 store 均复现依赖缺失，分别追加精确补丁。rc.2 发布包与两个固定源码各通过类型检查和 108 项测试；两个新宿主用同一发布 tarball 分别通过 8 Web、3 M6。官方兼容检查器接受二十三版、拒绝未知 rc.3。安装文档区分 latest / next / alpha，并修正当前测试数量。业务源码、Host/Client bundle、旧 golden、SQLite schema 4、backup v3 和 Explain 标签不变；无新增模型或 Search/Fetch API 实际调用验收。结果见 [M34 验收](./ACCEPTANCE.md) 和[兼容约定](./COMPATIBILITY.md)。
