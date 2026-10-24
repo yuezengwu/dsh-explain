@@ -2,6 +2,14 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M36：DSH 0.2.1-rc.3（2026-10-24）
+
+固定官方源码 `1f81c047fc48fa190a683e469daa699857e9afe8`，保留二十三个既有宿主并扩至二十四版。开发发布依赖固定 rc.3，协调锁文件、精确 peer、`engines.dsh`、共享清单与 CI；Cordis `4.0.5`、Schemastery `3.18.5` 不变。CLI npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.3`、`alpha=0.2.1-alpha.5`，中英文安装文档分别固定默认版与候选版。原始 rc.3 store 最小 npm 安装成功，独立 import 缺少 Zustand；追加精确版本补丁，保留全部十九版旧补丁。
+
+发布依赖完成全新 frozen install、兼容一致性检查、类型检查、108 项测试、生产构建与实际 pack。固定源码完成 frozen install 与完整 build；源码链接检查、类型检查和同一 108 项测试通过。新宿主安装同一发布依赖 tarball，通过 8 项 Web、3 项 M6，覆盖学习视图、设置保存、来源导航、备份与清空、旧设置迁移及两次重启、快捷草稿、卸载、移除和重装。官方 rc.3 兼容检查器接受全部二十四版、拒绝未验收 rc.4，无版本豁免。完整二十四宿主与发布包 CI、合并和不可变安装证据随本轮 PR / main run 保存。
+
+新增草稿选项保留原调用默认语义，新的 More 菜单不要求 Explain 改用新扩展点。业务源码、Host/Client bundle 哈希、旧 golden 不变，TypeRT 产物重新生成。SQLite schema 4、backup v3、Explain 版本与标签不变。本轮没有真实 provider、账号模型、API Key 适配器模型列表更新、Desktop 或 Session 降级读取验收。
+
 ## M35：npm 默认渠道指向已验证的 rc.2（2026-10-20）
 
 CLI npm `latest=next=0.2.1-rc.2`，`alpha=0.2.1-alpha.5`；store 标签独立核对，`latest` 仍为 `0.1.2-alpha.2`。默认 CLI 与固定 rc.2 的 tarball URL、integrity、shasum 和版本一致，官方 rc.2 / rc.1 / alpha.5 / 0.2.0-rc.2 精确 tag SHA 未变。本轮更新五份文档中的当前渠道与默认安装说明；固定的 rc.2 安装命令保持可复现。二十三宿主清单、引擎、peer、依赖、锁文件、精确 store 修复和业务源码均沿用 M34。
