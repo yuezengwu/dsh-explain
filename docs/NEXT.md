@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M37：npm next rc.4 待验证（2026-10-27）
+
+CLI / store 的 `next` 已升到 rc.4，二十三个配套 API 包已发布；官方 rc.4 tag 和 Release 尚不可用，发布元数据没有 `gitHead`。更新中英文安装与兼容说明，继续固定默认 rc.2 和已验证候选版 rc.3；现有引擎声明排除 rc.4。原始 rc.4 store 独立导入仍缺少 Zustand，但尚不改变开发依赖、补丁或二十四宿主支持范围。下一步等待官方 tag 固定源码，再完成发布包和固定宿主验收后决定接纳 rc.4。证据与范围见 [M37 验收](./ACCEPTANCE.md) 和[兼容约定](./COMPATIBILITY.md#current-npm-next-verification)。
+
 ## M36：DSH 0.2.1-rc.3 兼容（2026-10-24）
 
 固定官方源码 `1f81c047fc48fa190a683e469daa699857e9afe8`，开发发布包锁定 rc.3，协调锁文件、精确 peer、`engines.dsh`、共享清单和 CI，保留二十三个旧宿主并扩至二十四版。原始 store 仍缺少 Zustand，追加精确版本补丁并保留十九版旧补丁。发布包和固定源码各通过类型检查与 108 项测试；新宿主使用同一 tarball 通过 8 Web、3 M6。默认 `latest` 仍为 rc.2，`next` 升到 rc.3，中英文命令分别固定。业务源码、Host/Client bundle、旧 golden、SQLite schema 4、backup v3 与 Explain 标签不变；完整矩阵及不可变安装结果随本轮 PR 保存。见 [M36 验收](./ACCEPTANCE.md) 与[兼容约定](./COMPATIBILITY.md)。
