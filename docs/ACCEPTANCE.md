@@ -2,6 +2,14 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M37：npm next rc.4 的验证边界（2026-10-27）
+
+CLI 与 store 的 npm `next` 已指向 `0.2.1-rc.4`，各自 `latest` 仍为 rc.2 / 0.1.2-alpha.2，`alpha` 仍为 0.2.1-alpha.5。CLI 和二十三个 API 包的固定 rc.4 元数据已核对；没有 `gitHead`。官方 rc.4 tag / Release API 返回 404，远端 tag 查询无匹配，因此本轮不宣称 rc.4 兼容，也不把它加入清单、引擎或 peer。
+
+独立临时 npm 安装原始 rc.4 store 与 Cordis 4.0.5 成功，随后 import 仍缺少 Zustand；本项目继续固定 rc.3 开发依赖与已有精确补丁。已验证 rc.3 的官方兼容检查器复核现有 manifest：rc.2 / rc.3 接受，rc.4 拒绝，无豁免。该检查不作为 rc.4 宿主执行证据。
+
+本轮只改五份文档，默认安装命令固定 rc.2，先前候选版固定 rc.3，明确禁止把命令换成尚待验证的 `@next`。二十四个固定源码宿主及 M36 的原始验收日期保留；当前提交 / 合并提交的完整 CI 与默认 CLI 不可变 SHA 安装结果随本轮 PR 保存。业务源码、依赖、锁文件、引擎、数据格式和 Explain 标签不变。待官方精确 tag 出现后继续兼容适配；没有 rc.4 发布包构建、固定源码、Web / M6、真实 provider 或 Desktop 的通过结论。
+
 ## M36：DSH 0.2.1-rc.3（2026-10-24）
 
 固定官方源码 `1f81c047fc48fa190a683e469daa699857e9afe8`，保留二十三个既有宿主并扩至二十四版。开发发布依赖固定 rc.3，协调锁文件、精确 peer、`engines.dsh`、共享清单与 CI；Cordis `4.0.5`、Schemastery `3.18.5` 不变。CLI npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.3`、`alpha=0.2.1-alpha.5`，中英文安装文档分别固定默认版与候选版。原始 rc.3 store 最小 npm 安装成功，独立 import 缺少 Zustand；追加精确版本补丁，保留全部十九版旧补丁。
