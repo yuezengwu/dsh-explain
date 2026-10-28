@@ -1,16 +1,18 @@
 # DSH 兼容约定
 
-核验日期：2026-10-27（CLI npm latest：DSH 0.2.1-rc.2；next：0.2.1-rc.4，待兼容验证；alpha：0.2.1-alpha.5）。
+核验日期：2026-10-28（CLI npm latest：DSH 0.2.1-rc.2；next：0.2.1-rc.4、alpha：0.2.2-alpha.2，后两版待兼容验证）。
 
 <a id="current-npm-next-verification"></a>
 
-## 当前 npm next 验证边界
+## 当前 npm 预发布渠道验证边界
 
-2026-10-27 核对 [CLI npm 标签](https://registry.npmjs.org/-/package/@deepseek-ai%2fdsh/dist-tags) 为 `latest=0.2.1-rc.2`、`next=0.2.1-rc.4`、`alpha=0.2.1-alpha.5`；[store 独立标签](https://registry.npmjs.org/-/package/@deepseek-ai%2fdsh-client-store/dist-tags) 为 `latest=0.1.2-alpha.2`、`next=0.2.1-rc.4`、`alpha=0.2.1-alpha.5`。CLI 与二十三个配套 API 包的 rc.4 发布元数据均可读取，但没有 `gitHead`；官方 rc.4 tag / Release API 返回 404，`git ls-remote` 也未找到 `dsh-v0.2.1-rc.4`，因此没有可归属到该版本的固定源码宿主证据。
+2026-10-28 核对 [CLI npm 标签](https://registry.npmjs.org/-/package/@deepseek-ai%2fdsh/dist-tags) 为 `latest=0.2.1-rc.2`、`next=0.2.1-rc.4`、`alpha=0.2.2-alpha.2`；[store 独立标签](https://registry.npmjs.org/-/package/@deepseek-ai%2fdsh-client-store/dist-tags) 为 `latest=0.1.2-alpha.2`、`next=0.2.1-rc.4`、`alpha=0.2.2-alpha.2`。新 alpha 的 CLI 与二十三个配套 API 包元数据均可读取，但没有 `gitHead`。rc.4 与 0.2.2-alpha.2 的官方 tag / Release API 仍返回 404，远端 tag 查询也无匹配，因此尚无可归属到这两版的固定源码宿主证据。
 
-原始 rc.4 store 最小 npm 安装成功，独立 import 仍报 `ERR_MODULE_NOT_FOUND: zustand`；manifest 继续仅在 devDependencies 声明 `immer: ^10.1.1`、`zustand: ~4.5.7`。这项包级复现不等于 Explain 运行验收。本轮只更新渠道与安装说明，不接纳 rc.4 到引擎、peer 或源码矩阵，也不新增尚未使用的依赖补丁。用已验证 rc.3 的官方兼容检查器复核时，现有引擎声明接受 rc.2 / rc.3、拒绝 rc.4，未设置豁免。
+0.2.2-alpha.2 包声明新预发布依赖 Cordis `~4.0.6-alpha.1`、Schemastery `~3.18.6-alpha.1`。使用协调的 `dsh-client-store@0.2.2-alpha.2` 与 `cordis@4.0.6-alpha.1` 在全新临时 npm 项目中安装成功，随后独立 import 仍报 `ERR_MODULE_NOT_FOUND: zustand`；Immer/Zustand 继续仅列于 devDependencies。rc.4 的包级复现沿用 [M37](./ACCEPTANCE.md) 的 2026-10-27 记录。这些包级观察不等于 Explain 运行验收。
 
-默认安装继续固定 rc.2，已验证候选版固定 rc.3，不能将后者称为当前 `next`。待官方 tag 可解析到精确提交后，再协调发布依赖和全部旧宿主，完成发布包、固定源码、Web / M6 和当前提交 CI 验证。既有二十四版兼容与运行时验收保持原始日期，见 [M37](./ACCEPTANCE.md)。
+本轮只更新渠道与安装说明，继续固定 rc.3 开发依赖及二十四个已验证源码宿主；不接纳 rc.4 / 0.2.2-alpha.2 到引擎、peer 或源码矩阵，也不新增尚未使用的依赖补丁。已验证 rc.3 的官方兼容检查器复核现有声明时，接受 rc.2 / rc.3，拒绝 rc.4 / 0.2.2-alpha.2，无版本豁免；此检查不表示运行了新宿主。
+
+默认安装继续固定 rc.2，已验证候选版固定 rc.3，不使用尚未验收的 `@next` / `@alpha`。待官方 tag 可解析到精确提交后，再协调新 API、Cordis/Schemastery 和全部旧宿主，完成发布包、固定源码、Web / M6 及当前提交 CI 验证。既有运行时验收保持原始日期，见 [M38](./ACCEPTANCE.md)。
 
 ## 已验证版本
 
@@ -20,7 +22,7 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 |---|---|---|---|
 | CLI npm latest 配套 API 发布包 | `0.2.1-rc.2` | 2026-10-18 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.3` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
-| CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.5` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
+| 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.5` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.4` | 2026-10-16 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.3` | 2026-10-15 发布包验证 | frozen install、类型检查、106 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.2` | 2026-10-10 发布包验证 | frozen install、类型检查、106 项单元/集成测试、生产构建、实际 pack |
@@ -47,7 +49,7 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 | 先前 DSH 源码发布 | `0.2.1-alpha.2` | `d743267388641bc76f17c45ce8b4c231aed1d32c` | 类型检查、106 项测试、8 个 Web 场景、3 个 M6 场景 |
 | 先前 DSH 源码发布 | `0.2.1-alpha.3` | `2fbf4359b82fb94c03dcce0b831660d87f12ea5c` | 类型检查、106 项测试、8 个 Web 场景、3 个 M6 场景 |
 | 先前 DSH 源码发布 | `0.2.1-alpha.4` | `86a402200d95fecef4529d969836f1fe13c6cb0d` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
-| CLI npm alpha 对应源码 | `0.2.1-alpha.5` | `1517a4dbca0a2789ff1d41ba439600f8547d23fa` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
+| 先前 CLI npm alpha 对应源码 | `0.2.1-alpha.5` | `1517a4dbca0a2789ff1d41ba439600f8547d23fa` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.1-rc.1 源码 | `0.2.1-rc.1` | `1600d8a1e140dcde43a1a0941940a0480712c011` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.1-rc.2 源码 | `0.2.1-rc.2` | `687f282e8625c6b8d11ff58211a90524be2e4317` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.1-rc.3 源码 | `0.2.1-rc.3` | `1f81c047fc48fa190a683e469daa699857e9afe8` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
@@ -126,7 +128,7 @@ npx @deepseek-ai/dsh@0.2.1-rc.3 plugin --profile web add github:yuezengwu/dsh-ex
 npx @deepseek-ai/dsh@0.2.1-rc.3 --profile web
 ```
 
-上述命令安装尚未发布新标签的 `main`。需要不可变安装时，把 `#main` 换为对应已通过 CI 的合入提交 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍搭配 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含后续 0.1.7/0.2.0/0.2.1 适配；v0.3.0 的支持范围截至 0.1.6-alpha.1。2026-10-27 核对 npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.4`、`alpha=0.2.1-alpha.5`；两组命令分别固定默认版本与先前已验证的 rc.3，不跟随当前未验收的 `next`。宿主 Session 格式迁移与 Explain SQLite 独立；各版本独立验收不表示新版 Session 文件可以降级读取。
+上述命令安装尚未发布新标签的 `main`。需要不可变安装时，把 `#main` 换为对应已通过 CI 的合入提交 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍搭配 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含后续 0.1.7/0.2.0/0.2.1 适配；v0.3.0 的支持范围截至 0.1.6-alpha.1。2026-10-28 核对 npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.4`、`alpha=0.2.2-alpha.2`；两组命令分别固定默认版本与先前已验证的 rc.3，不跟随当前未验收的 `next` / `alpha`。宿主 Session 格式迁移与 Explain SQLite 独立；各版本独立验收不表示新版 Session 文件可以降级读取。
 
 ## 兼容实现
 

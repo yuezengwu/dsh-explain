@@ -46,9 +46,9 @@ npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-ex
 npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
 ```
 
-For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-10-27, the `@deepseek-ai/dsh` npm tags resolve to `latest=0.2.1-rc.2`, `next=0.2.1-rc.4` and `alpha=0.2.1-alpha.5`. The commands above pin the current default CLI version.
+For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-10-28, the `@deepseek-ai/dsh` npm tags resolve to `latest=0.2.1-rc.2`, `next=0.2.1-rc.4` and `alpha=0.2.2-alpha.2`. The commands above pin the current default CLI version.
 
-DSH `0.2.1-rc.4` is published on npm `next`, but its official source tag and Release were not available at this check. Explain compatibility with rc.4 is pending verification; do not substitute `@next` in the commands. The existing engine declaration excludes rc.4. See the [current verification boundary](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#current-npm-next-verification).
+DSH `0.2.1-rc.4` (npm `next`) and `0.2.2-alpha.2` (npm `alpha`) are published, but their official source tags and Releases were not available at this check. Explain compatibility with both versions is pending verification; do not substitute `@next` or `@alpha` in the commands. The existing engine declaration excludes both versions. See the [current verification boundary](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#current-npm-next-verification).
 
 For the previously verified candidate, keep rc.3 pinned explicitly:
 

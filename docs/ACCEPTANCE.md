@@ -2,6 +2,14 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M38：npm alpha 0.2.2-alpha.2 的验证边界（2026-10-28）
+
+CLI / store 的 npm `alpha` 升为 `0.2.2-alpha.2`，CLI `latest=0.2.1-rc.2` / `next=0.2.1-rc.4`、store `latest=0.1.2-alpha.2` / `next=0.2.1-rc.4` 不变。CLI 与二十三个配套 API 的新 alpha 元数据已核对，没有 `gitHead`；新 alpha 与 rc.4 的官方 tag / Release API 仍为 404，远端 tag 查询无匹配。因此两版均未接纳为 Explain 兼容宿主。
+
+原始新 alpha store 改用 Cordis `~4.0.6-alpha.1`；配套 CLI / UI 包声明 Schemastery `~3.18.6-alpha.1`。全新临时项目按协调版本安装 store 与 Cordis 成功，随后独立 import 缺少 Zustand，manifest 仍把 Immer/Zustand 仅列为 devDependencies。官方 rc.3 的兼容检查器接受现有 rc.2 / rc.3，拒绝 rc.4 / 新 alpha，无豁免；没有实际运行新宿主。
+
+本轮只修改五份文档，修正当前 alpha 标注，保留 rc.2 / rc.3 固定命令，以及全部二十四个旧源码 SHA、依赖、锁文件、精确补丁、peer 和引擎声明。兼容一致性、构建、实际 pack、当前提交与合并提交的完整 CI、默认 CLI 不可变 SHA 安装及四个 JavaScript 产物比对随本轮 PR 保存。新 alpha 的 fixed-source / Web / M6 验收仍待官方 tag；既有运行时证据保持 M36 原日期，没有新 Explain 标签、真实 provider 或 Desktop 通过结论。
+
 ## M37：npm next rc.4 的验证边界（2026-10-27）
 
 CLI 与 store 的 npm `next` 已指向 `0.2.1-rc.4`，各自 `latest` 仍为 rc.2 / 0.1.2-alpha.2，`alpha` 仍为 0.2.1-alpha.5。CLI 和二十三个 API 包的固定 rc.4 元数据已核对；没有 `gitHead`。官方 rc.4 tag / Release API 返回 404，远端 tag 查询无匹配，因此本轮不宣称 rc.4 兼容，也不把它加入清单、引擎或 peer。
