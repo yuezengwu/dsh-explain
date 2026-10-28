@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M38：npm alpha 0.2.2-alpha.2 待验证（2026-10-28）
+
+CLI / store 的 `alpha` 升到 0.2.2-alpha.2，CLI 和二十三个 API 包均已发布，但新 alpha 与 rc.4 仍缺官方源码 tag / Release，元数据没有 `gitHead`。新 alpha 改用预发布 Cordis / Schemastery，协调版本的原始 store 安装成功后仍缺 Zustand。更新渠道与安装说明，继续固定已验证 rc.2 / rc.3，保留二十四宿主与开发依赖；不以包级复现或旧宿主 CI 宣称新版本兼容。下一步等待对应官方 tag，再协调依赖并完成新宿主验收。证据见 [M38](./ACCEPTANCE.md) 和[兼容约定](./COMPATIBILITY.md#current-npm-next-verification)。
+
 ## M37：npm next rc.4 待验证（2026-10-27）
 
 CLI / store 的 `next` 已升到 rc.4，二十三个配套 API 包已发布；官方 rc.4 tag 和 Release 尚不可用，发布元数据没有 `gitHead`。更新中英文安装与兼容说明，继续固定默认 rc.2 和已验证候选版 rc.3；现有引擎声明排除 rc.4。原始 rc.4 store 独立导入仍缺少 Zustand，但尚不改变开发依赖、补丁或二十四宿主支持范围。下一步等待官方 tag 固定源码，再完成发布包和固定宿主验收后决定接纳 rc.4。证据与范围见 [M37 验收](./ACCEPTANCE.md) 和[兼容约定](./COMPATIBILITY.md#current-npm-next-verification)。

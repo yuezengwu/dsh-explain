@@ -46,9 +46,9 @@ npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-ex
 npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
 ```
 
-使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。2026-10-27 核对：`@deepseek-ai/dsh` 的 npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.4`、`alpha=0.2.1-alpha.5`。上述命令已固定到当前默认 CLI 版本。
+使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。2026-10-28 核对：`@deepseek-ai/dsh` 的 npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.4`、`alpha=0.2.2-alpha.2`。上述命令已固定到当前默认 CLI 版本。
 
-DSH `0.2.1-rc.4` 已发布到 npm `next`，但本次检查尚无对应官方源码 tag 和 Release，Explain 对 rc.4 的兼容仍待验证。请勿把命令替换成 `@next`；现有引擎声明未接纳 rc.4。详见[当前验证边界](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#current-npm-next-verification)。
+DSH `0.2.1-rc.4`（npm `next`）和 `0.2.2-alpha.2`（npm `alpha`）已发布，但本次检查尚无对应官方源码 tag 和 Release，Explain 对两版的兼容仍待验证。请勿把命令替换成 `@next` 或 `@alpha`；现有引擎声明未接纳这两版。详见[当前验证边界](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#current-npm-next-verification)。
 
 继续使用先前已验证的候选版时，明确固定 rc.3：
 
