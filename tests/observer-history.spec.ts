@@ -13,6 +13,7 @@ describe('asynchronous source history', () => {
     const requests: number[] = []
     const reader = historyReader(session, 1)
     const observed = observeSession(metadata, { page: async (request, signal) => {
+      if (request.throughSeq === undefined) throw new Error('observer must pin its history cut')
       requests.push(request.throughSeq)
       await Promise.resolve()
       return reader.page(request, signal)
@@ -42,7 +43,7 @@ describe('asynchronous source history', () => {
     const session = Session.create(SessionId('stalled-page'))
     session.append('turn/start', { turn: 1 })
     const observed = observeSession(session, {
-      page: async () => ({ records: [], hasMore: true }),
+      page: async () => ({ records: [], hasMore: true, cursor: session.seq - 1 }),
     }, new AbortController().signal)
     await expect(captureManualExplainTarget(observed, 'Explain pagination', 100))
       .rejects.toThrow('did not advance')
@@ -56,8 +57,8 @@ describe('asynchronous source history', () => {
     const page: SessionController['page'] = async request => {
       cursors.push(request.beforeSeq!)
       return request.beforeSeq === session.seq
-        ? { records: [{ type: 'chunks', event: { seq: 1, type: 'chunkrow/text', time: 0, data: 'private stream' } }], hasMore: true } as never
-        : { records: [], hasMore: false }
+        ? { records: [{ type: 'chunks', event: { seq: 1, type: 'chunkrow/text', time: 0, data: 'private stream' } }], hasMore: true, cursor: session.seq - 1 } as never
+        : { records: [], hasMore: false, cursor: session.seq - 1 }
     }
     const target = await captureManualExplainTarget(observeSession(session, { page }, new AbortController().signal), 'Explain paging', 100)
     expect(cursors).toEqual([2, 1])

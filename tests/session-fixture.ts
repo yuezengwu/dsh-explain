@@ -29,8 +29,10 @@ export function appendSystemContext(session: Session, text: string): void {
 export function historyReader(session: Session, pageSize = 3): Pick<import('@deepseek-ai/dsh-api-session-controller').SessionController, 'page'> {
   return { page: async (request, signal) => {
     signal.throwIfAborted()
-    const events = session.snapshotEvents().filter(event => event.seq <= request.throughSeq && event.seq < (request.beforeSeq ?? Infinity))
+    const throughSeq = request.throughSeq ?? session.seq - 1
+    const events = session.snapshotEvents().filter(event => event.seq <= throughSeq && event.seq < (request.beforeSeq ?? Infinity))
     return {
+      cursor: throughSeq,
       records: events.slice(-pageSize).map(event => ({ type: 'event' as const, event: event as unknown as import('@deepseek-ai/dsh-api-session-controller').SessionWireEvent })),
       hasMore: events.length > pageSize,
     }
