@@ -2,6 +2,14 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M39：DSH 0.2.1-rc.4 与 0.2.2-alpha.2（2026-10-29）
+
+官方 tag 分别直接固定源码 `504a01a9578abc2c6f1fb896b1dc322c9fe24f66` 和 `f3803c96974ad4a94195fb97e5c637e9c2a3afe3`。M37 / M38 之后源码已补齐，本轮将两版加入支持清单，保留全部二十四个旧宿主及 SHA，扩至二十六版。开发发布包固定 alpha.2，协调 Cordis 4.0.6-alpha.1 / Schemastery 3.18.6-alpha.1、peer、引擎、CI 与锁文件；原始两版 store 均按协调 Cordis 最小安装后复现缺少 Zustand，只新增两个精确补丁并保留二十版旧修复。
+
+alpha.2 默认发布依赖与独立 rc.4 发布依赖 profile 均通过 frozen install、兼容检查、类型检查、108 项测试、构建和实际 pack。两个精确源码各完成 frozen install 与完整 build，再分别通过链接检查、类型检查、108 项测试，并安装同一份 alpha.2 发布依赖 tarball 完成 8 Web、3 M6。覆盖学习视图、设置、来源导航、备份、清空、旧设置迁移及两次重启、快捷草稿、卸载、移除与重装。M6 实时停用/启用仍专属 0.1.6-alpha.2，其他宿主保持卸载/重装场景。完整二十六宿主 CI 与不可变安装证据随 PR / main run 保存。
+
+alpha.2 的分页请求 `throughSeq` 变为可选、响应增加 `cursor`；夹具按 host 的固定切面补齐新响应，并继续要求 Explain 的观察器显式提交读取上限。业务源码和旧 golden 未改。与上次不可变 main CI 包比较，Host / Client 两份 bundle 字节相同，TypeRT 两份 bundle 各只差一行 DSH/Cordis 版本路径注释。官方 alpha.2 兼容检查器接受全部二十六版、拒绝未知 alpha.3，无豁免。alpha.2 宿主要求 Node >=24.9，本轮环境为 24.20.0。SQLite schema 4、backup v3、Explain 版本与标签保持不变；没有真实 provider、账号模型、Desktop、CUA、插件更新流程或 Session 降级通过结论。
+
 ## M38：npm alpha 0.2.2-alpha.2 的验证边界（2026-10-28）
 
 CLI / store 的 npm `alpha` 升为 `0.2.2-alpha.2`，CLI `latest=0.2.1-rc.2` / `next=0.2.1-rc.4`、store `latest=0.1.2-alpha.2` / `next=0.2.1-rc.4` 不变。CLI 与二十三个配套 API 的新 alpha 元数据已核对，没有 `gitHead`；新 alpha 与 rc.4 的官方 tag / Release API 仍为 404，远端 tag 查询无匹配。因此两版均未接纳为 Explain 兼容宿主。

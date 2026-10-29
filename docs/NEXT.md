@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M39：rc.4 与 0.2.2-alpha.2 兼容（2026-10-29）
+
+官方源码 tag 已补齐，新增两个精确宿主并保留全部二十四个旧版本。默认发布依赖协调到 alpha.2 与其 Cordis / Schemastery 预发布版；rc.4 发布依赖另用独立 profile 验证，两版固定源码安装同一 tarball 通过 108 项测试、8 Web、3 M6。夹具适配可选读取上限和响应 cursor，业务代码与旧 golden 不变；仅追加两个实际复现的 store 依赖修复。默认 CLI 仍为 rc.2，next 固定 rc.4，alpha 固定 alpha.2（Node >=24.9）。完整二十六宿主 CI、不可变安装和合并结果随本轮 PR 保存。无新 Explain 标签；证据见 [M39](./ACCEPTANCE.md) 与[兼容约定](./COMPATIBILITY.md)。
+
 ## M38：npm alpha 0.2.2-alpha.2 待验证（2026-10-28）
 
 CLI / store 的 `alpha` 升到 0.2.2-alpha.2，CLI 和二十三个 API 包均已发布，但新 alpha 与 rc.4 仍缺官方源码 tag / Release，元数据没有 `gitHead`。新 alpha 改用预发布 Cordis / Schemastery，协调版本的原始 store 安装成功后仍缺 Zustand。更新渠道与安装说明，继续固定已验证 rc.2 / rc.3，保留二十四宿主与开发依赖；不以包级复现或旧宿主 CI 宣称新版本兼容。下一步等待对应官方 tag，再协调依赖并完成新宿主验收。证据见 [M38](./ACCEPTANCE.md) 和[兼容约定](./COMPATIBILITY.md#current-npm-next-verification)。

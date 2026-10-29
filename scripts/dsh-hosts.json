@@ -1,5 +1,5 @@
 {
-  "developmentVersion": "0.2.1-rc.3",
+  "developmentVersion": "0.2.2-alpha.2",
   "hosts": [
     {
       "version": "0.1.2-rc.1",
@@ -198,6 +198,26 @@
     {
       "version": "0.2.1-rc.3",
       "sha": "1f81c047fc48fa190a683e469daa699857e9afe8",
+      "sessionById": true,
+      "accountSettings": true,
+      "settingsMigration": true,
+      "realtimeToggle": false,
+      "apiKeyOnboardingChoice": true,
+      "settingsAccountMenu": true
+    },
+    {
+      "version": "0.2.1-rc.4",
+      "sha": "504a01a9578abc2c6f1fb896b1dc322c9fe24f66",
+      "sessionById": true,
+      "accountSettings": true,
+      "settingsMigration": true,
+      "realtimeToggle": false,
+      "apiKeyOnboardingChoice": true,
+      "settingsAccountMenu": true
+    },
+    {
+      "version": "0.2.2-alpha.2",
+      "sha": "f3803c96974ad4a94195fb97e5c637e9c2a3afe3",
       "sessionById": true,
       "accountSettings": true,
       "settingsMigration": true,
