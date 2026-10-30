@@ -2,6 +2,10 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M40：npm latest / next rc.5 的验证边界（2026-10-30）
+
+CLI npm latest/next 与 store next 升至 0.2.1-rc.5；store latest 与两者 alpha 标签分别独立核对。官方 rc.5 tag / Release 不可用，包元数据没有 gitHead，因此保留二十六个已验证宿主，不接纳 rc.5。中英文说明继续固定 rc.2 回退、rc.4 候选与 alpha.2，明确阻止把已验证命令替换成尚待源码验证的 latest/next。业务源码、依赖、锁文件、引擎和数据格式均不改动；当前提交 / main CI 及不可变安装结果随 PR 保存，原运行时证据保持 M39 日期。没有新 Explain 标签或 rc.5 兼容通过结论。
+
 ## M39：DSH 0.2.1-rc.4 与 0.2.2-alpha.2（2026-10-29）
 
 官方 tag 分别直接固定源码 `504a01a9578abc2c6f1fb896b1dc322c9fe24f66` 和 `f3803c96974ad4a94195fb97e5c637e9c2a3afe3`。M37 / M38 之后源码已补齐，本轮将两版加入支持清单，保留全部二十四个旧宿主及 SHA，扩至二十六版。开发发布包固定 alpha.2，协调 Cordis 4.0.6-alpha.1 / Schemastery 3.18.6-alpha.1、peer、引擎、CI 与锁文件；原始两版 store 均按协调 Cordis 最小安装后复现缺少 Zustand，只新增两个精确补丁并保留二十版旧修复。

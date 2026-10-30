@@ -39,16 +39,16 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 DSH `0.2.1-rc.4` and `0.2.2-alpha.2` support is available on `main` and has not been tagged as a new Explain release. It preserves all twenty-four previously verified hosts. The latest Explain release, `v0.3.1`, supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
 
-For the current npm default (`latest`), install the current development branch:
+For a verified fallback, pin the previously supported default rc.2 and install the current development branch:
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
 ```
 
-For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-10-29, the `@deepseek-ai/dsh` npm tags resolve to `latest=0.2.1-rc.2`, `next=0.2.1-rc.4` and `alpha=0.2.2-alpha.2`. The commands above pin the current default CLI version.
+For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-10-30, the CLI npm tags resolve to `latest=next=0.2.1-rc.5` and `alpha=0.2.2-alpha.2`. **rc.5 compatibility is pending verification:** its official source tag and Release are unavailable. Keep the explicit verified rc.2 / rc.4 / alpha.2 pins here instead of substituting `@latest` or `@next`. The commands above retain the previously verified rc.2 fallback.
 
-For the verified npm `next` candidate, pin rc.4 explicitly:
+For the previously verified candidate, pin rc.4 explicitly:
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.4 plugin --profile web add github:yuezengwu/dsh-explain#main

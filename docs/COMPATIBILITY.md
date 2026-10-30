@@ -1,10 +1,16 @@
 # DSH 兼容约定
 
-核验日期：2026-10-29（CLI npm latest：DSH 0.2.1-rc.2；next：0.2.1-rc.4；alpha：0.2.2-alpha.2）。
+核验日期：2026-10-30（CLI npm latest=next：DSH 0.2.1-rc.5；alpha：0.2.2-alpha.2；rc.5 尚待源码验收）。
 
 <a id="current-npm-next-verification"></a>
 
 ## 当前 npm 渠道与验证
+
+2026-10-30，CLI npm `latest=next=0.2.1-rc.5`，store 独立 `latest=0.1.2-alpha.2` / `next=0.2.1-rc.5`，两者 `alpha=0.2.2-alpha.2`。rc.5 包已发布，但官方 tag / Release API 返回 404，CLI 元数据没有 `gitHead`；因此没有把 rc.5 加入引擎、peer 或宿主清单，也不以其替代安装命令。继续固定已验证 rc.2、rc.4 或 alpha.2；官方固定 alpha.2 兼容检查器拒绝 rc.5，无豁免。
+
+本轮 M40 只修正文档的渠道与安装边界，完整保留 M39 的二十六个宿主、精确 SHA、开发依赖、锁文件及二十二版 store 修复。M39 的发布依赖、固定源码与 Web/M6 验收保持 2026-10-29 原日期；当前提交 / 合并提交 CI 和已验证 CLI 的不可变 SHA 安装结果随本轮 PR 保存。没有运行 rc.5 源码或宣称其兼容。
+
+### M39 已验证的 rc.4 / alpha.2（2026-10-29）
 
 官方已于 2026-10-28 02:49:58 UTC 发布 [0.2.1-rc.4](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.4)，tag 直接固定源码 `504a01a9578abc2c6f1fb896b1dc322c9fe24f66`；02:50:54 UTC 发布 [0.2.2-alpha.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-alpha.2)，tag 直接固定源码 `f3803c96974ad4a94195fb97e5c637e9c2a3afe3`。M37 / M38 的源码缺失记录保留其原检查时间；本轮以已补齐的精确 tag 完成验收。
 
@@ -20,8 +26,8 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 
 | 来源 | 版本 | 精确提交 | 验证范围 |
 |---|---|---|---|
-| CLI npm latest 配套 API 发布包 | `0.2.1-rc.2` | 2026-10-18 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
-| CLI npm next 配套 API 发布包 | `0.2.1-rc.4` | 独立发布依赖 profile | frozen install、类型检查、108 项测试、构建、实际 pack |
+| 先前 CLI npm latest 配套 API 发布包 | `0.2.1-rc.2` | 2026-10-18 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
+| 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.4` | 独立发布依赖 profile | frozen install、类型检查、108 项测试、构建、实际 pack |
 | CLI npm alpha 配套 API 发布包 | `0.2.2-alpha.2` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.3` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.5` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |

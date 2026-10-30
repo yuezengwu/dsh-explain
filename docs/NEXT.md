@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M40：npm latest / next rc.5 的验证边界（2026-10-30）
+
+CLI npm latest/next 与 store next 升至 0.2.1-rc.5；store latest 与两者 alpha 标签分别独立核对。官方 rc.5 tag / Release 不可用，包元数据没有 gitHead，因此保留二十六个已验证宿主，不接纳 rc.5。中英文说明继续固定 rc.2 回退、rc.4 候选与 alpha.2，明确阻止把已验证命令替换成尚待源码验证的 latest/next。业务源码、依赖、锁文件、引擎和数据格式均不改动；当前提交 / main CI 及不可变安装结果随 PR 保存，原运行时证据保持 M39 日期。没有新 Explain 标签或 rc.5 兼容通过结论。
+
 ## M39：rc.4 与 0.2.2-alpha.2 兼容（2026-10-29）
 
 官方源码 tag 已补齐，新增两个精确宿主并保留全部二十四个旧版本。默认发布依赖协调到 alpha.2 与其 Cordis / Schemastery 预发布版；rc.4 发布依赖另用独立 profile 验证，两版固定源码安装同一 tarball 通过 108 项测试、8 Web、3 M6。夹具适配可选读取上限和响应 cursor，业务代码与旧 golden 不变；仅追加两个实际复现的 store 依赖修复。默认 CLI 仍为 rc.2，next 固定 rc.4，alpha 固定 alpha.2（Node >=24.9）。完整二十六宿主 CI、不可变安装和合并结果随本轮 PR 保存。无新 Explain 标签；证据见 [M39](./ACCEPTANCE.md) 与[兼容约定](./COMPATIBILITY.md)。
