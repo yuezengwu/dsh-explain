@@ -39,16 +39,16 @@
 
 `main` 已适配 DSH `0.2.1-rc.4` 与 `0.2.2-alpha.2`，保留全部二十四个既有宿主，尚未发布新的 Explain 标签。最新发布版仍为 `v0.3.1`，支持范围截至 DSH `0.1.6-alpha.2`。精确源码提交与证据见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
 
-使用当前 npm 默认版本（`latest`）时，安装当前开发分支：
+需要已验证的回退方案时，继续固定先前默认版 rc.2，安装当前开发分支：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
 ```
 
-使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。2026-10-29 核对：`@deepseek-ai/dsh` 的 npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.4`、`alpha=0.2.2-alpha.2`。上述命令已固定到当前默认 CLI 版本。
+使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。2026-10-30 核对：CLI npm `latest=next=0.2.1-rc.5`、`alpha=0.2.2-alpha.2`。**rc.5 兼容性仍待验证**：官方源码 tag 和 Release 尚不可用。请保留这里明确固定的 rc.2 / rc.4 / alpha.2，不要直接替换成 `@latest` 或 `@next`。上述命令继续使用先前已验证的 rc.2 回退版本。
 
-使用已验证的 npm `next` 候选版时，明确固定 rc.4：
+使用先前已验证的候选版时，明确固定 rc.4：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.4 plugin --profile web add github:yuezengwu/dsh-explain#main
