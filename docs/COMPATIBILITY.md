@@ -133,7 +133,7 @@ npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-ex
 npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
 ```
 
-已验证的 npm `next` 候选版固定 rc.4：
+先前已验证的候选版固定 rc.4：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.4 plugin --profile web add github:yuezengwu/dsh-explain#main
@@ -147,7 +147,7 @@ npx @deepseek-ai/dsh@0.2.2-alpha.2 plugin --profile web add github:yuezengwu/dsh
 npx @deepseek-ai/dsh@0.2.2-alpha.2 --profile web
 ```
 
-上述命令安装尚未发布新标签的 `main`。需要不可变安装时，把 `#main` 换为对应已通过 CI 的合入提交 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍搭配 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含后续 0.1.7/0.2.0/0.2.1/0.2.2 适配；v0.3.0 的支持范围截至 0.1.6-alpha.1。2026-10-29 核对 npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.4`、`alpha=0.2.2-alpha.2`；三组命令分别固定默认、候选和 alpha 版本。宿主 Session 格式迁移与 Explain SQLite 独立；各版本独立验收不表示新版 Session 文件可以降级读取。
+上述命令安装尚未发布新标签的 `main`。需要不可变安装时，把 `#main` 换为对应已通过 CI 的合入提交 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍搭配 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含后续 0.1.7/0.2.0/0.2.1/0.2.2 适配；v0.3.0 的支持范围截至 0.1.6-alpha.1。2026-10-30 核对 CLI npm `latest=next=0.2.1-rc.5`、`alpha=0.2.2-alpha.2`；rc.5 尚待固定源码验收，上述三组命令分别保留已验证的 rc.2 回退、rc.4 候选和 alpha.2。宿主 Session 格式迁移与 Explain SQLite 独立；各版本独立验收不表示新版 Session 文件可以降级读取。
 
 ## 兼容实现
 
