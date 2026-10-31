@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img alt="DSH 0.2.1-rc.2" src="https://img.shields.io/badge/DSH-0.2.1--rc.2-4c8bf5">
+  <img alt="DSH 0.2.1-rc.5" src="https://img.shields.io/badge/DSH-0.2.1--rc.5-4c8bf5">
   <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="本地优先" src="https://img.shields.io/badge/数据-本地优先-2ea44f">
@@ -37,23 +37,16 @@
 
 ## 快速开始
 
-`main` 已适配 DSH `0.2.1-rc.4` 与 `0.2.2-alpha.2`，保留全部二十四个既有宿主，尚未发布新的 Explain 标签。最新发布版仍为 `v0.3.1`，支持范围截至 DSH `0.1.6-alpha.2`。精确源码提交与证据见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
+`main` 已适配 DSH `0.2.1-rc.5`，保留全部二十六个既有宿主，包括 rc.4 与 alpha.2。尚未发布新的 Explain 标签，最新发布版 `v0.3.1` 的支持范围仍截至 DSH `0.1.6-alpha.2`。精确源码提交与证据见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
 
-需要已验证的回退方案时，继续固定先前默认版 rc.2，安装当前开发分支：
-
-```sh
-npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
-```
-
-使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。2026-10-30 核对：CLI npm `latest=next=0.2.1-rc.5`、`alpha=0.2.2-alpha.2`。**rc.5 兼容性仍待验证**：官方源码 tag 和 Release 尚不可用。请保留这里明确固定的 rc.2 / rc.4 / alpha.2，不要直接替换成 `@latest` 或 `@next`。上述命令继续使用先前已验证的 rc.2 回退版本。
-
-使用先前已验证的候选版时，明确固定 rc.4：
+2026-10-31 核对：CLI npm `latest=next=0.2.1-rc.5`、`alpha=0.2.2-alpha.2`。明确固定已验证的默认版：
 
 ```sh
-npx @deepseek-ai/dsh@0.2.1-rc.4 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.1-rc.4 --profile web
+npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.1-rc.5 --profile web
 ```
+
+先前验证的 rc.2 与 rc.4 继续支持，需要时将上述两处 CLI 版本一起替换为所选固定版本。使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。
 
 已验证的 `alpha` 需要 Node.js 24.9 或更高版本，命令同样固定版本：
 
@@ -111,8 +104,8 @@ Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 s
 
 | 检查 | 当前结果 |
 |---|---|
-| DSH 兼容 | `0.2.1-rc.4` / `0.2.2-alpha.2` 发布包；`0.1.2-rc.1`、`0.1.3-alpha.1`、`0.1.3-alpha.2`、`0.1.5-alpha.1`、`0.1.5-alpha.2`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.6-alpha.1`、`0.1.6-alpha.2`、`0.1.7-alpha.1`、`0.1.7-alpha.2`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.1`、`0.2.1-alpha.2`、`0.2.1-alpha.3`、`0.2.1-alpha.4`、`0.2.1-alpha.5`、`0.2.1-rc.1`、`0.2.1-rc.2`、`0.2.1-rc.3`、`0.2.1-rc.4`、`0.2.2-alpha.2` 组装源码 |
-| 单元与集成 | 二十六个源码版本各 108 项测试 |
+| DSH 兼容 | `0.2.1-rc.5` / `0.2.2-alpha.2` 发布包；`0.1.2-rc.1`、`0.1.3-alpha.1`、`0.1.3-alpha.2`、`0.1.5-alpha.1`、`0.1.5-alpha.2`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.6-alpha.1`、`0.1.6-alpha.2`、`0.1.7-alpha.1`、`0.1.7-alpha.2`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.1`、`0.2.1-alpha.2`、`0.2.1-alpha.3`、`0.2.1-alpha.4`、`0.2.1-alpha.5`、`0.2.1-rc.1`、`0.2.1-rc.2`、`0.2.1-rc.3`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-alpha.2` 组装源码 |
+| 单元与集成 | 二十七个源码版本各 108 项测试 |
 | DSH Web 组装验收 | 7 个共有场景；0.1.7、0.2.0 和 0.2.1 增加旧设置迁移与重启恢复 |
 | Explain 自有快捷入口 | 3 个 M6 场景验证卸载、移除及重装；实时停用与重新启用另在 0.1.6-alpha.2 执行 |
 | 生产包 | frozen install、构建与实际 pack |
@@ -122,7 +115,7 @@ Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 s
 
 ## 本地开发
 
-默认开发安装使用已发布的 `0.2.2-alpha.2` API 包，并仅针对已复现版本补齐[遗漏的 store 运行依赖](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复)。组装 Web 测试支持上表二十六个版本中任一已构建的 DSH 源码 checkout；现有 Demo 录制仍使用 `0.1.2-rc.1`：
+默认开发安装使用已发布的 `0.2.2-alpha.2` API 包，并仅针对已复现版本补齐[遗漏的 store 运行依赖](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复)。组装 Web 测试支持上表二十七个版本中任一已构建的 DSH 源码 checkout；现有 Demo 录制仍使用 `0.1.2-rc.1`：
 
 ```sh
 pnpm install

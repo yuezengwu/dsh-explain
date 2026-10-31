@@ -95,6 +95,8 @@ jobs:
             sha: 1f81c047fc48fa190a683e469daa699857e9afe8
           - version: 0.2.1-rc.4
             sha: 504a01a9578abc2c6f1fb896b1dc322c9fe24f66
+          - version: 0.2.1-rc.5
+            sha: b830ec950faba0a46dda564be3e2d854afed94f1
           - version: 0.2.2-alpha.2
             sha: f3803c96974ad4a94195fb97e5c637e9c2a3afe3
     name: DSH ${{ matrix.version }}
