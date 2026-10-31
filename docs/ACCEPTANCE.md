@@ -2,6 +2,14 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M41：DSH 0.2.1-rc.5（2026-10-31）
+
+官方 tag 直接固定 `b830ec950faba0a46dda564be3e2d854afed94f1`，Release 于 2026-10-30 02:12:26 UTC 发布。本轮保留二十六个既有源码宿主、SHA 和夹具能力，追加 rc.5；引擎、peer、共享清单、CI 与文档同步。开发发布依赖保留 alpha.2，rc.5 发布依赖按 Cordis 4.0.5 / Schemastery 3.18.5 独立验证。原始 store 最小安装后 import 仍缺少 Zustand，仅追加 rc.5 精确补丁并保留旧修复。
+
+alpha.2 默认发布依赖与 rc.5 独立 profile 完成 frozen install、兼容门禁、类型、108 项测试、构建和实际 pack。固定 rc.5 源码完成 frozen install 与完整 build；链接、类型、108 项测试，以及安装同一 alpha.2 构建 tarball 的 8 Web / 3 M6 通过。M6 实时停用/启用仍仅承诺原宿主的原记录，rc.5 覆盖卸载/移除/重装。完整二十七宿主当前提交 / main CI、固定 SHA 安装与产物比对随 PR 保存。
+
+rc.5 的思考展示 Slot 新增 rawText，Explain 不使用该入口，无业务源码或旧 golden 变动。数据格式、插件版本与标签保持不变。没有真实 provider、账号模型、Desktop、CUA、自然模型调用或 Session 降级验收。
+
 ## M40：npm latest / next rc.5 的验证边界（2026-10-30）
 
 CLI npm latest/next 与 store next 升至 0.2.1-rc.5；store latest 与两者 alpha 标签分别独立核对。官方 rc.5 tag / Release 不可用，包元数据没有 gitHead，因此保留二十六个已验证宿主，不接纳 rc.5。中英文说明继续固定 rc.2 回退、rc.4 候选与 alpha.2，明确阻止把已验证命令替换成尚待源码验证的 latest/next。业务源码、依赖、锁文件、引擎和数据格式均不改动；当前提交 / main CI 及不可变安装结果随 PR 保存，原运行时证据保持 M39 日期。没有新 Explain 标签或 rc.5 兼容通过结论。

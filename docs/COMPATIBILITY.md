@@ -1,14 +1,16 @@
 # DSH 兼容约定
 
-核验日期：2026-10-30（CLI npm latest=next：DSH 0.2.1-rc.5；alpha：0.2.2-alpha.2；rc.5 尚待源码验收）。
+核验日期：2026-10-31（CLI npm latest=next：DSH 0.2.1-rc.5；alpha：0.2.2-alpha.2）。
 
 <a id="current-npm-next-verification"></a>
 
 ## 当前 npm 渠道与验证
 
-2026-10-30，CLI npm `latest=next=0.2.1-rc.5`，store 独立 `latest=0.1.2-alpha.2` / `next=0.2.1-rc.5`，两者 `alpha=0.2.2-alpha.2`。rc.5 包已发布，但官方 tag / Release API 返回 404，CLI 元数据没有 `gitHead`；因此没有把 rc.5 加入引擎、peer 或宿主清单，也不以其替代安装命令。继续固定已验证 rc.2、rc.4 或 alpha.2；官方固定 alpha.2 兼容检查器拒绝 rc.5，无豁免。
+CLI npm `latest=next=0.2.1-rc.5`，store 独立 `latest=0.1.2-alpha.2` / `next=0.2.1-rc.5`，两者 `alpha=0.2.2-alpha.2`。官方已于 2026-10-30 02:12:26 UTC 补齐 [rc.5 Release](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.5)，tag 直接固定源码 `b830ec950faba0a46dda564be3e2d854afed94f1`；M40 的源码缺失记录保留原日期，本轮以固定源码验收。
 
-本轮 M40 只修正文档的渠道与安装边界，完整保留 M39 的二十六个宿主、精确 SHA、开发依赖、锁文件及二十二版 store 修复。M39 的发布依赖、固定源码与 Web/M6 验收保持 2026-10-29 原日期；当前提交 / 合并提交 CI 和已验证 CLI 的不可变 SHA 安装结果随本轮 PR 保存。没有运行 rc.5 源码或宣称其兼容。
+M41 保留二十六个既有宿主及精确 SHA，追加 rc.5，扩至二十七版。开发发布依赖继续固定已验证 alpha.2，rc.5 的协调 Cordis 4.0.5 / Schemastery 3.18.5 发布依赖另在干净 profile 验证。原始 rc.5 store 独立 import 仍缺少 Zustand，新增一个精确补丁，保留二十二版旧修复。rc.5 主要调整思考内容的 rawText / 展示文本；Explain 不消费该 Slot，业务源码、旧 golden、SQLite schema 4 与 backup v3 保持不变。
+
+本轮发布依赖、同一 alpha.2 构建 tarball、固定 rc.5 源码及 Web/M6 的实际结果见 [M41 验收](./ACCEPTANCE.md)。完整当前提交 / main CI 和不可变 SHA 安装证据随 PR 保存；先前宿主的本地验收保持原日期。没有真实 provider、账号模型、Desktop 或新 Explain 发布标签。
 
 ### M39 已验证的 rc.4 / alpha.2（2026-10-29）
 
@@ -62,6 +64,7 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 | DSH 0.2.1-rc.2 源码 | `0.2.1-rc.2` | `687f282e8625c6b8d11ff58211a90524be2e4317` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.1-rc.3 源码 | `0.2.1-rc.3` | `1f81c047fc48fa190a683e469daa699857e9afe8` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.1-rc.4 源码 | `0.2.1-rc.4` | `504a01a9578abc2c6f1fb896b1dc322c9fe24f66` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
+| DSH 0.2.1-rc.5 源码 | `0.2.1-rc.5` | `b830ec950faba0a46dda564be3e2d854afed94f1` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.2-alpha.2 源码 | `0.2.2-alpha.2` | `f3803c96974ad4a94195fb97e5c637e9c2a3afe3` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 
 [官方 0.2.1-rc.3](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) 于 2026-10-23 15:26:39 UTC 发布，tag 直接固定源码 `1f81c047fc48fa190a683e469daa699857e9afe8`。2026-10-24 核对 CLI npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.3`、`alpha=0.2.1-alpha.5`；store 自身为 `latest=0.1.2-alpha.2`、`next=0.2.1-rc.3`、`alpha=0.2.1-alpha.5`。M36 固定 rc.3 开发发布包，协调锁文件、精确 peer、引擎、清单和 CI，保留全部二十三个旧宿主并扩至二十四版。新的 More 菜单与草稿选项不要求 Explain 改用新接口；原始 store 仍可复现缺失 Zustand，因此只追加 rc.3 精确补丁。业务源码、Host/Client bundle、旧 golden、SQLite schema 4 与 backup v3 不变；TypeRT 产物重新生成。发布包及固定源码验收见 [M36](./ACCEPTANCE.md)，新 Explain 标签、真实 provider、账号模型、Desktop 与 Session 降级不在本轮范围。

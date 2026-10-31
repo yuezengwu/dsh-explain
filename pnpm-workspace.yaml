@@ -51,6 +51,10 @@ packageExtensions:
     dependencies:
       immer: ^10.1.1
       zustand: ~4.5.7
+  '@deepseek-ai/dsh-client-store@0.2.1-rc.5':
+    dependencies:
+      immer: ^10.1.1
+      zustand: ~4.5.7
   '@deepseek-ai/dsh-client-store@0.2.2-alpha.2':
     dependencies:
       immer: ^10.1.1

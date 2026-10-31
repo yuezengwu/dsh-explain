@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <img alt="DSH 0.2.1-rc.2" src="https://img.shields.io/badge/DSH-0.2.1--rc.2-4c8bf5">
+  <img alt="DSH 0.2.1-rc.5" src="https://img.shields.io/badge/DSH-0.2.1--rc.5-4c8bf5">
   <a href="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/yuezengwu/dsh-explain/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://github.com/yuezengwu/dsh-explain/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/yuezengwu/dsh-explain"></a>
   <img alt="Local first" src="https://img.shields.io/badge/data-local--first-2ea44f">
@@ -37,23 +37,16 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 ## Quick start
 
-DSH `0.2.1-rc.4` and `0.2.2-alpha.2` support is available on `main` and has not been tagged as a new Explain release. It preserves all twenty-four previously verified hosts. The latest Explain release, `v0.3.1`, supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
+DSH `0.2.1-rc.5` support is available on `main`, preserving all twenty-six previously verified hosts, including rc.4 and alpha.2. This is not a new Explain release: `v0.3.1` still supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
 
-For a verified fallback, pin the previously supported default rc.2 and install the current development branch:
-
-```sh
-npx @deepseek-ai/dsh@0.2.1-rc.2 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.1-rc.2 --profile web
-```
-
-For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`. As checked on 2026-10-30, the CLI npm tags resolve to `latest=next=0.2.1-rc.5` and `alpha=0.2.2-alpha.2`. **rc.5 compatibility is pending verification:** its official source tag and Release are unavailable. Keep the explicit verified rc.2 / rc.4 / alpha.2 pins here instead of substituting `@latest` or `@next`. The commands above retain the previously verified rc.2 fallback.
-
-For the previously verified candidate, pin rc.4 explicitly:
+As checked on 2026-10-31, CLI npm `latest=next=0.2.1-rc.5` and `alpha=0.2.2-alpha.2`. Pin the verified default explicitly:
 
 ```sh
-npx @deepseek-ai/dsh@0.2.1-rc.4 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.1-rc.4 --profile web
+npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.1-rc.5 --profile web
 ```
+
+The previously verified rc.2 and rc.4 remain supported; replace both CLI pins above with the chosen exact version. For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`.
 
 The verified `alpha` requires Node.js 24.9 or newer. Pin its version explicitly:
 
@@ -111,8 +104,8 @@ Explain uses first-party DSH conversation, composer, assistant-action, and setti
 
 | Check | Current result |
 |---|---|
-| DSH compatibility | `0.2.1-rc.4` / `0.2.2-alpha.2` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.6-alpha.1`, `0.1.6-alpha.2`, `0.1.7-alpha.1`, `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, `0.2.1-alpha.5`, `0.2.1-rc.1`, `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4`, `0.2.2-alpha.2` assembled source |
-| Unit and integration | 108 tests on each of the twenty-six source versions |
+| DSH compatibility | `0.2.1-rc.5` / `0.2.2-alpha.2` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.6-alpha.1`, `0.1.6-alpha.2`, `0.1.7-alpha.1`, `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, `0.2.1-alpha.5`, `0.2.1-rc.1`, `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4`, `0.2.1-rc.5`, `0.2.2-alpha.2` assembled source |
+| Unit and integration | 108 tests on each of the twenty-seven source versions |
 | Assembled DSH Web | 7 shared scenarios; 0.1.7, 0.2.0, and 0.2.1 add legacy-settings migration and restart coverage |
 | Explain-owned shortcuts | 3 M6 scenarios for unload/remove/reinstall; live disable/re-enable additionally runs on 0.1.6-alpha.2 |
 | Production package | Frozen install, build and pack |
@@ -122,7 +115,7 @@ See the [acceptance matrix](https://github.com/yuezengwu/dsh-explain/blob/main/d
 
 ## Local development
 
-The default development install uses published `0.2.2-alpha.2` API packages, with a version-scoped repair for their [missing store runtime dependencies](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the twenty-six versions above. The existing demo recording remains on `0.1.2-rc.1`:
+The default development install uses published `0.2.2-alpha.2` API packages, with a version-scoped repair for their [missing store runtime dependencies](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the twenty-seven versions above. The existing demo recording remains on `0.1.2-rc.1`:
 
 ```sh
 pnpm install
