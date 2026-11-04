@@ -33,6 +33,13 @@ declare module '@deepseek-ai/dsh-llm' {
   }
 }
 
+// Declare the auxiliary request produced here without importing the host's compaction backend.
+declare module '@deepseek-ai/dsh-llm/types' {
+  interface LlmRequestPurposeMap {
+    compaction: true
+  }
+}
+
 const SYSTEM = `You are dsh-explain, a private auxiliary learning assistant. Decide whether one completed coding-work turn contains a useful teachable concept for this user, using only the supplied bounded source capsule and learning context. Write every user-visible title and explanation field in the language used by sourceCapsule.userText. Do not infer occupation, identity, health, politics, or other sensitive attributes. Return exactly one JSON object with no markdown or extra text.`
 
 const REPHRASE_SYSTEM = `You are dsh-explain. Rephrase one still-active explanation after the user said they did not understand. Preserve the topic identity, use a materially different explanation strategy, and write in the same language as the supplied prior revisions. Return exactly one JSON object with title, what, why, and pitfall. Do not return markdown or extra fields.`
