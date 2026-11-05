@@ -2,6 +2,14 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M43：DSH 0.2.2-rc.1（2026-11-05）
+
+官方精确源码 `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`，保留二十八个旧宿主与 SHA，扩至二十九版。SDK、Cordis 4.1.0 / Schemastery 3.19.0、引擎、peer、共享清单、CI、锁文件同步；原始 store 最小安装后 import 缺少 Zustand，仅新增 rc.1 精确依赖补丁。与 alpha.3 的官方源码差异全部为 387 处版本清单，本轮仍独立构建与验收。
+
+发布依赖冻结安装、类型、108 项测试、构建、实际包通过；固定源码冻结安装及完整构建 10/10 门禁通过。源码链接、类型、108 项测试，同一发布依赖构建包在新宿主 8 Web / 3 M6 全部通过，本轮无退出超时。生产源码、测试与旧 golden 不变；Host / Client bundle 与 M42 字节相同，两份 TypeRT 各仅一行依赖路径注释变化。当前提交和 main 的完整三十项 CI、不可变 SHA 安装与产物核对随 PR 保存。
+
+旧宿主本地证据保持原日期；M42 原始超时及其复检继续保留。schema 4、backup v3、插件版本与发布标签不变。隔离无密钥验证不新增真实模型、账号、Desktop、CUA、插件更新流程或 Session 降级验收。
+
 ## M42：DSH 0.2.2-alpha.3（2026-11-04）
 
 官方源码固定 `05b1cae8db6e674c5685101494d4eec24652424a`，保留全部二十七个旧宿主及 SHA，扩至二十八版。开发 SDK、Cordis 4.0.6-alpha.2 / Schemastery 3.18.6-alpha.2、peer、引擎、清单、CI 与锁文件协调。原始新 store 的最小安装复现缺少 Zustand，仅新增 alpha.3 精确修复。

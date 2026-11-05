@@ -1,5 +1,10 @@
 # dsh-explain 迭代计划
 
+## M43：0.2.2-rc.1 兼容（2026-11-05）
+
+追加第二十九个精确宿主，保留全部旧版本；协调 SDK、Cordis/Loader、精确 store 补丁与锁文件，无生产源码修改。默认仍固定 rc.5，next 固定新 rc.1，alpha 固定 alpha.3。发布包、固定源码、Web/M6 和完整 CI / 安装证据见[验收矩阵](./ACCEPTANCE.md)。未发布新 Explain 标签。
+
+
 ## M42：alpha.3 兼容（2026-11-04）
 
 协调 alpha.3 与新版 Cordis/Loader，追加第二十八个固定源码宿主，保留旧版本。仅增加辅助压缩用途的公开类型声明与精确 store 修复；发布包、Web/M6、当前提交/main CI 与安装证据见[验收矩阵](./ACCEPTANCE.md)。首轮退出超时保留记录，不新增 Explain 标签。
