@@ -37,9 +37,9 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 ## Quick start
 
-DSH `0.2.1-rc.5` and `0.2.2-alpha.3` support is available on `main`, preserving all twenty-seven previously verified hosts, including rc.4 and alpha.2. This is not a new Explain release: `v0.3.1` still supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
+DSH `0.2.1-rc.5`, `0.2.2-rc.1` and `0.2.2-alpha.3` support is available on `main`, preserving all twenty-eight previously verified hosts, including rc.4 and alpha.2. This is not a new Explain release: `v0.3.1` still supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
 
-As checked on 2026-11-04, CLI npm `latest=next=0.2.1-rc.5` and `alpha=0.2.2-alpha.3`. Pin the verified default explicitly:
+As checked on 2026-11-05, CLI npm `latest=0.2.1-rc.5`, `next=0.2.2-rc.1` and `alpha=0.2.2-alpha.3`. Pin the verified default explicitly:
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
@@ -47,6 +47,13 @@ npx @deepseek-ai/dsh@0.2.1-rc.5 --profile web
 ```
 
 The previously verified rc.2 and rc.4 remain supported; replace both CLI pins above with the chosen exact version. For the existing tagged release, keep DSH `0.1.6-alpha.2` and install `github:yuezengwu/dsh-explain#v0.3.1`.
+
+Verified next is pinned to rc.1 and requires Node.js >=24.9:
+
+```sh
+npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
+```
 
 The verified `alpha` requires Node.js 24.9 or newer. Pin its version explicitly:
 
@@ -104,8 +111,8 @@ Explain uses first-party DSH conversation, composer, assistant-action, and setti
 
 | Check | Current result |
 |---|---|
-| DSH compatibility | `0.2.1-rc.5` / `0.2.2-alpha.3` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.6-alpha.1`, `0.1.6-alpha.2`, `0.1.7-alpha.1`, `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, `0.2.1-alpha.5`, `0.2.1-rc.1`, `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4`, `0.2.1-rc.5`, `0.2.2-alpha.2`, `0.2.2-alpha.3` assembled source |
-| Unit and integration | 108 tests on each of the twenty-eight source versions |
+| DSH compatibility | `0.2.1-rc.5` / `0.2.2-rc.1` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.6-alpha.1`, `0.1.6-alpha.2`, `0.1.7-alpha.1`, `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, `0.2.1-alpha.5`, `0.2.1-rc.1`, `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4`, `0.2.1-rc.5`, `0.2.2-alpha.2`, `0.2.2-alpha.3`, `0.2.2-rc.1` assembled source |
+| Unit and integration | 108 tests on each of the twenty-nine source versions |
 | Assembled DSH Web | 7 shared scenarios; 0.1.7, 0.2.0, and 0.2.1 add legacy-settings migration and restart coverage |
 | Explain-owned shortcuts | 3 M6 scenarios for unload/remove/reinstall; live disable/re-enable additionally runs on 0.1.6-alpha.2 |
 | Production package | Frozen install, build and pack |
@@ -115,7 +122,7 @@ See the [acceptance matrix](https://github.com/yuezengwu/dsh-explain/blob/main/d
 
 ## Local development
 
-The default development install uses published `0.2.2-alpha.3` API packages, with a version-scoped repair for their [missing store runtime dependencies](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the twenty-eight versions above. The existing demo recording remains on `0.1.2-rc.1`:
+The default development install uses published `0.2.2-rc.1` API packages, with a version-scoped repair for their [missing store runtime dependencies](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复). Assembled-Web tests accept a built DSH checkout for any of the twenty-nine versions above. The existing demo recording remains on `0.1.2-rc.1`:
 
 ```sh
 pnpm install
