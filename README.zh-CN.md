@@ -39,21 +39,21 @@
 
 `main` 已适配 DSH `0.2.1-rc.5`、`0.2.2-rc.1` 与 `0.2.2-alpha.3`，保留全部二十八个既有宿主，包括 rc.4 与 alpha.2。尚未发布新的 Explain 标签，最新发布版 `v0.3.1` 的支持范围仍截至 DSH `0.1.6-alpha.2`。精确源码提交与证据见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
 
-2026-11-05 核对：CLI npm `latest=0.2.1-rc.5`, `next=0.2.2-rc.1`、`alpha=0.2.2-alpha.3`。明确固定已验证的默认版：
+2026-11-06 核对：CLI npm `latest=next=0.2.2-rc.1`、`alpha=0.2.2-alpha.3`。明确固定已验证的默认版（Node.js >=24.9）：
+
+```sh
+npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
+```
+
+已验证的默认版需要 Node.js >=24.9。rc.5 继续作为固定回退版本：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.1-rc.5 --profile web
 ```
 
-先前验证的 rc.2 与 rc.4 继续支持，需要时将上述两处 CLI 版本一起替换为所选固定版本。使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。
-
-已验证的 next 固定 rc.1，需要 Node.js >=24.9：
-
-```sh
-npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
-```
+先前验证的 rc.2 与 rc.4 继续支持，需要时将两处 CLI 版本一起替换为所选固定版本。使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。
 
 已验证的 `alpha` 需要 Node.js 24.9 或更高版本，命令同样固定版本：
 
