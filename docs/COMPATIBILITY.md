@@ -1,10 +1,18 @@
 # DSH 兼容约定
 
-核验日期：2026-11-05（CLI npm latest：0.2.1-rc.5；next：0.2.2-rc.1；alpha：0.2.2-alpha.3）。
+核验日期：2026-11-06（CLI npm latest=next：0.2.2-rc.1；alpha：0.2.2-alpha.3）。
 
 <a id="current-npm-next-verification"></a>
 
 ## 当前 npm 渠道与验证
+
+CLI npm `latest=next=0.2.2-rc.1`，`alpha=0.2.2-alpha.3`；store 仍独立为 `latest=0.1.2-alpha.2`、`next=0.2.2-rc.1`、`alpha=0.2.2-alpha.3`。此次只有 CLI latest 从 rc.5 升至已验证的 rc.1，其余四十组已跟踪包标签不变。latest、next 与固定 rc.1 的 tarball/integrity 一致；官方 tag 仍固定 `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`，没有新增源码发布。
+
+M44 将默认安装命令固定为 0.2.2-rc.1（Node >=24.9），保留 rc.5 回退、alpha.3 和全部二十九个宿主。SDK、依赖、锁文件、精确 store 修复、引擎、共享清单、CI、源码和测试均不改。固定源码、108 项测试、8 Web / 3 M6 的本地证据保持 M43 的 2026-11-05 日期；本轮只验证冻结安装、兼容一致性、构建、实际包及当前提交/main CI、不可变安装和产物一致性，结果随 PR 保存，不重复完整本地宿主矩阵。
+
+没有新 Explain 发布标签、真实 provider、账号模型、Desktop、CUA、插件更新流程或 Session 降级验收。SQLite schema 4、backup v3 和旧 golden 保持不变。
+
+### M43 已验证的 0.2.2-rc.1（2026-11-05）
 
 CLI npm `latest=0.2.1-rc.5`、`next=0.2.2-rc.1`、`alpha=0.2.2-alpha.3`；store 独立 `latest=0.1.2-alpha.2`、`next=0.2.2-rc.1`、`alpha=0.2.2-alpha.3`。官方 [rc.1 Release](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.1) 于 2026-11-04 13:07:14 UTC 发布，tag 直接固定源码 `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`。
 
@@ -41,11 +49,11 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 | 来源 | 版本 | 精确提交 | 验证范围 |
 |---|---|---|---|
 | 先前 CLI npm latest 配套 API 发布包 | `0.2.1-rc.2` | 2026-10-18 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
-| CLI npm latest / next 配套 API 发布包 | `0.2.1-rc.5` | 独立发布依赖 profile | frozen install、类型检查、108 项测试、构建、实际 pack |
+| 先前 CLI npm latest / next 配套 API 发布包 | `0.2.1-rc.5` | 独立发布依赖 profile | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.4` | 独立发布依赖 profile | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.2-alpha.2` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.2-alpha.3` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
-| CLI npm next 配套 API 发布包 | `0.2.2-rc.1` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
+| CLI npm latest / next 配套 API 发布包 | `0.2.2-rc.1` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.3` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.5` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.4` | 2026-10-16 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
@@ -154,33 +162,35 @@ Explain 的来源观察和手动来源定位已迁移至公开的 `sessionContro
 
 ## 安装
 
+2026-11-06 核对 CLI npm `latest=next=0.2.2-rc.1`、`alpha=0.2.2-alpha.3`。默认固定已验证的 rc.1，需要 Node >=24.9：
+
+```sh
+npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
+```
+
+保留先前默认版 rc.5 作为固定回退：
+
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.1-rc.5 --profile web
 ```
 
-先前已验证的候选版固定 rc.4：
+先前已验证的候选版 rc.4 继续支持：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.4 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.1-rc.4 --profile web
 ```
 
-已验证的 npm `alpha` 需要 Node.js 24.9 或更高版本：
+已验证的 npm alpha 同样固定版本，需要 Node >=24.9：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.2-alpha.3 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.2-alpha.3 --profile web
 ```
 
-上述命令安装尚未发布新标签的 `main`。需要不可变安装时，把 `#main` 换为对应已通过 CI 的合入提交 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍搭配 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含后续 0.1.7/0.2.0/0.2.1/0.2.2 适配；v0.3.0 的支持范围截至 0.1.6-alpha.1。2026-11-05 核对 CLI npm `latest=0.2.1-rc.5`、`next=0.2.2-rc.1`、`alpha=0.2.2-alpha.3`；上述命令分别固定已验证的 rc.5、rc.4 与 alpha.3。此前 rc.2 继续支持，可将两处 CLI 版本一起替换为该精确版本。宿主 Session 格式迁移与 Explain SQLite 独立；各版本独立验收不表示新版 Session 文件可以降级读取。
-
-已验证的 next 固定 0.2.2-rc.1（Node >=24.9），alpha.3 保留支持：
-
-```sh
-npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
-```
+上述命令安装尚未发布新标签的 main。不可变安装请把 `#main` 换为对应已通过 CI 的合入提交完整 SHA。现有 [v0.3.1](https://github.com/yuezengwu/dsh-explain/releases/tag/v0.3.1) 仍限 DSH 0.1.6-alpha.2 或更早的表内宿主，不包含后续 0.1.7/0.2.0/0.2.1/0.2.2 适配；v0.3.0 范围截至 0.1.6-alpha.1。rc.2、alpha.2 和其余表内版本继续支持，可将两处 CLI pin 一起替换为相应精确版本。各版本独立验收不表示新版 Session 文件可以降级读取。
 
 ## 兼容实现
 

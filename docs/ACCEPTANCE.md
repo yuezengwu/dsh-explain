@@ -2,6 +2,12 @@
 
 本矩阵把 [PRD P0 验收标准](./PRD.md#验收标准) 映射到可重复执行的自动化证据。M2 真实模型与浏览器流程记录在 [PR #2](https://github.com/yuezengwu/dsh-explain/pull/2)，后续用户界面迭代的证据随对应 PR 保存；无密钥门禁不读取用户 `$DSH_HOME`，所有 Session、SQLite 和 profile 数据都位于测试临时目录。
 
+## M44：默认 CLI latest 升至已验证 rc.1（2026-11-06）
+
+CLI latest 从 rc.5 升至 0.2.2-rc.1，next / alpha、store 独立标签和其余四十组已跟踪包标签不变。latest / next / 固定 rc.1 的 tarball、integrity 一致；二十九个官方源码 SHA 均未变化。只更新五份文档：默认固定 rc.1、保留 rc.5 回退及所有旧宿主，不修改 SDK、依赖、锁文件、引擎、清单、CI、业务源码、测试或数据格式。
+
+M43 的固定源码、108 项测试和 8 Web / 3 M6 本地证据保留 2026-11-05 日期。本轮冻结安装、兼容一致性、构建、实际包、当前提交/main CI、完整 SHA 安装和全部 JavaScript 产物比对随 PR 保存；不重复完整本地测试，也不把原宿主验收追溯为本轮真实模型或 Desktop 通过。Explain 标签不变。2026-11-06 已直接观察规范目录实际展示 M43 支持，目录正文刷新与新默认命令同步仍分别记录。
+
 ## M43：DSH 0.2.2-rc.1（2026-11-05）
 
 官方精确源码 `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`，保留二十八个旧宿主与 SHA，扩至二十九版。SDK、Cordis 4.1.0 / Schemastery 3.19.0、引擎、peer、共享清单、CI、锁文件同步；原始 store 最小安装后 import 缺少 Zustand，仅新增 rc.1 精确依赖补丁。与 alpha.3 的官方源码差异全部为 387 处版本清单，本轮仍独立构建与验收。
