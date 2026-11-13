@@ -1,10 +1,16 @@
 # DSH 兼容约定
 
-核验日期：2026-11-06（CLI npm latest=next：0.2.2-rc.1；alpha：0.2.2-alpha.3）。
+核验日期：2026-11-13（CLI npm latest：0.2.2-rc.1；next：0.2.2-rc.2；alpha：0.2.2-alpha.3）。
 
 <a id="current-npm-next-verification"></a>
 
 ## 当前 npm 渠道与验证
+
+[官方 rc.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.2) 固定源码 `ddac96760b6edf8fa0fe17cbdcf0b512f4c12b2c`。CLI npm `latest=0.2.2-rc.1`、`next=0.2.2-rc.2`、`alpha=0.2.2-alpha.3`；store 自身的 latest 仍是 `0.1.2-alpha.2`，next 与 alpha 分别为 rc.2 和 alpha.3。默认安装固定 rc.1，next 单独固定 rc.2，保留 rc.5 回退和全部二十九个旧宿主。
+
+开发 SDK 固定 rc.2、Cordis 4.1.0 和 Schemastery 3.19.0，显式满足新版 LLM 的 dsh-error 开发 peer；旧宿主的源码链接不要求该新包。最小 npm 安装可复现 rc.2 store 缺少 Zustand，因此仅追加该版本的 Immer/Zustand 修复。发布依赖、固定源码及同一包的验收见[验收矩阵](./ACCEPTANCE.md#m45dsh-022-rc22026-11-13)。
+
+### M44 默认渠道更新（2026-11-06）
 
 CLI npm `latest=next=0.2.2-rc.1`，`alpha=0.2.2-alpha.3`；store 仍独立为 `latest=0.1.2-alpha.2`、`next=0.2.2-rc.1`、`alpha=0.2.2-alpha.3`。此次只有 CLI latest 从 rc.5 升至已验证的 rc.1，其余四十组已跟踪包标签不变。latest、next 与固定 rc.1 的 tarball/integrity 一致；官方 tag 仍固定 `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`，没有新增源码发布。
 
@@ -53,7 +59,8 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 | 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.4` | 独立发布依赖 profile | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.2-alpha.2` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.2-alpha.3` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
-| CLI npm latest / next 配套 API 发布包 | `0.2.2-rc.1` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
+| CLI npm latest 配套 API 发布包 | `0.2.2-rc.1` | 2026-11-05 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
+| CLI npm next 配套 API 发布包 | `0.2.2-rc.2` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.3` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.5` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.4` | 2026-10-16 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
@@ -91,6 +98,7 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 | DSH 0.2.2-alpha.2 源码 | `0.2.2-alpha.2` | `f3803c96974ad4a94195fb97e5c637e9c2a3afe3` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.2-alpha.3 源码 | `0.2.2-alpha.3` | `05b1cae8db6e674c5685101494d4eec24652424a` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.2-rc.1 源码 | `0.2.2-rc.1` | `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
+| DSH 0.2.2-rc.2 源码 | `0.2.2-rc.2` | `ddac96760b6edf8fa0fe17cbdcf0b512f4c12b2c` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 
 [官方 0.2.1-rc.3](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) 于 2026-10-23 15:26:39 UTC 发布，tag 直接固定源码 `1f81c047fc48fa190a683e469daa699857e9afe8`。2026-10-24 核对 CLI npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.3`、`alpha=0.2.1-alpha.5`；store 自身为 `latest=0.1.2-alpha.2`、`next=0.2.1-rc.3`、`alpha=0.2.1-alpha.5`。M36 固定 rc.3 开发发布包，协调锁文件、精确 peer、引擎、清单和 CI，保留全部二十三个旧宿主并扩至二十四版。新的 More 菜单与草稿选项不要求 Explain 改用新接口；原始 store 仍可复现缺失 Zustand，因此只追加 rc.3 精确补丁。业务源码、Host/Client bundle、旧 golden、SQLite schema 4 与 backup v3 不变；TypeRT 产物重新生成。发布包及固定源码验收见 [M36](./ACCEPTANCE.md)，新 Explain 标签、真实 provider、账号模型、Desktop 与 Session 降级不在本轮范围。
 
@@ -158,15 +166,22 @@ Explain 的来源观察和手动来源定位已迁移至公开的 `sessionContro
 
 2026-11-05 在协调 Cordis 4.1.0 下复现原始 0.2.2-rc.1 store 缺少 Zustand，追加精确补丁，保留二十四版旧修复。
 
-`pnpm-workspace.yaml` 的 `packageExtensions` 只匹配二十五个已复现的受影响版本：此前十三版保留原依赖范围 `immer: ^10.1.1` 与 `zustand: ~4.4.7`，0.2.1-alpha.2 至 alpha.5、rc.1 至 rc.5 以及 0.2.2-alpha.2 / alpha.3 / rc.1 分别使用精确选择器补齐 `immer: ^10.1.1` 与 `zustand: ~4.5.7`，锁文件记录修复。0.2.1-alpha.2 配套发布包经 frozen install、类型检查、106 项测试、构建与实际 pack 通过；上游进展与更广的静态客户端打包问题见 [Discussion #6082](https://github.com/deepseek-ai/deepseek-harness/discussions/6082)。静态库产物保留 bare imports，而上游依赖门禁要求浏览器输入仅列为开发依赖，完整修复需要维护者统一产物与依赖规则。本项目只修复实际消费的 store；该配置作用于本仓库 pnpm 安装，不代表其他消费方或上游发布包已修复。
+`pnpm-workspace.yaml` 的 `packageExtensions` 只匹配二十六个已复现的受影响版本：此前十三版保留原依赖范围 `immer: ^10.1.1` 与 `zustand: ~4.4.7`，0.2.1-alpha.2 至 alpha.5、rc.1 至 rc.5 以及 0.2.2-alpha.2 / alpha.3 / rc.1 / rc.2 分别使用精确选择器补齐 `immer: ^10.1.1` 与 `zustand: ~4.5.7`，锁文件记录修复。0.2.1-alpha.2 配套发布包经 frozen install、类型检查、106 项测试、构建与实际 pack 通过；上游进展与更广的静态客户端打包问题见 [Discussion #6082](https://github.com/deepseek-ai/deepseek-harness/discussions/6082)。静态库产物保留 bare imports，而上游依赖门禁要求浏览器输入仅列为开发依赖，完整修复需要维护者统一产物与依赖规则。本项目只修复实际消费的 store；该配置作用于本仓库 pnpm 安装，不代表其他消费方或上游发布包已修复。
 
 ## 安装
 
-2026-11-06 核对 CLI npm `latest=next=0.2.2-rc.1`、`alpha=0.2.2-alpha.3`。默认固定已验证的 rc.1，需要 Node >=24.9：
+2026-11-13 核对 CLI npm `latest=0.2.2-rc.1`、`next=0.2.2-rc.2`、`alpha=0.2.2-alpha.3`。默认固定已验证的 rc.1，需要 Node >=24.9：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
+```
+
+npm next 固定已验证的 rc.2，需要 Node >=24.9：
+
+```sh
+npx @deepseek-ai/dsh@0.2.2-rc.2 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.2-rc.2 --profile web
 ```
 
 保留先前默认版 rc.5 作为固定回退：
@@ -228,7 +243,7 @@ node --import tsx/esm apps/cli/src/bin.ts plugin --profile web add /absolute/pat
 node --import tsx/esm apps/cli/src/bin.ts --profile web --no-open
 ```
 
-CI 检查锁定的 0.2.2-rc.1 配套发布包，并对二十九个精确源码提交运行组装矩阵：每个宿主 108 项单元/集成、7 个共有 Web 场景及 3 个 M6；启用 settingsMigration 的宿主另有旧设置迁移及两次重启验收。全部宿主安装发布依赖构建的同一 tarball。本轮本地验收新 rc.1，其余本地证据保持原日期并由当前提交的完整 CI 复核。M6 实时启停仅在 0.1.6-alpha.2 执行，其余运行卸载、移除及重装。所有夹具使用临时 Session、SQLite、profile 和无密钥模型；真实模型验收仍限于原记录的宿主与日期。
+CI 检查锁定的 0.2.2-rc.2 配套发布包，并对三十个精确源码提交运行组装矩阵：每个宿主 108 项单元/集成、7 个共有 Web 场景及 3 个 M6；启用 settingsMigration 的宿主另有旧设置迁移及两次重启验收。全部宿主安装发布依赖构建的同一 tarball。本轮本地验收新 rc.2，其余本地证据保持原日期并由当前提交的完整 CI 复核。M6 实时启停仅在 0.1.6-alpha.2 执行，其余运行卸载、移除及重装。所有夹具使用临时 Session、SQLite、profile 和无密钥模型；真实模型验收仍限于原记录的宿主与日期。
 
 ## 修复后的学习行为
 
