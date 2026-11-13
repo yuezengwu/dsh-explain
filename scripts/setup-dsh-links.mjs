@@ -135,9 +135,11 @@ function main() {
   const version = JSON.parse(readFileSync(join(sourceRoot, 'package.json'), 'utf8')).version
   requireDshHost(version)
   const available = collectPackages(sourceRoot)
-  const missing = requiredDshPackages().filter(name => !available.has(name))
+  // dsh-error was introduced in rc.2 as a development peer of dsh-llm.
+  const required = requiredDshPackages().filter(name => name !== '@deepseek-ai/dsh-error' || available.has(name))
+  const missing = required.filter(name => !available.has(name))
   if (missing.length > 0) throw new Error(`DSH source tree is missing peers: ${missing.join(', ')}`)
-  const links = new Map(requiredDshPackages().map(name => [name, available.get(name)]))
+  const links = new Map(required.map(name => [name, available.get(name)]))
   for (const identity of reactIdentity(sourceRoot)) links.set(...identity)
 
   if (checkOnly) {
