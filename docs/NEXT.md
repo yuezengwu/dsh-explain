@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M47：DSH 0.2.2-rc.4（2026-11-18）
+
+加入官方 rc.4 固定源码和发布依赖。默认安装固定 rc.1，npm next 固定 rc.4。Web 和 M6 范围见[验收矩阵](./ACCEPTANCE.md)。
+
 ## M46：DSH 0.2.2-rc.3（2026-11-14）
 
 加入官方 rc.3 固定源码与发布依赖。默认安装固定 rc.1，npm next 固定 rc.3。Web 和 M6 覆盖见[验收矩阵](./ACCEPTANCE.md)。
