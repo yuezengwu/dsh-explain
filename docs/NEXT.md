@@ -1,5 +1,9 @@
 # dsh-explain 迭代计划
 
+## M48：DSH 0.2.2-rc.5（2026-11-19）
+
+默认 CLI 固定 rc.1，next 固定 0.2.2-rc.5；既有宿主与独立学习架构保留。固定源码、发布依赖及同包 Web/M6 范围见[验收矩阵](./ACCEPTANCE.md)。
+
 ## M47：DSH 0.2.2-rc.4（2026-11-18）
 
 加入官方 rc.4 固定源码和发布依赖。默认安装固定 rc.1，npm next 固定 rc.4。Web 和 M6 范围见[验收矩阵](./ACCEPTANCE.md)。
