@@ -1,10 +1,16 @@
 # DSH 兼容约定
 
-核验日期：2026-11-19（CLI npm latest：0.2.2-rc.1；next：0.2.2-rc.5；alpha：0.2.2-alpha.3）。
+核验日期：2026-11-20（CLI npm latest：0.2.2-rc.5；next：0.2.2-rc.5；alpha：0.2.2-alpha.3）。
 
 <a id="current-npm-next-verification"></a>
 
 ## 当前 npm 渠道与验证
+
+2026-11-20：CLI npm `latest=next=0.2.2-rc.5`，`alpha=0.2.2-alpha.3`；latest / next 与精确 rc.5 的 tarball 和 integrity 相同。store 独立核对仍为 `latest=0.1.2-alpha.2`、`next=0.2.2-rc.5`、`alpha=0.2.2-alpha.3`。默认安装改为已验证的 rc.5，保留 rc.1 和全部既有宿主。
+
+本轮只更新安装与开发说明；发布依赖、锁文件、源码 SHA、共享清单及运行时代码不变。固定源码、108 项本地测试、Web/M6 的本地验收继续采用 2026-11-19 M48 记录；当前提交和合并后 CI、不可变安装与包核对随 PR 保存。未新增 Explain 发布标签或真实模型验收。
+
+### M48 已验证的 0.2.2-rc.5（2026-11-19）
 
 [官方 0.2.2-rc.5](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.5) 固定源码 `9c2670d3bce5275e0d1610272958121af87787bb`。CLI 独立核对为 latest=0.2.2-rc.1、next=0.2.2-rc.5、alpha=0.2.2-alpha.3；store 自身为 latest=0.1.2-alpha.2、next=0.2.2-rc.5、alpha=0.2.2-alpha.3。开发 SDK 固定 rc.5，默认安装固定 rc.1。 保留三十二个旧宿主。rc.5 主要变更搜索路由；Explain 不接管主 Agent 或搜索提供方。
 
@@ -71,11 +77,11 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 | 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.4` | 独立发布依赖 profile | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.2-alpha.2` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.2-alpha.3` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
-| CLI npm latest 配套 API 发布包 | `0.2.2-rc.1` | 2026-11-05 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
+| 先前 CLI npm latest 配套 API 发布包 | `0.2.2-rc.1` | 2026-11-05 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.2-rc.2` | 2026-11-13 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.2-rc.3` | 2026-11-14 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.2-rc.4` | 2026-11-18 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
-| CLI npm next 配套 API 发布包 | `0.2.2-rc.5` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
+| CLI npm latest / next 配套 API 发布包 | `0.2.2-rc.5` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.3` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.5` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.4` | 2026-10-16 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
@@ -188,21 +194,21 @@ Explain 的来源观察和手动来源定位已迁移至公开的 `sessionContro
 
 ## 安装
 
-2026-11-19 核对 CLI npm `latest=0.2.2-rc.1`、`next=0.2.2-rc.5`、`alpha=0.2.2-alpha.3`。默认固定已验证的 rc.1，需要 Node >=24.9：
-
-```sh
-npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
-```
-
-npm next 固定已验证的 0.2.2-rc.5，需要 Node >=24.9：
+2026-11-20 核对 CLI npm `latest=0.2.2-rc.5`、`next=0.2.2-rc.5`、`alpha=0.2.2-alpha.3`。默认固定已验证的 0.2.2-rc.5，需要 Node >=24.9：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.2-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.2-rc.5 --profile web
 ```
 
-保留先前默认版 rc.5 作为固定回退：
+npm next 同为 0.2.2-rc.5；保留先前默认版 0.2.2-rc.1 回退（Node >=24.9）：
+
+```sh
+npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
+```
+
+保留先前默认版 0.2.1-rc.5 作为固定回退：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
