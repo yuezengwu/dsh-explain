@@ -39,25 +39,25 @@
 
 `main` 已适配 DSH `0.2.1-rc.5`、`0.2.2-rc.1`、`0.2.2-rc.2`、`0.2.2-rc.3`、`0.2.2-rc.4`、`0.2.2-rc.5` 与 `0.2.2-alpha.3`，保留全部三十二个既有宿主，包括 0.2.1-rc.4 与 0.2.2-alpha.2。尚未发布新的 Explain 标签，最新发布版 `v0.3.1` 的支持范围仍截至 DSH `0.1.6-alpha.2`。精确源码提交与证据见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
 
-2026-11-19 核对：CLI npm `latest=0.2.2-rc.1`、`next=0.2.2-rc.5`、`alpha=0.2.2-alpha.3`。明确固定已验证的默认版（Node.js >=24.9）：
+2026-11-20 核对：CLI npm `latest=0.2.2-rc.5`、`next=0.2.2-rc.5`、`alpha=0.2.2-alpha.3`。明确固定已验证的默认版（Node.js >=24.9）：
 
 ```sh
-npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
+npx @deepseek-ai/dsh@0.2.2-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.2-rc.5 --profile web
 ```
 
-已验证的默认版需要 Node.js >=24.9。rc.5 继续作为固定回退版本：
+已验证的默认版需要 Node.js >=24.9。0.2.1-rc.5 继续作为固定回退版本：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.1-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
 npx @deepseek-ai/dsh@0.2.1-rc.5 --profile web
 ```
 
-已验证的 npm `next` 固定为 0.2.2-rc.5，需要 Node.js >=24.9：
+npm `next` 同为 0.2.2-rc.5。先前默认版 0.2.2-rc.1 继续支持，回退时固定两处 CLI 版本：
 
 ```sh
-npx @deepseek-ai/dsh@0.2.2-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.2-rc.5 --profile web
+npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
 ```
 
 先前验证的 0.2.2-rc.2、0.2.2-rc.3 与 0.2.1-rc.4 继续支持，需要时将两处 CLI 版本一起替换为所选固定版本。使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。
@@ -129,7 +129,7 @@ Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 s
 
 ## 本地开发
 
-默认开发安装使用已发布的 `0.2.2-rc.4` API 包，并仅针对已复现版本补齐[遗漏的 store 运行依赖](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复)。组装 Web 测试支持上表三十二个版本中任一已构建的 DSH 源码 checkout；现有 Demo 录制仍使用 `0.1.2-rc.1`：
+默认开发安装使用 [package.json](https://github.com/yuezengwu/dsh-explain/blob/main/package.json) 固定的已发布 API 包，并仅针对已复现版本补齐[遗漏的 store 运行依赖](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md#发布包依赖修复)。组装 Web 测试支持[兼容清单](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)列出的已构建 DSH 源码 checkout；现有 Demo 录制仍使用 `0.1.2-rc.1`：
 
 ```sh
 pnpm install
