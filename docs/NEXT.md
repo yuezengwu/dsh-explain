@@ -1,8 +1,8 @@
 # dsh-explain 迭代计划
 
-## M49：DSH 0.2.3 alpha 兼容（2026-11-23）
+## M49：DSH 0.2.3-alpha.2（2026-11-23）
 
-新增 alpha.1 / alpha.2 精确源码，保留全部旧宿主；alpha.2 协调 SDK 与 vendor，修复设置迁移的 Cordis root API 兼容。当前默认保持 rc.5，alpha.2 需 Node ^24.22.3 或 >=26.13.1。alpha.1 原始 npm SDK 存在上游 vendor 不匹配，不能称完整发布依赖通过。范围与失败记录见[验收矩阵](./ACCEPTANCE.md)。
+新增 alpha.2 精确源码，保留全部旧宿主；协调 SDK 与 vendor，修复设置迁移的 Cordis root API 兼容。默认保持 rc.5，alpha.2 需 Node ^24.22.3 或 >=26.13.1。alpha.1 的 npm SDK 与 CLI 均有上游 vendor 导出不匹配，已排除于最终支持范围，见[验收矩阵](./ACCEPTANCE.md)。
 
 ## M48：DSH 0.2.2-rc.5（2026-11-19）
 
