@@ -1,5 +1,11 @@
 # dsh-explain 验收矩阵
 
+## M49：DSH 0.2.3-alpha.2（2026-11-23）
+
+保留三十三个旧宿主与 SHA，新增 alpha.2 固定源码，精确 pin 见[兼容约定](./COMPATIBILITY.md#m49dsh-023-alpha22026-11-23)。alpha.2 协调发布 SDK 的冻结安装、类型、109 项测试、构建与实际包通过；源码冻结安装、build 10/10、链接、类型、109 项测试和构建，通过同一包 8 Web / 3 M6 场景。当前提交和 main 的 34 宿主矩阵与发布包检查随 PR 保存。
+
+修复 root API 变化对设置迁移的影响，新增子 loader 回归；新 provider 名称只进入新的设置 golden，旧快照保留。首轮 Web 的名称差异和后续串联失败保留，修正夹具后完整复验。alpha.1 原始 SDK 21 项失败，实际 npm CLI 缺少 EntryValidationError 导出，故不进入最终支持范围；之前精确源码的候选包探测只作为排查证据。隔离验证不扩展真实模型、Desktop 或账号验收。
+
 ## M48：DSH 0.2.2-rc.5（2026-11-19）
 
 官方固定源码 `9c2670d3bce5275e0d1610272958121af87787bb`，保留三十二个旧宿主，协调发布 SDK 与锁文件。独立安装复现 store 缺少 Zustand，仅追加该精确版本的 Immer / Zustand 依赖修复。

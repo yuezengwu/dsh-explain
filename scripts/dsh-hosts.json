@@ -1,5 +1,5 @@
 {
-  "developmentVersion": "0.2.2-rc.5",
+  "developmentVersion": "0.2.3-alpha.2",
   "hosts": [
     {
       "version": "0.1.2-rc.1",
@@ -294,6 +294,17 @@
       "realtimeToggle": false,
       "apiKeyOnboardingChoice": true,
       "settingsAccountMenu": true
+    },
+    {
+      "version": "0.2.3-alpha.2",
+      "sha": "4b399c39a6d1479cd84ca591b4d7c88e24d38a96",
+      "sessionById": true,
+      "accountSettings": true,
+      "settingsMigration": true,
+      "realtimeToggle": false,
+      "apiKeyOnboardingChoice": true,
+      "settingsAccountMenu": true,
+      "apiProviderLabel": true
     }
   ]
 }

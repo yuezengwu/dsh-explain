@@ -1,14 +1,28 @@
 # DSH 兼容约定
 
-核验日期：2026-11-20（CLI npm latest：0.2.2-rc.5；next：0.2.2-rc.5；alpha：0.2.2-alpha.3）。
+核验日期：2026-11-23（CLI npm latest / next：0.2.2-rc.5；alpha：0.2.3-alpha.2）。
 
 <a id="current-npm-next-verification"></a>
 
 ## 当前 npm 渠道与验证
 
-2026-11-20：CLI npm `latest=next=0.2.2-rc.5`，`alpha=0.2.2-alpha.3`；latest / next 与精确 rc.5 的 tarball 和 integrity 相同。store 独立核对仍为 `latest=0.1.2-alpha.2`、`next=0.2.2-rc.5`、`alpha=0.2.2-alpha.3`。默认安装改为已验证的 rc.5，保留 rc.1 和全部既有宿主。
+CLI 独立核对 `latest=next=0.2.2-rc.5`、`alpha=0.2.3-alpha.2`；store 自身为 `latest=0.1.2-alpha.2`、`next=0.2.2-rc.5`、`alpha=0.2.3-alpha.2`。默认安装继续固定 rc.5；增加 alpha.2 固定源码，保留全部三十三个旧宿主及 SHA。
 
-本轮只更新安装与开发说明；发布依赖、锁文件、源码 SHA、共享清单及运行时代码不变。固定源码、108 项本地测试、Web/M6 的本地验收继续采用 2026-11-19 M48 记录；当前提交和合并后 CI、不可变安装与包核对随 PR 保存。未新增 Explain 发布标签或真实模型验收。
+### M49：DSH 0.2.3-alpha.2（2026-11-23）
+
+官方 [alpha.2](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.3-alpha.2) 固定 `4b399c39a6d1479cd84ca591b4d7c88e24d38a96`。开发 SDK 固定 alpha.2，协调 Cordis 4.2.0-alpha.1 / Schemastery 3.20.0-alpha.1 / Loader 1.2.0-alpha.1；完整版本清单、引擎、peer 和 CI 同步。原始 alpha.2 store 最小导入仍缺少 Zustand，仅对该精确版本追加既有 Immer / Zustand 修复。
+
+新 Cordis 把 root 属性改为 `Context.root` symbol；设置迁移现在按可用 API 选择真正的应用根，保留旧宿主路径，并由真实 Cordis 子上下文回归验证不会等待子 loader。新版官方提供方名称为 DeepSeek API，新增明确的设置页 golden；旧 golden 保留，不归一化差异或削弱断言。SQLite schema 4、backup v3 与独立学习架构不变。
+
+alpha.2 发布 SDK 的冻结安装、类型、109 项单元/集成测试、构建、实际 pack 通过。固定源码冻结安装、完整 build 10/10 门禁通过；源码链接后通过类型、109 项测试、构建与同包 8 Web / 3 M6 验收，包括设置保存、旧设置迁移、重启、卸载和重装。首轮 Web 因上游提供方名称变化导致 golden 不匹配及后续串联失败；明确新增 golden 与清单后整组复验通过，原始失败保留记录。当前提交 / main 完整 35 项 CI 与不可变安装、产物核对随 PR 保存。
+
+alpha.2 官方要求 `^24.22.3 || >=26.13.1`，本地使用隔离 Node 24.22.3。旧宿主要求与历史证据日期保留。不新增 Explain 发布标签、真实 provider / 模型请求、Desktop、CUA 或 Session 降级验收；v0.3.1 的发布支持范围仍截至 DSH 0.1.6-alpha.2。
+
+### 未纳入支持：0.2.3-alpha.1
+
+官方 tag 固定 `d98f5d68519215da48f3002da2cb9c9d2068d81d`。原始 npm SDK 按所声明的 Cordis 4.1.0 / Schemastery 3.19.0 / Loader 1.1.0 检查，109 项中 88 通过、21 失败：typert-protocol 使用已发布 Cordis 4.1.0 未导出的 `Context.root`。原始 store 同样缺少 Zustand。
+
+实际 npm CLI 执行插件命令也在加载 app-boot 时失败：已发布 Loader 1.1.0 未导出 `EntryValidationError`。该问题发生在加载 Explain 之前。虽然隔离候选包在精确源码宿主曾通过 109 项和 8 Web / 3 M6，该源码带有不同于 npm 同名 vendor 的实现，不能替代公开发行验证。alpha.1 未进入最终引擎、peer、支持清单或 CI；不建议用覆盖 vendor 依赖的方式绕过。alpha.2 使用协调的新 vendor 并通过验证。
 
 ### M48 已验证的 0.2.2-rc.5（2026-11-19）
 
@@ -81,7 +95,8 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 | 先前 CLI npm next 配套 API 发布包 | `0.2.2-rc.2` | 2026-11-13 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.2-rc.3` | 2026-11-14 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.2-rc.4` | 2026-11-18 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
-| CLI npm latest / next 配套 API 发布包 | `0.2.2-rc.5` | 开发依赖与锁文件 | frozen install、类型检查、108 项测试、构建、实际 pack |
+| CLI npm alpha 配套 API 发布包 | `0.2.3-alpha.2` | 开发依赖与锁文件 | frozen install、类型检查、109 项测试、构建、实际 pack；alpha.1 未纳入支持，失败单列于 M49 |
+| CLI npm latest / next 配套 API 发布包 | `0.2.2-rc.5` | 2026-11-19 发布依赖验收 | frozen install、类型检查、108 项测试、构建、实际 pack |
 | 先前 CLI npm next 配套 API 发布包 | `0.2.1-rc.3` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.5` | 发布包安装与锁文件 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
 | 先前 CLI npm alpha 配套 API 发布包 | `0.2.1-alpha.4` | 2026-10-16 发布包验证 | frozen install、类型检查、108 项单元/集成测试、生产构建、实际 pack |
@@ -123,6 +138,7 @@ M29（2026-10-09）保留当时十七个版本与 SHA，并增加兼容一致性
 | DSH 0.2.2-rc.3 源码 | `0.2.2-rc.3` | `38a6a5c965aa99ab525161efb7cc5cf1fe62fced` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.2-rc.4 源码 | `0.2.2-rc.4` | `3f321d32bfe382212a8ed8785c1d47a5a300aa23` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
 | DSH 0.2.2-rc.5 源码 | `0.2.2-rc.5` | `9c2670d3bce5275e0d1610272958121af87787bb` | 类型检查、108 项测试、8 个 Web 场景、3 个 M6 场景 |
+| 官方精确源码 | `0.2.3-alpha.2` | `4b399c39a6d1479cd84ca591b4d7c88e24d38a96` | 类型检查、109 项测试、8 个 Web 场景、3 个 M6 场景 |
 
 [官方 0.2.1-rc.3](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) 于 2026-10-23 15:26:39 UTC 发布，tag 直接固定源码 `1f81c047fc48fa190a683e469daa699857e9afe8`。2026-10-24 核对 CLI npm `latest=0.2.1-rc.2`、`next=0.2.1-rc.3`、`alpha=0.2.1-alpha.5`；store 自身为 `latest=0.1.2-alpha.2`、`next=0.2.1-rc.3`、`alpha=0.2.1-alpha.5`。M36 固定 rc.3 开发发布包，协调锁文件、精确 peer、引擎、清单和 CI，保留全部二十三个旧宿主并扩至二十四版。新的 More 菜单与草稿选项不要求 Explain 改用新接口；原始 store 仍可复现缺失 Zustand，因此只追加 rc.3 精确补丁。业务源码、Host/Client bundle、旧 golden、SQLite schema 4 与 backup v3 不变；TypeRT 产物重新生成。发布包及固定源码验收见 [M36](./ACCEPTANCE.md)，新 Explain 标签、真实 provider、账号模型、Desktop 与 Session 降级不在本轮范围。
 

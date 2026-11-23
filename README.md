@@ -37,9 +37,9 @@ The 28-second preview runs against real assembled DSH Web `0.1.2-rc.1` with dete
 
 ## Quick start
 
-DSH `0.2.1-rc.5`, `0.2.2-rc.1`, `0.2.2-rc.2`, `0.2.2-rc.3`, `0.2.2-rc.4`, `0.2.2-rc.5` and `0.2.2-alpha.3` support is available on `main`, preserving all thirty-two previously verified hosts, including 0.2.1-rc.4 and 0.2.2-alpha.2. This is not a new Explain release: `v0.3.1` still supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact source revisions and evidence.
+The DSH 0.2.3-alpha.2 source host is verified on `main`, preserving all thirty-three earlier hosts. The alpha.2 published SDK is verified with coordinated vendor dependencies; the original alpha.1 npm SDK and CLI fail upstream vendor exports and are excluded from support. This is not a new Explain release: `v0.3.1` still supports DSH through `0.1.6-alpha.2`. See the [compatibility contract](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md) for exact revisions and evidence.
 
-As checked on 2026-11-20, CLI npm `latest=0.2.2-rc.5`, `next=0.2.2-rc.5` and `alpha=0.2.2-alpha.3`. Pin the verified default explicitly (Node.js >=24.9):
+As checked on 2026-11-23, CLI npm `latest=0.2.2-rc.5`, `next=0.2.2-rc.5` and `alpha=0.2.3-alpha.2`. Pin the verified default explicitly (Node.js >=24.9):
 
 ```sh
 npx @deepseek-ai/dsh@0.2.2-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
@@ -62,11 +62,11 @@ npx @deepseek-ai/dsh@0.2.2-rc.1 plugin --profile web add github:yuezengwu/dsh-ex
 npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
 ```
 
-The verified `alpha` requires Node.js 24.9 or newer. Pin its version explicitly:
+The verified alpha.2 host requires Node.js ^24.22.3 or >=26.13.1. Earlier alpha hosts remain supported; pin the selected version explicitly:
 
 ```sh
-npx @deepseek-ai/dsh@0.2.2-alpha.3 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.2-alpha.3 --profile web
+npx @deepseek-ai/dsh@0.2.3-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.3-alpha.2 --profile web
 ```
 
 Open **Settings → Learning**, choose an auxiliary provider and model, enable learning mode, and save. Explain observes only future completed top-level turns; it does not scan existing history.
@@ -118,7 +118,7 @@ Explain uses first-party DSH conversation, composer, assistant-action, and setti
 
 | Check | Current result |
 |---|---|
-| DSH compatibility | `0.2.1-rc.5` / `0.2.2-rc.1` / `0.2.2-rc.2` / `0.2.2-rc.3` / `0.2.2-rc.4` / `0.2.2-rc.5` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.6-alpha.1`, `0.1.6-alpha.2`, `0.1.7-alpha.1`, `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, `0.2.1-alpha.5`, `0.2.1-rc.1`, `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4`, `0.2.1-rc.5`, `0.2.2-alpha.2`, `0.2.2-alpha.3`, `0.2.2-rc.1`, `0.2.2-rc.2`, `0.2.2-rc.3`, `0.2.2-rc.4`, `0.2.2-rc.5` assembled source |
+| DSH compatibility | `0.2.1-rc.5` / `0.2.2-rc.1` / `0.2.2-rc.2` / `0.2.2-rc.3` / `0.2.2-rc.4` / `0.2.2-rc.5` / `0.2.3-alpha.2` published packages; `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, `0.1.5-alpha.1`, `0.1.5-alpha.2`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.6-alpha.1`, `0.1.6-alpha.2`, `0.1.7-alpha.1`, `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, `0.2.1-alpha.5`, `0.2.1-rc.1`, `0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4`, `0.2.1-rc.5`, `0.2.2-alpha.2`, `0.2.2-alpha.3`, `0.2.2-rc.1`, `0.2.2-rc.2`, `0.2.2-rc.3`, `0.2.2-rc.4`, `0.2.2-rc.5`, `0.2.3-alpha.2` assembled source |
 | Unit and integration | 108 tests on each of the thirty-three source versions |
 | Assembled DSH Web | 7 shared scenarios; 0.1.7, 0.2.0, and 0.2.1 add legacy-settings migration and restart coverage |
 | Explain-owned shortcuts | 3 M6 scenarios for unload/remove/reinstall; live disable/re-enable additionally runs on 0.1.6-alpha.2 |
