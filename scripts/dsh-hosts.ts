@@ -12,6 +12,8 @@ export interface DshHost {
   readonly apiKeyOnboardingChoice?: boolean
   /** Settings is reached through the sidebar account menu. */
   readonly settingsAccountMenu?: boolean
+  /** The official provider catalog displays “DeepSeek API”. */
+  readonly apiProviderLabel?: boolean
 }
 
 /** Shared inventory; compat:check validates it against CI, peers and documentation. */

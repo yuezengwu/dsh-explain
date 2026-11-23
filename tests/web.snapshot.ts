@@ -21,6 +21,7 @@ const SESSION_FIXTURE = join(SNAPSHOT_DIRECTORY, 'session.jsonl')
 const UI_GOLDEN = join(SNAPSHOT_DIRECTORY, 'ui.expected.md')
 const SETTINGS_GOLDEN = join(SNAPSHOT_DIRECTORY, 'settings.expected.md')
 const SETTINGS_RC2_GOLDEN = join(SNAPSHOT_DIRECTORY, 'settings.rc2.expected.md')
+const SETTINGS_023_GOLDEN = join(SNAPSHOT_DIRECTORY, 'settings.023.expected.md')
 const SESSION_ID = 'web-snapshot-session'
 const SOURCE_SESSION_ID = SessionId('fixture-source')
 const MISSING_SOURCE_SESSION_ID = SessionId('missing-source')
@@ -439,8 +440,9 @@ describe('keyless assembled DSH Web learning view', () => {
     await settings.getByRole('button', { name: '保存设置', exact: true }).waitFor({ timeout: 15_000 })
     expect(runtimeOwner(dshHome)).toBe(owner)
     const manifest = JSON.parse(await readFile(join(dshSource, 'package.json'), 'utf8')) as { version: string }
-    await compareOrRefresh(await stableAria(settings),
-      requireDshHost(manifest.version).accountSettings ? SETTINGS_RC2_GOLDEN : SETTINGS_GOLDEN)
+    const settingsHost = requireDshHost(manifest.version)
+    await compareOrRefresh(await stableAria(settings), settingsHost.apiProviderLabel
+      ? SETTINGS_023_GOLDEN : settingsHost.accountSettings ? SETTINGS_RC2_GOLDEN : SETTINGS_GOLDEN)
     await settingsDialog.getByRole('button', { name: '关闭', exact: true }).click()
 
     const view = page.getByTestId('dsh-explain-learning-view')
@@ -622,7 +624,7 @@ describe('keyless assembled DSH Web learning view', () => {
 
   it('keeps the fixture inventory closed', async () => {
     expect((await readdir(SNAPSHOT_DIRECTORY)).sort()).toEqual([
-      'session.jsonl', 'settings.expected.md', 'settings.rc2.expected.md', 'ui.expected.md',
+      'session.jsonl', 'settings.023.expected.md', 'settings.expected.md', 'settings.rc2.expected.md', 'ui.expected.md',
     ])
   })
 })

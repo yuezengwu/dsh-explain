@@ -1,5 +1,6 @@
 import { dirname } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
+import { applicationContext } from './context-compat.ts'
 import {
   SettingsConflictError,
 } from '@deepseek-ai/dsh-settings'
@@ -85,7 +86,7 @@ export class ExplainRuntime {
         profileContext: { home: string }
         loader: { await(): Promise<void> }
       }
-      void (host.root as typeof host).loader.await().then(async () => {
+      void applicationContext(host).loader.await().then(async () => {
         if (abort.signal.aborted) return
         await migrateLegacySettings(settings, this.namespace, host.profileContext.home,
           dirname(settings.documentPath!), abort.signal)

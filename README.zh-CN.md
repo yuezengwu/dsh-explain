@@ -37,9 +37,9 @@
 
 ## 快速开始
 
-`main` 已适配 DSH `0.2.1-rc.5`、`0.2.2-rc.1`、`0.2.2-rc.2`、`0.2.2-rc.3`、`0.2.2-rc.4`、`0.2.2-rc.5` 与 `0.2.2-alpha.3`，保留全部三十二个既有宿主，包括 0.2.1-rc.4 与 0.2.2-alpha.2。尚未发布新的 Explain 标签，最新发布版 `v0.3.1` 的支持范围仍截至 DSH `0.1.6-alpha.2`。精确源码提交与证据见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
+`main` 新增已验证的 DSH 0.2.3-alpha.1 / alpha.2 固定源码宿主，保留全部三十三个旧宿主。alpha.2 的协调发布 SDK 已验证；alpha.1 原始 npm SDK 存在上游 Cordis root API 依赖不匹配，失败另列。尚未发布新的 Explain 标签，最新发布版 `v0.3.1` 的支持范围仍截至 DSH `0.1.6-alpha.2`。精确提交与证据见[兼容约定](https://github.com/yuezengwu/dsh-explain/blob/main/docs/COMPATIBILITY.md)。
 
-2026-11-20 核对：CLI npm `latest=0.2.2-rc.5`、`next=0.2.2-rc.5`、`alpha=0.2.2-alpha.3`。明确固定已验证的默认版（Node.js >=24.9）：
+2026-11-23 核对：CLI npm `latest=0.2.2-rc.5`、`next=0.2.2-rc.5`、`alpha=0.2.3-alpha.2`。明确固定已验证的默认版（Node.js >=24.9）：
 
 ```sh
 npx @deepseek-ai/dsh@0.2.2-rc.5 plugin --profile web add github:yuezengwu/dsh-explain#main
@@ -62,11 +62,11 @@ npx @deepseek-ai/dsh@0.2.2-rc.1 --profile web
 
 先前验证的 0.2.2-rc.2、0.2.2-rc.3 与 0.2.1-rc.4 继续支持，需要时将两处 CLI 版本一起替换为所选固定版本。使用已发布标签时，继续搭配 DSH `0.1.6-alpha.2` 和 `github:yuezengwu/dsh-explain#v0.3.1`。
 
-已验证的 `alpha` 需要 Node.js 24.9 或更高版本，命令同样固定版本：
+已验证的 alpha.2 宿主需要 Node.js ^24.22.3 或 >=26.13.1；旧 alpha 仍保留支持，按所选版本固定命令：
 
 ```sh
-npx @deepseek-ai/dsh@0.2.2-alpha.3 plugin --profile web add github:yuezengwu/dsh-explain#main
-npx @deepseek-ai/dsh@0.2.2-alpha.3 --profile web
+npx @deepseek-ai/dsh@0.2.3-alpha.2 plugin --profile web add github:yuezengwu/dsh-explain#main
+npx @deepseek-ai/dsh@0.2.3-alpha.2 --profile web
 ```
 
 启动后进入「**设置 → 学习**」，选择辅助模型的 provider 和 model，启用学习模式并保存。Explain 只观察此后完成的顶层工作回合，不补扫已有历史。
@@ -118,7 +118,7 @@ Explain 只使用 DSH 第一方 conversation、composer、assistant action 和 s
 
 | 检查 | 当前结果 |
 |---|---|
-| DSH 兼容 | `0.2.1-rc.5` / `0.2.2-rc.1` / `0.2.2-rc.2` / `0.2.2-rc.3` / `0.2.2-rc.4` / `0.2.2-rc.5` 发布包；`0.1.2-rc.1`、`0.1.3-alpha.1`、`0.1.3-alpha.2`、`0.1.5-alpha.1`、`0.1.5-alpha.2`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.6-alpha.1`、`0.1.6-alpha.2`、`0.1.7-alpha.1`、`0.1.7-alpha.2`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.1`、`0.2.1-alpha.2`、`0.2.1-alpha.3`、`0.2.1-alpha.4`、`0.2.1-alpha.5`、`0.2.1-rc.1`、`0.2.1-rc.2`、`0.2.1-rc.3`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-alpha.2`、`0.2.2-alpha.3`、`0.2.2-rc.1`, `0.2.2-rc.2`、`0.2.2-rc.3`、`0.2.2-rc.4`、`0.2.2-rc.5` 组装源码 |
+| DSH 兼容 | `0.2.1-rc.5` / `0.2.2-rc.1` / `0.2.2-rc.2` / `0.2.2-rc.3` / `0.2.2-rc.4` / `0.2.2-rc.5` / `0.2.3-alpha.2` 发布包；`0.1.2-rc.1`、`0.1.3-alpha.1`、`0.1.3-alpha.2`、`0.1.5-alpha.1`、`0.1.5-alpha.2`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.6-alpha.1`、`0.1.6-alpha.2`、`0.1.7-alpha.1`、`0.1.7-alpha.2`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.1`、`0.2.1-alpha.2`、`0.2.1-alpha.3`、`0.2.1-alpha.4`、`0.2.1-alpha.5`、`0.2.1-rc.1`、`0.2.1-rc.2`、`0.2.1-rc.3`、`0.2.1-rc.4`、`0.2.1-rc.5`、`0.2.2-alpha.2`、`0.2.2-alpha.3`、`0.2.2-rc.1`, `0.2.2-rc.2`、`0.2.2-rc.3`、`0.2.2-rc.4`、`0.2.2-rc.5`、`0.2.3-alpha.1`、`0.2.3-alpha.2` 组装源码 |
 | 单元与集成 | 三十三个源码版本各 108 项测试 |
 | DSH Web 组装验收 | 7 个共有场景；0.1.7、0.2.0 和 0.2.1 增加旧设置迁移与重启恢复 |
 | Explain 自有快捷入口 | 3 个 M6 场景验证卸载、移除及重装；实时停用与重新启用另在 0.1.6-alpha.2 执行 |
